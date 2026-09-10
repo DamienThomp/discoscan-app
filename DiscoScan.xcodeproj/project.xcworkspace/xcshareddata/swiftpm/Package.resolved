@@ -1,0 +1,15 @@
+{
+  "originHash" : "64f7d6bbfd769c99b6a9a4ff0c6c05d4dc50b2248af615b3acf861e8455c1fd5",
+  "pins" : [
+    {
+      "identity" : "networkkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DamienThomp/NetworkKit.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "27e5ec85c251a23e10723bf5d49989f367b41a38"
+      }
+    }
+  ],
+  "version" : 3
+}
