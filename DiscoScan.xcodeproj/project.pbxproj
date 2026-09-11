@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		38B0416330530F9A00AB3941 /* NetworkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 38B0416230530F9A00AB3941 /* NetworkKit */; };
+		38B041653053100000AB3941 /* NetworkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 38B0416230530F9A00AB3941 /* NetworkKit */; };
+		38B041BE305347F600AB3941 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 38B041643053100000AB3941 /* Secrets.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,11 +33,25 @@
 		38B041373053092F00AB3941 /* DiscoScan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DiscoScan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		38B041443053093100AB3941 /* DiscoScanTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DiscoScanTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38B0414E3053093100AB3941 /* DiscoScanUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DiscoScanUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		38B041643053100000AB3941 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Secrets.xcconfig; path = DiscoScan/Configuration/Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		38B041663053100000AB3941 /* Exceptions for "DiscoScan" folder in "DiscoScan" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 38B041363053092F00AB3941 /* DiscoScan */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		38B041393053092F00AB3941 /* DiscoScan */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				38B041663053100000AB3941 /* Exceptions for "DiscoScan" folder in "DiscoScan" target */,
+			);
 			path = DiscoScan;
 			sourceTree = "<group>";
 		};
@@ -64,6 +80,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38B041653053100000AB3941 /* NetworkKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +100,7 @@
 				38B041393053092F00AB3941 /* DiscoScan */,
 				38B041473053093100AB3941 /* DiscoScanTests */,
 				38B041513053093100AB3941 /* DiscoScanUITests */,
+				38B041643053100000AB3941 /* Secrets.xcconfig */,
 				38B041383053092F00AB3941 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -141,6 +159,7 @@
 			);
 			name = DiscoScanTests;
 			packageProductDependencies = (
+				38B0416230530F9A00AB3941 /* NetworkKit */,
 			);
 			productName = DiscoScanTests;
 			productReference = 38B041443053093100AB3941 /* DiscoScanTests.xctest */;
@@ -221,6 +240,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38B041BE305347F600AB3941 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,6 +300,7 @@
 /* Begin XCBuildConfiguration section */
 		38B041563053093100AB3941 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 38B041643053100000AB3941 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -344,6 +365,7 @@
 		};
 		38B041573053093100AB3941 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 38B041643053100000AB3941 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -401,6 +423,7 @@
 		};
 		38B041593053093100AB3941 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 38B041643053100000AB3941 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -408,12 +431,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MMXH24PBRA;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DiscoScan/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -433,6 +452,7 @@
 		};
 		38B0415A3053093100AB3941 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 38B041643053100000AB3941 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -440,12 +460,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MMXH24PBRA;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DiscoScan/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -593,8 +609,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/DamienThomp/NetworkKit.git";
 			requirement = {
-				branch = main;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

@@ -24,3 +24,6 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Secrets
+DiscoScan/Configuration/Secrets.xcconfig
