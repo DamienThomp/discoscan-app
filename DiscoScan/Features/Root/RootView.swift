@@ -11,6 +11,9 @@ struct RootView: View {
     var body: some View {
         Group {
             switch authSession.state {
+            case .bootstrapping:
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .unauthenticated, .failed:
                 LoginView()
             case .authenticating:

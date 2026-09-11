@@ -11,13 +11,14 @@ import Observation
 @Observable
 final class AuthSession {
     enum State: Equatable {
+        case bootstrapping
         case unauthenticated
         case authenticating
         case authenticated(DiscogsIdentity)
         case failed(String)
     }
 
-    private(set) var state: State = .unauthenticated
+    private(set) var state: State = .bootstrapping
 
     private let oauthService: DiscogsOAuthService
     private let apiClient: NetworkManagerProtocol
@@ -42,7 +43,7 @@ final class AuthSession {
     }
 
     func bootstrap() async {
-        guard case .unauthenticated = state else { return }
+        guard case .bootstrapping = state else { return }
 
         do {
             _ = try await tokenStore.load()

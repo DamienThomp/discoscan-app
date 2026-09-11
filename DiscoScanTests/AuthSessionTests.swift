@@ -18,6 +18,17 @@ struct AuthSessionTests {
         callbackURLScheme: "discoscan"
     )
 
+    @Test func initialStateIsBootstrapping() {
+        let session = makeAuthSession(tokenStore: InMemoryTokenStore())
+        #expect(session.state == .bootstrapping)
+    }
+
+    @Test func bootstrapWithNoTokenBecomesUnauthenticated() async {
+        let session = makeAuthSession(tokenStore: InMemoryTokenStore())
+        await session.bootstrap()
+        #expect(session.state == .unauthenticated)
+    }
+
     @Test func bootstrapRestoresAuthenticatedSession() async throws {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
