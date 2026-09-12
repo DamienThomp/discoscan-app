@@ -1,11 +1,11 @@
 //
-//  ProfileView.swift
+//  UserProfileView.swift
 //  DiscoScan
 //
 
 import SwiftUI
 
-struct ProfileView: View {
+struct UserProfileView: View {
     let username: String
 
     var body: some View {
