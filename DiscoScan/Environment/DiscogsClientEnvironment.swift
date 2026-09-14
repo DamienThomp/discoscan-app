@@ -6,16 +6,26 @@
 import NetworkKit
 import SwiftUI
 
-private final class UnimplementedNetworkClient: NetworkManagerProtocol, @unchecked Sendable {
-    func request<E: EndpointProtocol>(for endpoint: E) async throws -> E.Response {
-        fatalError("discogsClient environment value was not injected.")
+private actor UnimplementedCachedFetcher: CachedFetcherProtocol {
+    func fetch<E: EndpointProtocol>(
+        _ endpoint: E,
+        key: String,
+        scope: CacheScope,
+        userScope: String?,
+        forceRefresh: Bool
+    ) async throws -> E.Response {
+        fatalError("cachedFetcher environment value was not injected.")
     }
 
-    func requestData<E: EndpointProtocol>(for endpoint: E) async throws -> Data {
-        fatalError("discogsClient environment value was not injected.")
+    func cachedValue<E: EndpointProtocol>(
+        _ endpoint: E,
+        key: String,
+        userScope: String?
+    ) async throws -> E.Response? {
+        nil
     }
 }
 
 extension EnvironmentValues {
-    @Entry var discogsClient: NetworkManagerProtocol = UnimplementedNetworkClient()
+    @Entry var cachedFetcher: any CachedFetcherProtocol = UnimplementedCachedFetcher()
 }

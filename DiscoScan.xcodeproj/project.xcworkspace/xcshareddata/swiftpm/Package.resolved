@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/DamienThomp/NetworkKit.git",
       "state" : {
-        "revision" : "700021c0702f1972132163f2a4061d0dce7e8d26",
-        "version" : "1.0.0"
+        "revision" : "ce2be38562f93c972c03cb62b26c7ffe524b1439",
+        "version" : "1.1.0"
       }
     }
   ],

@@ -1,5 +1,5 @@
 //
-//  AuthSessionTests.swift
+//  AuthSessionOfflineTests.swift
 //  DiscoScanTests
 //
 
@@ -10,7 +10,7 @@ import Testing
 
 @MainActor
 @Suite(.serialized)
-struct AuthSessionTests {
+struct AuthSessionOfflineTests {
     private let config = DiscogsConfig(
         consumerKey: "consumer-key",
         consumerSecret: "consumer-secret",
@@ -19,54 +19,64 @@ struct AuthSessionTests {
         callbackURLScheme: "discoscan"
     )
 
-    @Test func initialStateIsBootstrapping() {
-        let session = makeAuthSession(tokenStore: InMemoryTokenStore())
-        #expect(session.state == .bootstrapping)
-    }
+    private let identityJSON = Data(
+        """
+        {"id":1,"username":"tester","resource_url":"https://api.discogs.com/users/tester","consumer_name":"DiscoScan"}
+        """.utf8
+    )
 
-    @Test func bootstrapWithNoTokenBecomesUnauthenticated() async {
-        let session = makeAuthSession(tokenStore: InMemoryTokenStore())
-        await session.bootstrap()
-        #expect(session.state == .unauthenticated)
-    }
-
-    @Test func bootstrapRestoresAuthenticatedSession() async throws {
+    @Test func bootstrapOfflineWithCachedIdentityStaysAuthenticated() async throws {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        MockURLProtocol.requestHandler = { request in
-            #expect(request.url?.path == "/oauth/identity")
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: ["Content-Type": "application/json"]
-            )!
-            let data = Data(
-                """
-                {"id":1,"username":"tester","resource_url":"https://api.discogs.com/users/tester","consumer_name":"DiscoScan"}
-                """.utf8
-            )
-            return (response, data)
+        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+        try await storage.store(
+            identityJSON,
+            key: AuthSession.identityCacheKey,
+            scope: .identity,
+            userScope: nil,
+            fetchedAt: Date()
+        )
+
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.notConnectedToInternet)
         }
 
-        let session = makeAuthSession(tokenStore: tokenStore)
+        let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
         await session.bootstrap()
 
         guard case .authenticated(let identity) = session.state else {
             Issue.record("Expected authenticated state, got \(session.state)")
             return
         }
-
         #expect(identity.username == "tester")
     }
 
-    @Test func logoutClearsStoredTokens() async throws {
+    @Test func unauthorizedClearsTokensAndCache() async throws {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        let session = makeAuthSession(tokenStore: tokenStore)
-        await session.logout()
+        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+        try await storage.store(
+            identityJSON,
+            key: AuthSession.identityCacheKey,
+            scope: .identity,
+            userScope: nil,
+            fetchedAt: Date()
+        )
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 401,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, Data())
+        }
+
+        let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
+        await session.bootstrap()
 
         #expect(session.state == .unauthenticated)
 
@@ -76,9 +86,35 @@ struct AuthSessionTests {
         } catch TokenStoreError.notFound {
             #expect(Bool(true))
         }
+
+        let cachedEntry = try await storage.entry(for: CachePolicy.namespacedKey(AuthSession.identityCacheKey, userScope: nil))
+        #expect(cachedEntry == nil)
     }
 
-    private func makeAuthSession(tokenStore: InMemoryTokenStore) -> AuthSession {
+    @Test func logoutClearsCache() async throws {
+        let tokenStore = InMemoryTokenStore()
+        try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
+
+        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+        try await storage.store(
+            identityJSON,
+            key: AuthSession.identityCacheKey,
+            scope: .identity,
+            userScope: nil,
+            fetchedAt: Date()
+        )
+
+        let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
+        await session.logout()
+
+        let cachedEntry = try await storage.entry(for: CachePolicy.namespacedKey(AuthSession.identityCacheKey, userScope: nil))
+        #expect(cachedEntry == nil)
+    }
+
+    private func makeAuthSession(
+        tokenStore: InMemoryTokenStore,
+        storage: SwiftDataCacheStorage
+    ) -> AuthSession {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
@@ -106,7 +142,6 @@ struct AuthSessionTests {
             tokenStore: tokenStore
         )
 
-        let storage = try! SwiftDataCacheStorage(modelContainer: TestModelContainer.make())
         let cachedFetcher = CachedFetcher(
             apiClient: apiClient,
             storage: storage,

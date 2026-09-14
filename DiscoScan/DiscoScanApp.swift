@@ -3,18 +3,17 @@
 //  DiscoScan
 //
 
-import NetworkKit
 import SwiftUI
 
 @main
 struct DiscoScanApp: App {
     @State private var authSession: AuthSession
     @State private var router = AppRouter()
-    private let apiClient: any NetworkManagerProtocol
+    private let cachedFetcher: any CachedFetcherProtocol
 
     init() {
         let dependencies = AppDependencies.make()
-        apiClient = dependencies.apiClient
+        cachedFetcher = dependencies.cachedFetcher
         _authSession = State(initialValue: AuthSession(dependencies: dependencies))
     }
 
@@ -23,7 +22,7 @@ struct DiscoScanApp: App {
             RootView()
                 .environment(authSession)
                 .environment(router)
-                .environment(\.discogsClient, apiClient)
+                .environment(\.cachedFetcher, cachedFetcher)
                 .task {
                     await authSession.bootstrap()
                 }

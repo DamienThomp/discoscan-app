@@ -18,26 +18,32 @@ final class AuthSession {
         case failed(String)
     }
 
+    static let identityCacheKey = "identity"
+
     private(set) var state: State = .bootstrapping
 
     private let oauthService: DiscogsOAuthService
-    private let apiClient: NetworkManagerProtocol
+    private let cachedFetcher: any CachedFetcherProtocol
+    private let cacheStorage: SwiftDataCacheStorage
     private let tokenStore: TokenStoreProtocol
 
     init(
         oauthService: DiscogsOAuthService,
-        apiClient: NetworkManagerProtocol,
+        cachedFetcher: any CachedFetcherProtocol,
+        cacheStorage: SwiftDataCacheStorage,
         tokenStore: TokenStoreProtocol
     ) {
         self.oauthService = oauthService
-        self.apiClient = apiClient
+        self.cachedFetcher = cachedFetcher
+        self.cacheStorage = cacheStorage
         self.tokenStore = tokenStore
     }
 
     convenience init(dependencies: AppDependencies) {
         self.init(
             oauthService: dependencies.oauthService,
-            apiClient: dependencies.apiClient,
+            cachedFetcher: dependencies.cachedFetcher,
+            cacheStorage: dependencies.cacheStorage,
             tokenStore: dependencies.tokenStore
         )
     }
@@ -47,11 +53,33 @@ final class AuthSession {
 
         do {
             _ = try await tokenStore.load()
+
+            if let cached = try? await cachedFetcher.cachedValue(
+                IdentityEndpoint(),
+                key: Self.identityCacheKey,
+                userScope: nil
+            ) {
+                state = .authenticated(cached)
+            }
+
             let identity = try await fetchIdentity()
             state = .authenticated(identity)
         } catch TokenStoreError.notFound {
             state = .unauthenticated
+        } catch let error as NetworkError {
+            if case .serverError(let statusCode, _, _) = error, statusCode == 401 {
+                state = .unauthenticated
+                return
+            }
+            if case .authenticated = state {
+                return
+            }
+            try? await tokenStore.clear()
+            state = .unauthenticated
         } catch {
+            if case .authenticated = state {
+                return
+            }
             try? await tokenStore.clear()
             state = .unauthenticated
         }
@@ -72,6 +100,7 @@ final class AuthSession {
 
     func logout() async {
         try? await tokenStore.clear()
+        try? await cacheStorage.clear(userScope: nil)
         state = .unauthenticated
     }
 
@@ -83,10 +112,17 @@ final class AuthSession {
 
     private func fetchIdentity() async throws -> DiscogsIdentity {
         do {
-            return try await apiClient.request(for: IdentityEndpoint())
+            return try await cachedFetcher.fetch(
+                IdentityEndpoint(),
+                key: Self.identityCacheKey,
+                scope: .identity,
+                userScope: nil,
+                forceRefresh: true
+            )
         } catch let error as NetworkError {
             if case .serverError(let statusCode, _, _) = error, statusCode == 401 {
                 try? await tokenStore.clear()
+                try? await cacheStorage.clear(userScope: nil)
                 throw error
             }
             throw error

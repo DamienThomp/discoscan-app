@@ -9,6 +9,7 @@ import Testing
 @testable import DiscoScan
 
 @MainActor
+@Suite(.serialized)
 struct DiscogsOAuthServiceTests {
     private let config = DiscogsConfig(
         consumerKey: "consumer-key",
