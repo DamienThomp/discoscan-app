@@ -5,6 +5,7 @@
 
 import Foundation
 import NetworkKit
+import SwiftData
 
 struct AppDependencies {
     let config: DiscogsConfig
@@ -12,6 +13,8 @@ struct AppDependencies {
     let handshakeClient: NetworkManagerProtocol
     let apiClient: NetworkManagerProtocol
     let oauthService: DiscogsOAuthService
+    let cacheStorage: SwiftDataCacheStorage
+    let cachedFetcher: CachedFetcher
 
     @MainActor
     static func make() -> AppDependencies {
@@ -33,6 +36,8 @@ struct AppDependencies {
             return decoder
         }()
 
+        let rateLimitTracker = RateLimitTracker()
+
         let handshakeClient = NetworkManagerFactory.makeDefaultClient(
             hostResolver: hostResolver,
             customInterceptors: [UserAgentInterceptor(userAgent: config.userAgent)],
@@ -43,7 +48,8 @@ struct AppDependencies {
             hostResolver: hostResolver,
             customInterceptors: [
                 UserAgentInterceptor(userAgent: config.userAgent),
-                DiscogsOAuthInterceptor(config: config, tokenStore: tokenStore)
+                DiscogsOAuthInterceptor(config: config, tokenStore: tokenStore),
+                DiscogsRateLimitInterceptor(tracker: rateLimitTracker)
             ],
             decoder: decoder
         )
@@ -54,12 +60,36 @@ struct AppDependencies {
             tokenStore: tokenStore
         )
 
+        let modelContainer = makeModelContainer()
+        let cacheStorage = SwiftDataCacheStorage(modelContainer: modelContainer)
+        let cachedFetcher = CachedFetcher(
+            apiClient: apiClient,
+            storage: cacheStorage,
+            rateLimitTracker: rateLimitTracker,
+            decoder: decoder
+        )
+
         return AppDependencies(
             config: config,
             tokenStore: tokenStore,
             handshakeClient: handshakeClient,
             apiClient: apiClient,
-            oauthService: oauthService
+            oauthService: oauthService,
+            cacheStorage: cacheStorage,
+            cachedFetcher: cachedFetcher
         )
+    }
+
+    private static func makeModelContainer() -> ModelContainer {
+        do {
+            return try ModelContainer(for: CachedRecord.self)
+        } catch {
+            do {
+                let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+                return try ModelContainer(for: CachedRecord.self, configurations: configuration)
+            } catch {
+                fatalError("Failed to create in-memory ModelContainer: \(error)")
+            }
+        }
     }
 }
