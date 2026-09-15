@@ -7,8 +7,10 @@ import SwiftUI
 
 @main
 struct DiscoScanApp: App {
+
     @State private var authSession: AuthSession
     @State private var router = AppRouter()
+
     private let cachedFetcher: any CachedFetcherProtocol
 
     init() {
@@ -25,7 +27,7 @@ struct DiscoScanApp: App {
                 .environment(\.cachedFetcher, cachedFetcher)
                 .task {
                     await authSession.bootstrap()
-                }
+                }.preferredColorScheme(.dark)
         }
     }
 }
