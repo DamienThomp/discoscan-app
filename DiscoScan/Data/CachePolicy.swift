@@ -8,6 +8,7 @@ import Foundation
 nonisolated enum CacheScope: String, Sendable, CaseIterable {
     case identity
     case search
+    case wantlist
     case collection
     case release
 
@@ -17,7 +18,7 @@ nonisolated enum CacheScope: String, Sendable, CaseIterable {
             60 * 60 * 24
         case .search:
             60 * 15
-        case .collection:
+        case .wantlist,.collection:
             60 * 60
         case .release:
             60 * 60 * 24 * 7
