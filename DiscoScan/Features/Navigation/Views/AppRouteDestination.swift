@@ -16,6 +16,8 @@ struct AppRouteDestination: View {
             ReleaseDetailView(releaseID: id)
         case .userProfile(let username):
             UserProfileView(username: username)
+        case .collectionFolder(let id, let name):
+            CollectionListView(folderId: id, folderName: name)
         }
     }
 }

@@ -6,6 +6,6 @@
 import NetworkKit
 
 extension APIHost {
-    static let discogs: APIHost = "discogs"
-    static let discogsWeb: APIHost = "discogsWeb"
+    nonisolated static let discogs: APIHost = "discogs"
+    nonisolated static let discogsWeb: APIHost = "discogsWeb"
 }

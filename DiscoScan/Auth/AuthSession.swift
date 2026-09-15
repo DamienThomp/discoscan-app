@@ -7,6 +7,10 @@ import Foundation
 import NetworkKit
 import Observation
 
+enum AuthSessionError: Error {
+    case notAuthenticated
+}
+
 @MainActor
 @Observable
 final class AuthSession {
@@ -109,6 +113,12 @@ final class AuthSession {
             state = .unauthenticated
         }
     }
+
+    #if DEBUG
+    func setPreviewState(_ previewState: State) {
+        state = previewState
+    }
+    #endif
 
     private func fetchIdentity() async throws -> DiscogsIdentity {
         do {
