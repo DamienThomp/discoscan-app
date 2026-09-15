@@ -7,43 +7,31 @@ import SwiftUI
 
 struct CollectionFolderView: View {
 
-    @Environment(AuthSession.self) private var authSession
-    @Environment(\.cachedFetcher) private var cacheFetcher
+    @Environment(CollectionStore.self) private var store
 
     var body: some View {
-        LoadingContainerView(loadingAction: fetchCollectionFolders) {
-         collection in
-            List {
-                ForEach(collection.folders, id: \.id) { folder in
+        ResourceContainerView(
+            state: store.folders,
+            retry: { await store.loadFolders(forceRefresh: true) }
+        ) { folders in
+            List(folders) { folder in
+                NavigationLink(value: AppRoute.collectionFolder(id: folder.id, name: folder.name)) {
                     Label {
                         Text(folder.name)
                     } icon: {
                         Image(systemName: "folder")
                     }
+                    .badge(folder.count)
                 }
             }
         }
-    }
-}
-
-extension CollectionFolderView {
-
-    @Sendable
-    private func fetchCollectionFolders() async throws -> CollectionFoldersResponse {
-        guard case .authenticated(let identity) = authSession.state else {
-            throw AuthSessionError.notAuthenticated
+        .task {
+            if store.folders == .idle {
+                await store.loadFolders()
+            }
         }
-        let endpoint = CollectionFoldersEndpoint(userName: identity.username)
-        return try await cacheFetcher.fetch(
-            endpoint,
-            key: "collectionFolders",
-            scope: .collection,
-            userScope: identity.username,
-            forceRefresh: false
-        )
+        .refreshable {
+            await store.loadFolders(forceRefresh: true)
+        }
     }
 }
-
-//#Preview {
-//    CollectionFolderView()
-//}

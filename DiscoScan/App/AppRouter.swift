@@ -16,6 +16,7 @@ enum AppRoute: Hashable {
     case searchResults(query: String)
     case releaseDetail(id: Int)
     case userProfile(username: String)
+    case collectionFolder(id: Int, name: String)
 }
 
 @MainActor

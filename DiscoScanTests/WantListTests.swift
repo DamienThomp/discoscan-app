@@ -110,7 +110,7 @@ struct WantListTests {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-        let wantList = try decoder.decode(WantList.self, from: mockJSON)
+        let wantList = try decoder.decode(WantListResponse.self, from: mockJSON)
 
         #expect(wantList.pagination.page == 1)
         #expect(wantList.pagination.pages == 1)
