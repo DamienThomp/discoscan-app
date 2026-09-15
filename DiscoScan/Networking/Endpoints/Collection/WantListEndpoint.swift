@@ -24,5 +24,12 @@ nonisolated struct WantListEndpoint: EndpointProtocol {
     var host: APIHost { .discogs }
     var path: String { "users/\(username)/wants" }
     var httpMethod: HTTPMethod { .get }
+
+    var queryItems: [URLQueryItem]? {
+        [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "per_page", value: String(perPage))
+        ]
+    }
 }
 

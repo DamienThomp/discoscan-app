@@ -15,25 +15,37 @@ enum CollectionTypes: String, CaseIterable, Identifiable {
 struct CollectionView: View {
 
     @State private var selectedType: CollectionTypes = .collectionList
+    @State private var showSheet: Bool = false
 
     var body: some View {
-        Group {
-            switch selectedType {
-            case .collectionList:
-                CollectionListView()
-            case .wantlist:
-                WantListView()
+        VStack {
+
+            Picker("Select Collection", selection: $selectedType) {
+                ForEach(CollectionTypes.allCases) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Group {
+                switch selectedType {
+                case .collectionList:
+                    CollectionFolderView()
+                case .wantlist:
+                    WantListView()
+                }
             }
         }
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker("Select Collection", selection: $selectedType) {
-                    ForEach(CollectionTypes.allCases) { type in
-                        Text(type.rawValue).tag(type)
-                    }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showSheet = !showSheet
+                } label: {
+                    Image(systemName: "plus")
                 }
-                .pickerStyle(.segmented)
             }
+        }.sheet(isPresented: $showSheet) {
+            Text("Use this sheet to create new colleciton folders")
         }
     }
 }
