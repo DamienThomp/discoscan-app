@@ -7,7 +7,7 @@ import SwiftUI
 
 struct CollectionFolderView: View {
 
-    @Environment(CollectionStore.self) private var store
+    @Environment(\.collectionStore) private var store
 
     var body: some View {
         ResourceContainerView(
@@ -35,3 +35,33 @@ struct CollectionFolderView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Loaded") {
+    NavigationStack {
+        CollectionFolderView()
+    }
+    .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
+}
+
+#Preview("Empty") {
+    NavigationStack {
+        CollectionFolderView()
+    }
+    .environment(\.collectionStore, previewCollectionStore(.foldersEmpty))
+}
+
+#Preview("Failed") {
+    NavigationStack {
+        CollectionFolderView()
+    }
+    .environment(\.collectionStore, previewCollectionStore(.foldersFailed("Could not load folders.")))
+}
+
+#Preview("Loading") {
+    NavigationStack {
+        CollectionFolderView()
+    }
+    .environment(\.collectionStore, previewCollectionStore(.foldersLoading))
+}
+#endif

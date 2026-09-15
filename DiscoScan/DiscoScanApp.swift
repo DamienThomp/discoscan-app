@@ -30,7 +30,7 @@ struct DiscoScanApp: App {
         WindowGroup {
             RootView()
                 .environment(authSession)
-                .environment(collectionStore)
+                .environment(\.collectionStore, collectionStore)
                 .environment(router)
                 .environment(\.cachedFetcher, cachedFetcher)
                 .task {

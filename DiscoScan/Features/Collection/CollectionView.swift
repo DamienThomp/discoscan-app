@@ -50,8 +50,11 @@ struct CollectionView: View {
     }
 }
 
-#Preview {
-    NavigationView {
+#if DEBUG
+#Preview("Loaded") {
+    NavigationStack {
         CollectionView()
     }
+    .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
 }
+#endif

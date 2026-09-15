@@ -10,7 +10,7 @@ struct CollectionListView: View {
     let folderId: Int
     let folderName: String
 
-    @Environment(CollectionStore.self) private var store
+    @Environment(\.collectionStore) private var store
 
     private var releasesState: ResourceState<[CollectionReleaseItem]> {
         store.releasesByFolderID[folderId] ?? .idle
@@ -58,8 +58,32 @@ struct CollectionListView: View {
     }
 }
 
-#Preview {
+#if DEBUG
+#Preview("Loaded") {
     NavigationStack {
-        CollectionListView(folderId: 1, folderName: "Jazz")
+        CollectionListView(folderId: 1, folderName: "Uncategorized")
     }
+    .environment(\.collectionStore, previewCollectionStore(.releasesLoaded(folderId: 1)))
 }
+
+#Preview("Empty") {
+    NavigationStack {
+        CollectionListView(folderId: 1, folderName: "Uncategorized")
+    }
+    .environment(\.collectionStore, previewCollectionStore(.releasesEmpty(folderId: 1)))
+}
+
+#Preview("Failed") {
+    NavigationStack {
+        CollectionListView(folderId: 1, folderName: "Uncategorized")
+    }
+    .environment(\.collectionStore, previewCollectionStore(.releasesFailed(folderId: 1, message: "Could not load releases.")))
+}
+
+#Preview("Loading") {
+    NavigationStack {
+        CollectionListView(folderId: 1, folderName: "Uncategorized")
+    }
+    .environment(\.collectionStore, previewCollectionStore(.releasesLoading(folderId: 1)))
+}
+#endif

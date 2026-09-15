@@ -7,27 +7,9 @@ import Foundation
 import NetworkKit
 import Observation
 
-enum ResourceState<T: Equatable & Sendable>: Equatable, Sendable {
-    case idle
-    case loading
-    case loaded(T)
-    case failed(String)
-}
-
-enum CollectionStoreError: LocalizedError, Equatable {
-    case systemFolderNotDeletable
-
-    var errorDescription: String? {
-        switch self {
-        case .systemFolderNotDeletable:
-            "System folders cannot be deleted."
-        }
-    }
-}
-
 @MainActor
 @Observable
-final class CollectionStore {
+final class CollectionStore: CollectionStoreProtocol {
 
     private(set) var folders: ResourceState<[CollectionFolderResponse]> = .idle
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
