@@ -39,22 +39,29 @@ struct CollectionView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    showSheet = !showSheet
+                    showSheet.toggle()
                 } label: {
                     Image(systemName: "plus")
                 }
             }
-        }.sheet(isPresented: $showSheet) {
-            Text("Use this sheet to create new colleciton folders")
         }
+        .sheet(isPresented: $showSheet) {
+            NavigationStack {
+                CreateCollectionFolderView().presentationDetents([.fraction(0.25)])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .navigationTitle("Library")
     }
 }
 
 #if DEBUG
 #Preview("Loaded") {
     NavigationStack {
-        CollectionView()
+        CollectionView().preferredColorScheme(.dark)
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
+    .environment(previewAuthenticatedAuthSession())
+    .environment(\.cachedFetcher, PreviewEmptyWantListCachedFetcher())
 }
 #endif

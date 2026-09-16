@@ -23,7 +23,7 @@ struct CollectionFolderView: View {
                     }
                     .badge(folder.count)
                 }
-            }
+            }.listStyle(.plain)
         }
         .task {
             if store.folders == .idle {

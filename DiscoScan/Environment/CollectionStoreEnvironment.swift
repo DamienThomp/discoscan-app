@@ -33,7 +33,7 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
         fatalError("collectionStore environment value was not injected.")
     }
 
-    func createFolder(name: String) async {
+    func createFolder(name: FolderName) async throws {
         fatalError("collectionStore environment value was not injected.")
     }
 

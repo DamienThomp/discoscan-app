@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct ReleaseDetailView: View {
+    
     let releaseID: Int
 
     var body: some View {

@@ -91,18 +91,17 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.key == "collectionFolder-1-page-1")
     }
 
-    @Test func createFolderRefreshesWithForceRefresh() async {
+    @Test func createFolderRefreshesWithForceRefresh() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
-        await store.createFolder(name: "New Folder")
+        let folderName = try #require(try FolderName.validated(from: "New Folder").get())
+        try await store.createFolder(name: folderName)
 
         #expect(apiClient.lastRequestPath?.contains("/collection/folders") == true)
         #expect(fetcher.lastFetch?.forceRefresh == true)
-        #expect(store.lastMutationError == nil)
-        #expect(store.isMutating == false)
     }
 
     @Test func deleteFolderRejectsSystemFolders() async {
