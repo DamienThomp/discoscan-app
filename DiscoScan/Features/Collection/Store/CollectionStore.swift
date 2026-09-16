@@ -114,14 +114,12 @@ final class CollectionStore: CollectionStoreProtocol {
         await loadReleases(folderId: folderId, page: nextPage, forceRefresh: false)
     }
 
-    func createFolder(name: String) async {
-        await performMutation {
-            let username = try requireUsername()
-            _ = try await apiClient.request(
-                for: CreateCollectionFolderEndpoint(username: username, name: name)
-            )
-            await loadFolders(forceRefresh: true)
-        }
+    func createFolder(name: FolderName) async throws {
+        let username = try requireUsername()
+        _ = try await apiClient.request(
+            for: CreateCollectionFolderEndpoint(username: username, name: name.value)
+        )
+        await loadFolders(forceRefresh: true)
     }
 
     func deleteFolder(id folderId: Int) async {

@@ -46,7 +46,10 @@ struct CollectionView: View {
             }
         }
         .sheet(isPresented: $showSheet) {
-            Text("Use this sheet to create new collection folders")
+            NavigationStack {
+                CreateCollectionFolderView().presentationDetents([.fraction(0.25)])
+                    .presentationDragIndicator(.visible)
+            }
         }
         .navigationTitle("Library")
     }
