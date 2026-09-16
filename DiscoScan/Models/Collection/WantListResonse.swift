@@ -18,6 +18,11 @@ nonisolated struct WantListItem: Codable, Equatable, Sendable, Identifiable {
     let basicInformation: ReleaseBasicInformation
 }
 
+nonisolated struct WantListItemRequestBody: Encodable, Sendable {
+    let notes: String?
+    let rating: Int?
+}
+
 nonisolated struct ReleaseBasicInformation: Codable, Equatable, Sendable, Identifiable {
     let id: Int
     let title: String

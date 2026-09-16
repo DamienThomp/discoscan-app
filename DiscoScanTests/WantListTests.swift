@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import NetworkKit
 import Testing
 @testable import DiscoScan
 
@@ -132,5 +133,158 @@ struct WantListTests {
         #expect(second.notes == "Sample notes.")
         #expect(second.basicInformation.title == "Dawn Metropolis")
         #expect(second.basicInformation.formats.first?.text == nil)
+    }
+
+    @Test func decodesAddToWantListResponse() throws {
+        let mockJSON = Data(
+            """
+            {
+              "id": 1,
+              "rating": 0,
+              "notes": "",
+              "resource_url": "https://api.discogs.com/users/example/wants/1",
+              "basic_information": {
+                "id": 1,
+                "resource_url": "https://api.discogs.com/releases/1",
+                "thumb": "https://api-img.discogs.com/7HGTQzTb7os1duruukQElELEapk=/fit-in/150x150/filters:strip_icc():format(jpeg):mode_rgb()/discogs-images/R-1-1193812031.jpeg.jpg",
+                "cover_image": "https://api-img.discogs.com/7HGTQzTb7os1duruukQElELEapk=/fit-in/347x352/filters:strip_icc():format(jpeg):mode_rgb()/discogs-images/R-1-1193812031.jpeg.jpg",
+                "title": "Stockholm",
+                "year": 1999,
+                "formats": [
+                  {
+                    "qty": "2",
+                    "descriptions": ["12\\""],
+                    "name": "Vinyl"
+                  }
+                ],
+                "labels": [
+                  {
+                    "name": "Svek",
+                    "entity_type": "1",
+                    "catno": "SK032",
+                    "resource_url": "https://api.discogs.com/labels/5",
+                    "id": 5,
+                    "entity_type_name": "Label"
+                  }
+                ],
+                "artists": [
+                  {
+                    "join": "",
+                    "name": "Persuader, The",
+                    "anv": "",
+                    "tracks": "",
+                    "role": "",
+                    "resource_url": "https://api.discogs.com/artists/1",
+                    "id": 1
+                  }
+                ]
+              }
+            }
+            """.utf8
+        )
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let item = try decoder.decode(WantListItem.self, from: mockJSON)
+
+        #expect(item.id == 1)
+        #expect(item.rating == 0)
+        #expect(item.notes == "")
+        #expect(item.basicInformation.title == "Stockholm")
+        #expect(item.basicInformation.year == 1999)
+    }
+
+    @Test func decodesEditWantListResponse() throws {
+        let mockJSON = Data(
+            """
+            {
+              "id": 1,
+              "rating": 0,
+              "notes": "I've added some notes!",
+              "resource_url": "https://api.discogs.com/users/example/wants/1",
+              "basic_information": {
+                "id": 1,
+                "resource_url": "https://api.discogs.com/releases/1",
+                "thumb": "https://api-img.discogs.com/7HGTQzTb7os1duruukQElELEapk=/fit-in/150x150/filters:strip_icc():format(jpeg):mode_rgb()/discogs-images/R-1-1193812031.jpeg.jpg",
+                "cover_image": "https://api-img.discogs.com/7HGTQzTb7os1duruukQElELEapk=/fit-in/500x500/filters:strip_icc():format(jpeg):mode_rgb()/discogs-images/R-1-1193812031.jpeg.jpg",
+                "title": "Stockholm",
+                "year": 1999,
+                "formats": [
+                  {
+                    "qty": "2",
+                    "descriptions": ["12\\""],
+                    "name": "Vinyl"
+                  }
+                ],
+                "labels": [
+                  {
+                    "name": "Svek",
+                    "entity_type": "1",
+                    "catno": "SK032",
+                    "resource_url": "https://api.discogs.com/labels/5",
+                    "id": 5,
+                    "entity_type_name": "Label"
+                  }
+                ],
+                "artists": [
+                  {
+                    "join": "",
+                    "name": "Persuader, The",
+                    "anv": "",
+                    "tracks": "",
+                    "role": "",
+                    "resource_url": "https://api.discogs.com/artists/1",
+                    "id": 1
+                  }
+                ]
+              }
+            }
+            """.utf8
+        )
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let item = try decoder.decode(WantListItem.self, from: mockJSON)
+
+        #expect(item.notes == "I've added some notes!")
+        #expect(item.basicInformation.labels.first?.catno == "SK032")
+    }
+
+    @Test func addEndpointUsesPutWithOptionalBody() {
+        let endpoint = AddReleaseToWantListEndpoint(
+            username: "rodneyfool",
+            releaseId: 130_076,
+            notes: "My favorite release",
+            rating: 5
+        )
+
+        #expect(endpoint.path == "users/rodneyfool/wants/130076")
+        #expect(endpoint.httpMethod == .put)
+        #expect(endpoint.body is WantListItemRequestBody)
+    }
+
+    @Test func editEndpointUsesPostWithOptionalBody() {
+        let endpoint = EditReleaseInWantListEndpoint(
+            username: "rodneyfool",
+            releaseId: 130_076,
+            notes: "Updated notes",
+            rating: 4
+        )
+
+        #expect(endpoint.path == "users/rodneyfool/wants/130076")
+        #expect(endpoint.httpMethod == .post)
+        #expect(endpoint.body is WantListItemRequestBody)
+    }
+
+    @Test func deleteEndpointUsesDelete() {
+        let endpoint = DeleteReleaseFromWantListEndpoint(
+            username: "rodneyfool",
+            releaseId: 130_076
+        )
+
+        #expect(endpoint.path == "users/rodneyfool/wants/130076")
+        #expect(endpoint.httpMethod == .delete)
     }
 }
