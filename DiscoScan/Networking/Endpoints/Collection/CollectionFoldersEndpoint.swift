@@ -2,8 +2,6 @@
 //  CollectionFoldersEndpoint.swift
 //  DiscoScan
 //
-//  Created by Damien L Thompson on 2026-09-15.
-//
 
 import Foundation
 import NetworkKit
