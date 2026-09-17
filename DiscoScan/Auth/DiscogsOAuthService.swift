@@ -17,7 +17,7 @@ final class DiscogsOAuthService {
         config: DiscogsConfig,
         handshakeClient: NetworkManagerProtocol,
         tokenStore: TokenStoreProtocol,
-        webAuthPresenter: WebAuthPresenter = .shared
+        webAuthPresenter: WebAuthPresenter
     ) {
         self.config = config
         self.handshakeClient = handshakeClient

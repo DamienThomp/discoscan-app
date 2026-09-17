@@ -139,7 +139,8 @@ struct AuthSessionOfflineTests {
         let oauthService = DiscogsOAuthService(
             config: config,
             handshakeClient: handshakeClient,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            webAuthPresenter: WebAuthPresenter()
         )
 
         let cachedFetcher = CachedFetcher(

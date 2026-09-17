@@ -28,8 +28,6 @@ enum DiscogsOAuthError: Error, LocalizedError {
 
 @MainActor
 final class WebAuthPresenter: NSObject, ASWebAuthenticationPresentationContextProviding {
-    static let shared = WebAuthPresenter()
-
     private var activeSession: ASWebAuthenticationSession?
 
     func authorize(url: URL, callbackScheme: String) async throws -> String {
@@ -76,14 +74,21 @@ final class WebAuthPresenter: NSObject, ASWebAuthenticationPresentationContextPr
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
 
-        if let keyWindow = scenes.flatMap(\.windows).first(where: \.isKeyWindow) {
+        let foregroundScene = scenes.first(where: { $0.activationState == .foregroundActive })
+            ?? scenes.first
+
+        guard let scene = foregroundScene else {
+            preconditionFailure("No UIWindowScene available for OAuth presentation")
+        }
+
+        if let keyWindow = scene.keyWindow {
             return keyWindow
         }
 
-        if let window = scenes.flatMap(\.windows).first {
+        if let window = scene.windows.first {
             return window
         }
 
-        return ASPresentationAnchor()
+        return ASPresentationAnchor(windowScene: scene)
     }
 }

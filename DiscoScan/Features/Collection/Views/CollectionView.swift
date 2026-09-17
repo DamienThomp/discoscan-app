@@ -26,6 +26,7 @@ struct CollectionView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .padding()
 
             Group {
                 switch selectedType {
@@ -47,7 +48,8 @@ struct CollectionView: View {
         }
         .sheet(isPresented: $showSheet) {
             NavigationStack {
-                CreateCollectionFolderView().presentationDetents([.fraction(0.25)])
+                CreateCollectionFolderView()
+                    .presentationDetents([.fraction(0.25)])
                     .presentationDragIndicator(.visible)
             }
         }
