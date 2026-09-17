@@ -8,7 +8,6 @@ import SwiftUI
 struct WantListView: View {
 
     @Environment(\.wantListStore) private var store
-    @Environment(AppRouter.self) private var router
 
     var body: some View {
         ResourceContainerView(
@@ -23,16 +22,18 @@ struct WantListView: View {
                 )
             } else {
                 List(wants) { item in
-                    Text(item.basicInformation.title)
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                Task {
-                                    await store.deleteRelease(releaseId: item.id)
-                                }
-                            } label: {
-                                Label("Remove", systemImage: "trash")
+                    NavigationLink(value: AppRoute.releaseDetail(id: item.id)) {
+                        ReleaseSummaryRowView(information: item.basicInformation)
+                    }
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            Task {
+                                await store.deleteRelease(releaseId: item.id)
                             }
+                        } label: {
+                            Label("Remove", systemImage: "trash")
                         }
+                    }
                 }
             }
         }
@@ -49,29 +50,28 @@ struct WantListView: View {
 
 #if DEBUG
 #Preview("Loaded") {
-    NavigationStack {
+    PreviewAppRouteStack {
         WantListView()
     }
     .environment(\.wantListStore, previewWantListStore(.wantsLoaded))
-    .environment(AppRouter())
 }
 
 #Preview("Empty") {
-    NavigationStack {
+    PreviewAppRouteStack {
         WantListView()
     }
     .environment(\.wantListStore, previewWantListStore(.wantsEmpty))
 }
 
 #Preview("Failed") {
-    NavigationStack {
+    PreviewAppRouteStack {
         WantListView()
     }
     .environment(\.wantListStore, previewWantListStore(.wantsFailed("Could not load want list.")))
 }
 
 #Preview("Loading") {
-    NavigationStack {
+    PreviewAppRouteStack {
         WantListView()
     }
     .environment(\.wantListStore, previewWantListStore(.wantsLoading))

@@ -57,7 +57,7 @@ struct CollectionView: View {
 
 #if DEBUG
 #Preview("Loaded") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionView().preferredColorScheme(.dark)
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))

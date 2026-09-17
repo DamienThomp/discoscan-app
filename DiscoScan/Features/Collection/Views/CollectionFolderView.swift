@@ -38,28 +38,28 @@ struct CollectionFolderView: View {
 
 #if DEBUG
 #Preview("Loaded") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionFolderView()
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
 }
 
 #Preview("Empty") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionFolderView()
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersEmpty))
 }
 
 #Preview("Failed") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionFolderView()
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersFailed("Could not load folders.")))
 }
 
 #Preview("Loading") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionFolderView()
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersLoading))

@@ -29,20 +29,22 @@ struct CollectionListView: View {
                 )
             } else {
                 List(releases) { item in
-                    Text(item.basicInformation.title)
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                Task {
-                                    await store.deleteRelease(
-                                        from: folderId,
-                                        releaseId: item.releaseId,
-                                        instanceId: item.instanceId
-                                    )
-                                }
-                            } label: {
-                                Label("Remove", systemImage: "trash")
+                    NavigationLink(value: AppRoute.releaseDetail(id: item.releaseId)) {
+                        ReleaseSummaryRowView(information: item.basicInformation)
+                    }
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            Task {
+                                await store.deleteRelease(
+                                    from: folderId,
+                                    releaseId: item.releaseId,
+                                    instanceId: item.instanceId
+                                )
                             }
+                        } label: {
+                            Label("Remove", systemImage: "trash")
                         }
+                    }
                 }
             }
         }
@@ -60,28 +62,28 @@ struct CollectionListView: View {
 
 #if DEBUG
 #Preview("Loaded") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionListView(folderId: 1, folderName: "Uncategorized")
     }
     .environment(\.collectionStore, previewCollectionStore(.releasesLoaded(folderId: 1)))
 }
 
 #Preview("Empty") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionListView(folderId: 1, folderName: "Uncategorized")
     }
     .environment(\.collectionStore, previewCollectionStore(.releasesEmpty(folderId: 1)))
 }
 
 #Preview("Failed") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionListView(folderId: 1, folderName: "Uncategorized")
     }
     .environment(\.collectionStore, previewCollectionStore(.releasesFailed(folderId: 1, message: "Could not load releases.")))
 }
 
 #Preview("Loading") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionListView(folderId: 1, folderName: "Uncategorized")
     }
     .environment(\.collectionStore, previewCollectionStore(.releasesLoading(folderId: 1)))

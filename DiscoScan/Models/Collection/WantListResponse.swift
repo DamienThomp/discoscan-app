@@ -33,6 +33,14 @@ nonisolated struct ReleaseBasicInformation: Codable, Equatable, Sendable, Identi
     let artists: [DiscogsArtist]
     let labels: [DiscogsLabel]
     let formats: [DiscogsFormat]
+
+    var primaryArtistName: String {
+        artists.first?.name ?? "n/a"
+    }
+
+    var listArtworkURL: URL? {
+        coverImage ?? thumb
+    }
 }
 
 nonisolated struct DiscogsArtist: Codable, Equatable, Sendable, Identifiable {
