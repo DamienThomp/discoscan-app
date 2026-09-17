@@ -33,7 +33,7 @@ struct ReleaseDetailContent: View {
                 accessibilityLabel: "Album artwork for \(release.title)"
             )
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .center, spacing: 8) {
                 Text(release.title)
                     .font(.title2.bold())
 
@@ -55,7 +55,7 @@ struct ReleaseDetailContent: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(headerAccessibilityLabel)
         }
