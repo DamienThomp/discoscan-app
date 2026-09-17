@@ -14,14 +14,21 @@ struct CollectionFolderView: View {
             state: store.folders,
             retry: { await store.loadFolders(forceRefresh: true) }
         ) { folders in
-            List(folders) { folder in
-                NavigationLink(value: AppRoute.collectionFolder(id: folder.id, name: folder.name)) {
-                    Label {
-                        Text(folder.name)
-                    } icon: {
-                        Image(systemName: "folder")
+            List {
+                Section {
+                    ForEach(folders) { folder in
+                        NavigationLink(value: AppRoute.collectionFolder(id: folder.id, name: folder.name)) {
+                            Label {
+                                Text(folder.name)
+                            } icon: {
+                                Image(systemName: "folder")
+                            }
+                            .badge(folder.count)
+                        }
+                        .accessibilityLabel("\(folder.name), \(folder.count) items")
                     }
-                    .badge(folder.count)
+                } header: {
+                    Text("Folders")
                 }
             }
         }

@@ -15,6 +15,7 @@ struct LoginView: View {
             Image(systemName: "opticaldisc.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
+                .accessibilityHidden(true)
 
             Text("DiscoScan")
                 .font(.largeTitle.bold())

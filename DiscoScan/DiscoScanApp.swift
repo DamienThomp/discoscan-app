@@ -11,6 +11,7 @@ struct DiscoScanApp: App {
     @State private var authSession: AuthSession
     @State private var collectionStore: CollectionStore
     @State private var wantListStore: WantListStore
+    @State private var releaseStore: ReleaseStore
     @State private var router = AppRouter()
 
     private let cachedFetcher: any CachedFetcherProtocol
@@ -31,6 +32,12 @@ struct DiscoScanApp: App {
                 cachedFetcher: dependencies.cachedFetcher
             )
         )
+        _releaseStore = State(
+            initialValue: ReleaseStore(
+                dependencies: dependencies,
+                cachedFetcher: dependencies.cachedFetcher
+            )
+        )
     }
 
     var body: some Scene {
@@ -39,6 +46,7 @@ struct DiscoScanApp: App {
                 .environment(authSession)
                 .environment(\.collectionStore, collectionStore)
                 .environment(\.wantListStore, wantListStore)
+                .environment(\.releaseStore, releaseStore)
                 .environment(router)
                 .environment(\.cachedFetcher, cachedFetcher)
                 .task {

@@ -104,6 +104,38 @@ struct WantListStoreTests {
         #expect(store.lastMutationError == nil)
     }
 
+    @Test func isInWantListReturnsTrueWhenLoaded() async {
+        let fetcher = MockWantListCachedFetcher()
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadWants()
+
+        #expect(store.isInWantList(releaseId: 1_867_708))
+        #expect(store.isInWantList(releaseId: 999_999) == false)
+    }
+
+    @Test func isInWantListReturnsFalseWhenNotLoaded() {
+        let fetcher = MockWantListCachedFetcher()
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        #expect(store.isInWantList(releaseId: 1_867_708) == false)
+    }
+
+    @Test func ensureWantsLoadedFetchesWhenIdle() async {
+        let fetcher = MockWantListCachedFetcher()
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.ensureWantsLoaded()
+
+        #expect(store.wants == .loaded(WantListFixtures.sampleWants))
+        #expect(fetcher.fetchCount == 1)
+    }
+
     @Test func editReleaseCallsEndpointAndRefreshes() async {
         let fetcher = MockWantListCachedFetcher()
         let apiClient = MockWantListNetworkClient()
