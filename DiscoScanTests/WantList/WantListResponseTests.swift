@@ -1,5 +1,5 @@
 //
-//  WantListTests.swift
+//  WantListResponseTests.swift
 //  DiscoScanTests
 //
 
@@ -8,7 +8,7 @@ import NetworkKit
 import Testing
 @testable import DiscoScan
 
-struct WantListTests {
+struct WantListResponseTests {
     private let mockJSON = Data(
         """
         {

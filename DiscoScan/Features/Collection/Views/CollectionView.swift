@@ -61,7 +61,6 @@ struct CollectionView: View {
         CollectionView().preferredColorScheme(.dark)
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
-    .environment(previewAuthenticatedAuthSession())
-    .environment(\.cachedFetcher, PreviewEmptyWantListCachedFetcher())
+    .environment(\.wantListStore, previewWantListStore(.wantsLoaded))
 }
 #endif
