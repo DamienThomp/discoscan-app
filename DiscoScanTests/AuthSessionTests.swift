@@ -103,7 +103,8 @@ struct AuthSessionTests {
         let oauthService = DiscogsOAuthService(
             config: config,
             handshakeClient: handshakeClient,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            webAuthPresenter: WebAuthPresenter()
         )
 
         let storage = try! SwiftDataCacheStorage(modelContainer: TestModelContainer.make())

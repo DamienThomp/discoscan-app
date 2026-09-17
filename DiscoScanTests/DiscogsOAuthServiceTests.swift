@@ -81,7 +81,8 @@ struct DiscogsOAuthServiceTests {
         return DiscogsOAuthService(
             config: config,
             handshakeClient: client,
-            tokenStore: InMemoryTokenStore()
+            tokenStore: InMemoryTokenStore(),
+            webAuthPresenter: WebAuthPresenter()
         )
     }
 }

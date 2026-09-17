@@ -54,10 +54,12 @@ struct AppDependencies {
             decoder: decoder
         )
 
+        let webAuthPresenter = WebAuthPresenter()
         let oauthService = DiscogsOAuthService(
             config: config,
             handshakeClient: handshakeClient,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            webAuthPresenter: webAuthPresenter
         )
 
         let modelContainer = makeModelContainer()

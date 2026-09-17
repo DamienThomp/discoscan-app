@@ -22,7 +22,8 @@ func previewAuthSession() -> AuthSession {
     let oauthService = DiscogsOAuthService(
         config: config,
         handshakeClient: handshakeClient,
-        tokenStore: tokenStore
+        tokenStore: tokenStore,
+        webAuthPresenter: WebAuthPresenter()
     )
     let container = try! ModelContainer(
         for: CachedRecord.self,
