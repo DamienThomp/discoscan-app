@@ -17,6 +17,7 @@ struct ErrorView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(.tint)
                     .padding()
+                    .accessibilityHidden(true)
             }
         } description: {
             if let message {

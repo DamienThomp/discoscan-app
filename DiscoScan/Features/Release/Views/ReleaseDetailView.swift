@@ -65,11 +65,20 @@ struct ReleaseDetailView: View {
             Image(systemName: wantListStore.isInWantList(releaseId: releaseID) ? "heart.fill" : "heart")
         }
         .disabled(wantListStore.isMutating)
-        .accessibilityLabel(
-            wantListStore.isInWantList(releaseId: releaseID)
-                ? "Remove from Want List"
-                : "Add to Want List"
+        .accessibilityLabel(wantListAccessibilityLabel)
+        .accessibilityHint("Double tap to toggle want list status")
+        .accessibilityAddTraits(
+            wantListStore.isInWantList(releaseId: releaseID) ? .isSelected : []
         )
+    }
+
+    private var wantListAccessibilityLabel: String {
+        if wantListStore.isMutating {
+            return "Updating want list"
+        }
+        return wantListStore.isInWantList(releaseId: releaseID)
+            ? "Remove from Want List"
+            : "Add to Want List"
     }
 
     private var addToCollectionButton: some View {
@@ -80,6 +89,7 @@ struct ReleaseDetailView: View {
         }
         .disabled(collectionStore.isMutating)
         .accessibilityLabel("Add to Collection")
+        .accessibilityHint("Opens folder picker")
     }
 }
 

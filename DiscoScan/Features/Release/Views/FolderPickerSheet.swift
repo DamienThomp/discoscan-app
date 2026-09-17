@@ -20,20 +20,14 @@ struct FolderPickerSheet: View {
                 state: collectionStore.folders,
                 retry: { await collectionStore.loadFolders(forceRefresh: true) }
             ) { folders in
-                List(folders.filter { $0.id >= 1 }) { folder in
-                    Button {
-                        selectedFolderId = folder.id
-                    } label: {
-                        HStack {
+                List {
+                    Picker("Folder", selection: $selectedFolderId) {
+                        ForEach(folders.filter { $0.id >= 1 }) { folder in
                             Text(folder.name)
-                            Spacer()
-                            if selectedFolderId == folder.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.tint)
-                            }
+                                .tag(folder.id)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .pickerStyle(.inline)
                 }
             }
             .navigationTitle("Add to Collection")
@@ -59,6 +53,9 @@ struct FolderPickerSheet: View {
                         }
                     }
                     .disabled(collectionStore.isMutating)
+                    .accessibilityLabel(
+                        collectionStore.isMutating ? "Adding release" : "Add"
+                    )
                 }
             }
             .task {

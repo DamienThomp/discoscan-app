@@ -27,29 +27,37 @@ struct ReleaseDetailContent: View {
 
     private var header: some View {
         VStack(alignment: .center, spacing: 8) {
-            ReleaseArtworkView(url: release.primaryImageURL, size: .large)
+            ReleaseArtworkView(
+                url: release.primaryImageURL,
+                size: .large,
+                accessibilityLabel: "Album artwork for \(release.title)"
+            )
 
-            Text(release.title)
-                .font(.title2.bold())
+            VStack(alignment: .leading, spacing: 8) {
+                Text(release.title)
+                    .font(.title2.bold())
 
-            Text(release.primaryArtistName)
-                .font(.headline)
+                Text(release.primaryArtistName)
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    if let year = release.year {
+                        Text(year, format: .number.grouping(.never))
+                    }
+                    if let country = release.country {
+                        Text(country)
+                    }
+                    if let released = release.releasedFormatted ?? release.released {
+                        Text(released)
+                    }
+                }
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-
-            HStack(spacing: 8) {
-                if let year = release.year {
-                    Text(year, format: .number.grouping(.never))
-                }
-                if let country = release.country {
-                    Text(country)
-                }
-                if let released = release.releasedFormatted ?? release.released {
-                    Text(released)
-                }
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(headerAccessibilityLabel)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -69,6 +77,7 @@ struct ReleaseDetailContent: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Tracklist")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             ForEach(Array(release.tracklist.enumerated()), id: \.offset) { _, track in
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -88,8 +97,12 @@ struct ReleaseDetailContent: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(trackAccessibilityLabel(for: track))
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Tracklist")
     }
 
     private var communitySection: some View {
@@ -102,14 +115,38 @@ struct ReleaseDetailContent: View {
         )
     }
 
+    private var headerAccessibilityLabel: String {
+        var components = [release.title, release.primaryArtistName]
+        if let year = release.year {
+            components.append(String(year))
+        }
+        if let country = release.country {
+            components.append(country)
+        }
+        if let released = release.releasedFormatted ?? release.released {
+            components.append(released)
+        }
+        return components.joined(separator: ", ")
+    }
+
+    private func trackAccessibilityLabel(for track: ReleaseDetailTrack) -> String {
+        if let duration = track.duration, !duration.isEmpty {
+            return "\(track.position), \(track.title), \(duration)"
+        }
+        return "\(track.position), \(track.title)"
+    }
+
     private func detailSection(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             Text(value)
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value)")
     }
 }

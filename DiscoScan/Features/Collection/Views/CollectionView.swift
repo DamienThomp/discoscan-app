@@ -44,6 +44,7 @@ struct CollectionView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("Create Folder")
             }
         }
         .sheet(isPresented: $showSheet) {

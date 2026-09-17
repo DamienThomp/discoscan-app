@@ -11,7 +11,6 @@ struct ReleaseSummaryRowView: View {
     var body: some View {
         HStack {
             ReleaseArtworkView(url: information.listArtworkURL, size: .thumb)
-                .accessibilityHidden(true)
 
             VStack(alignment: .leading) {
                 Text(information.title)
@@ -28,6 +27,7 @@ struct ReleaseSummaryRowView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("Shows release details")
     }
 
     private var accessibilityLabel: String {

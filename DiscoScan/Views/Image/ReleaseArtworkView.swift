@@ -42,14 +42,36 @@ enum ReleaseArtworkSize {
     var usesHeroLayout: Bool {
         self == .large
     }
+
+    var hidesFromAccessibilityByDefault: Bool {
+        self == .thumb
+    }
 }
 
 struct ReleaseArtworkView: View {
     let url: URL?
     let size: ReleaseArtworkSize
+    var accessibilityLabel: String?
+    var hidesFromAccessibility: Bool?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ScaledMetric(relativeTo: .body) private var dynamicTypeScale: CGFloat = ReleaseArtworkSize.thumb.baseDimension
+
+    init(
+        url: URL?,
+        size: ReleaseArtworkSize,
+        accessibilityLabel: String? = nil,
+        hidesFromAccessibility: Bool? = nil
+    ) {
+        self.url = url
+        self.size = size
+        self.accessibilityLabel = accessibilityLabel
+        self.hidesFromAccessibility = hidesFromAccessibility
+    }
+
+    private var shouldHideFromAccessibility: Bool {
+        hidesFromAccessibility ?? size.hidesFromAccessibilityByDefault
+    }
 
     private var dimension: CGFloat {
         let deviceAdjusted = size.dimension(for: horizontalSizeClass)
@@ -58,6 +80,20 @@ struct ReleaseArtworkView: View {
     }
 
     var body: some View {
+        Group {
+            if shouldHideFromAccessibility {
+                artworkImage
+                    .accessibilityHidden(true)
+            } else if let accessibilityLabel {
+                artworkImage
+                    .accessibilityLabel(accessibilityLabel)
+            } else {
+                artworkImage
+            }
+        }
+    }
+
+    private var artworkImage: some View {
         AsyncImage(url: url) { phase in
             switch phase {
             case .success(let image):
@@ -114,6 +150,7 @@ private struct ReleaseArtworkPlaceholder: View {
                 Image(systemName: "opticaldisc")
                     .font(.title2)
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
         }
     }
@@ -124,7 +161,7 @@ private struct ReleaseArtworkPlaceholder: View {
     VStack(spacing: 24) {
         ReleaseArtworkView(url: nil, size: .thumb)
         ReleaseArtworkView(url: nil, size: .medium)
-        ReleaseArtworkView(url: nil, size: .large)
+        ReleaseArtworkView(url: nil, size: .large, accessibilityLabel: "Album artwork")
     }
     .padding()
 }
