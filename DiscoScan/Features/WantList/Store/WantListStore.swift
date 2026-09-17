@@ -136,6 +136,19 @@ final class WantListStore: WantListStoreProtocol {
         }
     }
 
+    func isInWantList(releaseId: Int) -> Bool {
+        guard case .loaded(let items) = wants else {
+            return false
+        }
+        return items.contains { $0.id == releaseId }
+    }
+
+    func ensureWantsLoaded() async {
+        if wants == .idle {
+            await loadWants()
+        }
+    }
+
     private func performMutation(_ operation: () async throws -> Void) async {
         isMutating = true
         defer { isMutating = false }

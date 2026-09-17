@@ -8,11 +8,10 @@ import SwiftUI
 struct ReleaseSummaryRowView: View {
     let information: ReleaseBasicInformation
 
-    @ScaledMetric(relativeTo: .body) private var imageSize: CGFloat = 50
-
     var body: some View {
         HStack {
-            artwork
+            ReleaseArtworkView(url: information.listArtworkURL, size: .thumb)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading) {
                 Text(information.title)
@@ -31,47 +30,11 @@ struct ReleaseSummaryRowView: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    @ViewBuilder
-    private var artwork: some View {
-        AsyncImage(url: information.listArtworkURL) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFit()
-            case .failure:
-                ReleaseArtworkPlaceholder()
-            case .empty:
-                ReleaseArtworkPlaceholder(showProgress: true)
-            @unknown default:
-                ReleaseArtworkPlaceholder()
-            }
-        }
-        .frame(width: imageSize, height: imageSize)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .accessibilityHidden(true)
-    }
-
     private var accessibilityLabel: String {
         if let year = information.year {
             return "\(information.title), \(information.primaryArtistName), \(year)"
         }
         return "\(information.title), \(information.primaryArtistName)"
-    }
-}
-
-private struct ReleaseArtworkPlaceholder: View {
-    var showProgress: Bool = false
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(.quaternary)
-            if showProgress {
-                ProgressView()
-            } else {
-                Image(systemName: "opticaldisc")
-                    .foregroundStyle(.tertiary)
-            }
-        }
     }
 }
 

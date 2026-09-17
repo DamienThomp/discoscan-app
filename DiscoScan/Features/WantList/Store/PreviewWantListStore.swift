@@ -46,6 +46,15 @@ final class PreviewWantListStore: WantListStoreProtocol {
     func editRelease(releaseId: Int, notes: String?, rating: Int?) async {}
 
     func deleteRelease(releaseId: Int) async {}
+
+    func isInWantList(releaseId: Int) -> Bool {
+        guard case .loaded(let items) = wants else {
+            return false
+        }
+        return items.contains { $0.id == releaseId }
+    }
+
+    func ensureWantsLoaded() async {}
 }
 
 @MainActor

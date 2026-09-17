@@ -19,6 +19,8 @@ protocol WantListStoreProtocol: AnyObject, Observable {
     func addRelease(releaseId: Int, notes: String?, rating: Int?) async
     func editRelease(releaseId: Int, notes: String?, rating: Int?) async
     func deleteRelease(releaseId: Int) async
+    func isInWantList(releaseId: Int) -> Bool
+    func ensureWantsLoaded() async
 }
 
 extension WantListStoreProtocol {

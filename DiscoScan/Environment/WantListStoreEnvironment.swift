@@ -39,6 +39,14 @@ private final class UnimplementedWantListStore: WantListStoreProtocol {
     func deleteRelease(releaseId: Int) async {
         fatalError("wantListStore environment value was not injected.")
     }
+
+    func isInWantList(releaseId: Int) -> Bool {
+        fatalError("wantListStore environment value was not injected.")
+    }
+
+    func ensureWantsLoaded() async {
+        fatalError("wantListStore environment value was not injected.")
+    }
 }
 
 private let unimplementedWantListStore = UnimplementedWantListStore()
