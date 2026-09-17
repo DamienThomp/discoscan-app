@@ -18,6 +18,11 @@ nonisolated struct WantListItem: Codable, Equatable, Sendable, Identifiable {
     let basicInformation: ReleaseBasicInformation
 }
 
+nonisolated struct WantListItemRequestBody: Encodable, Sendable {
+    let notes: String?
+    let rating: Int?
+}
+
 nonisolated struct ReleaseBasicInformation: Codable, Equatable, Sendable, Identifiable {
     let id: Int
     let title: String
@@ -28,6 +33,14 @@ nonisolated struct ReleaseBasicInformation: Codable, Equatable, Sendable, Identi
     let artists: [DiscogsArtist]
     let labels: [DiscogsLabel]
     let formats: [DiscogsFormat]
+
+    var primaryArtistName: String {
+        artists.first?.name ?? "n/a"
+    }
+
+    var listArtworkURL: URL? {
+        coverImage ?? thumb
+    }
 }
 
 nonisolated struct DiscogsArtist: Codable, Equatable, Sendable, Identifiable {

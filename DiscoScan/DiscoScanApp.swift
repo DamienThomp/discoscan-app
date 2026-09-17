@@ -10,6 +10,7 @@ struct DiscoScanApp: App {
 
     @State private var authSession: AuthSession
     @State private var collectionStore: CollectionStore
+    @State private var wantListStore: WantListStore
     @State private var router = AppRouter()
 
     private let cachedFetcher: any CachedFetcherProtocol
@@ -24,6 +25,12 @@ struct DiscoScanApp: App {
                 cachedFetcher: dependencies.cachedFetcher
             )
         )
+        _wantListStore = State(
+            initialValue: WantListStore(
+                dependencies: dependencies,
+                cachedFetcher: dependencies.cachedFetcher
+            )
+        )
     }
 
     var body: some Scene {
@@ -31,6 +38,7 @@ struct DiscoScanApp: App {
             RootView()
                 .environment(authSession)
                 .environment(\.collectionStore, collectionStore)
+                .environment(\.wantListStore, wantListStore)
                 .environment(router)
                 .environment(\.cachedFetcher, cachedFetcher)
                 .task {
@@ -38,6 +46,7 @@ struct DiscoScanApp: App {
                 }
                 .onChange(of: authSession.state) { _, newState in
                     collectionStore.sync(with: newState)
+                    wantListStore.sync(with: newState)
                 }
                 .preferredColorScheme(.dark)
         }

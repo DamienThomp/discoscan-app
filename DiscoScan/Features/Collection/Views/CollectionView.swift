@@ -57,11 +57,10 @@ struct CollectionView: View {
 
 #if DEBUG
 #Preview("Loaded") {
-    NavigationStack {
+    PreviewAppRouteStack {
         CollectionView().preferredColorScheme(.dark)
     }
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
-    .environment(previewAuthenticatedAuthSession())
-    .environment(\.cachedFetcher, PreviewEmptyWantListCachedFetcher())
+    .environment(\.wantListStore, previewWantListStore(.wantsLoaded))
 }
 #endif
