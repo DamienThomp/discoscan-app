@@ -107,12 +107,16 @@ struct ReleaseDetailContent: View {
     }
 
     private var communitySection: some View {
-        let averageRating = release.community.rating.average.formatted(
-            .number.precision(.fractionLength(1))
-        )
+        let ratingSummary: String = {
+            guard let average = release.community.rating.average else {
+                return "\(release.community.rating.count) ratings"
+            }
+            let formattedAverage = average.formatted(.number.precision(.fractionLength(1)))
+            return "\(formattedAverage) avg (\(release.community.rating.count) ratings)"
+        }()
         return detailSection(
             title: "Community",
-            value: "\(release.community.have) have · \(release.community.want) want · \(averageRating) avg (\(release.community.rating.count) ratings)"
+            value: "\(release.community.have) have · \(release.community.want) want · \(ratingSummary)"
         )
     }
 
