@@ -78,6 +78,19 @@ struct WantListStoreTests {
         }
     }
 
+    @Test func loadWantsRefreshFailurePreservesStaleData() async {
+        let fetcher = MockWantListCachedFetcher()
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadWants()
+        fetcher.shouldFail = true
+        await store.loadWants(forceRefresh: true)
+
+        #expect(store.wants == .loaded(WantListFixtures.sampleWants))
+    }
+
     @Test func deleteReleaseCallsEndpointAndRefreshes() async {
         let fetcher = MockWantListCachedFetcher()
         let apiClient = MockWantListNetworkClient()

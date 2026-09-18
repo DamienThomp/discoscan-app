@@ -7,9 +7,13 @@ import Foundation
 import Security
 
 actor KeychainTokenStore: TokenStoreProtocol {
-    private let service = "com.Damien-Thompson.DiscoScan.oauth"
+    private let service: String
     private let account = "discogs-oauth"
     private var cachedTokens: OAuthTokens?
+
+    init(bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "DiscoScan") {
+        service = "\(bundleIdentifier).oauth"
+    }
 
     func load() async throws -> OAuthTokens {
         if let cachedTokens {

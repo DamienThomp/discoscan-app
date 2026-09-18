@@ -11,6 +11,7 @@ struct CollectionListView: View {
     let folderName: String
 
     @Environment(\.collectionStore) private var store
+    @State private var isAnimating: Bool = true
 
     private var releasesState: ResourceState<[CollectionReleaseItem]> {
         store.releasesByFolderID[folderId] ?? .idle
@@ -27,6 +28,8 @@ struct CollectionListView: View {
                     systemImage: "square.stack",
                     description: Text("This folder is empty.")
                 )
+                .symbolRenderingMode(.multicolor)
+                .symbolEffect(.bounce.down, options: .repeat(2), isActive: isAnimating)
             } else {
                 List(releases) { item in
                     NavigationLink(value: AppRoute.releaseDetail(id: item.releaseId)) {

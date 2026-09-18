@@ -20,7 +20,7 @@ struct ReleaseDetailView: View {
     }
 
     private var navigationTitle: String {
-        if case .loaded(let release) = detailState {
+        if let release = detailState.value {
             return release.title
         }
         return "Release"

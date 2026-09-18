@@ -23,6 +23,7 @@ struct ReleaseDetailContent: View {
             }
             .padding()
         }
+        .scrollIndicators(.hidden)
     }
 
     private var header: some View {

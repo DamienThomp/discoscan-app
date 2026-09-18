@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		38B0416330530F9A00AB3941 /* NetworkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 38B0416230530F9A00AB3941 /* NetworkKit */; };
 		38B041653053100000AB3941 /* NetworkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 38B0416230530F9A00AB3941 /* NetworkKit */; };
-		38B041BE305347F600AB3941 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 38B041643053100000AB3941 /* Secrets.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +39,8 @@
 		38B041663053100000AB3941 /* Exceptions for "DiscoScan" folder in "DiscoScan" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Configuration/Secrets.xcconfig,
+				Configuration/Secrets.xcconfig.example,
 				Info.plist,
 			);
 			target = 38B041363053092F00AB3941 /* DiscoScan */;
@@ -240,7 +241,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				38B041BE305347F600AB3941 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

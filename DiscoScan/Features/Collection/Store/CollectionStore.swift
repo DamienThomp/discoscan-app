@@ -62,7 +62,7 @@ final class CollectionStore: CollectionStoreProtocol {
     func loadFolders(forceRefresh: Bool = false) async {
         do {
             let username = try requireUsername()
-            folders = .loading
+            folders = folders.beginRefresh()
 
             let response = try await cachedFetcher.fetch(
                 CollectionFoldersEndpoint(userName: username),
@@ -74,7 +74,7 @@ final class CollectionStore: CollectionStoreProtocol {
 
             folders = .loaded(response.folders)
         } catch {
-            folders = .failed(error.localizedDescription)
+            folders = folders.recoverFromFetchFailure(error.localizedDescription)
         }
     }
 
@@ -83,7 +83,7 @@ final class CollectionStore: CollectionStoreProtocol {
             let username = try requireUsername()
 
             if page == 1 {
-                releasesByFolderID[folderId] = .loading
+                releasesByFolderID[folderId] = (releasesByFolderID[folderId] ?? .idle).beginRefresh()
             }
 
             let response = try await cachedFetcher.fetch(
@@ -98,13 +98,14 @@ final class CollectionStore: CollectionStoreProtocol {
 
             if page == 1 {
                 releasesByFolderID[folderId] = .loaded(response.releases)
-            } else if case .loaded(let existing) = releasesByFolderID[folderId] {
+            } else if let existing = releasesByFolderID[folderId]?.value {
                 releasesByFolderID[folderId] = .loaded(existing + response.releases)
             } else {
                 releasesByFolderID[folderId] = .loaded(response.releases)
             }
         } catch {
-            releasesByFolderID[folderId] = .failed(error.localizedDescription)
+            let current = releasesByFolderID[folderId] ?? .idle
+            releasesByFolderID[folderId] = current.recoverFromFetchFailure(error.localizedDescription)
         }
     }
 

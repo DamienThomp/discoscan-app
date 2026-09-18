@@ -9,8 +9,42 @@ import Observation
 enum ResourceState<T: Equatable & Sendable>: Equatable, Sendable {
     case idle
     case loading
+    case refreshing(T)
     case loaded(T)
     case failed(String)
+}
+
+extension ResourceState {
+    var value: T? {
+        switch self {
+        case .loaded(let value), .refreshing(let value):
+            value
+        case .idle, .loading, .failed:
+            nil
+        }
+    }
+
+    func beginRefresh() -> ResourceState<T> {
+        switch self {
+        case .loaded(let value), .refreshing(let value):
+            .refreshing(value)
+        case .idle, .loading, .failed:
+            .loading
+        }
+    }
+
+    func recoverFromFetchFailure(_ message: String) -> ResourceState<T> {
+        switch self {
+        case .refreshing(let stale):
+            .loaded(stale)
+        case .idle, .loading:
+            .failed(message)
+        case .loaded(let value):
+            .loaded(value)
+        case .failed:
+            .failed(message)
+        }
+    }
 }
 
 enum CollectionStoreError: LocalizedError, Equatable {

@@ -55,6 +55,17 @@ struct ReleaseStoreTests {
         #expect(fetcher.fetchCount == 1)
     }
 
+    @Test func loadReleaseRefreshFailurePreservesStaleDetail() async {
+        let fetcher = MockReleaseCachedFetcher()
+        let store = ReleaseStore(cachedFetcher: fetcher)
+
+        await store.loadRelease(id: 249_504)
+        fetcher.shouldFail = true
+        await store.loadRelease(id: 249_504, forceRefresh: true)
+
+        #expect(store.detail(for: 249_504) == .loaded(ReleaseTestFixtures.sampleRelease))
+    }
+
     @Test func loadReleaseForceRefreshRefetches() async {
         let fetcher = MockReleaseCachedFetcher()
         let store = ReleaseStore(cachedFetcher: fetcher)

@@ -32,7 +32,8 @@ final class ReleaseStore: ReleaseStoreProtocol {
             return
         }
 
-        detailsByID[id] = .loading
+        let current = detailsByID[id] ?? .idle
+        detailsByID[id] = current.beginRefresh()
 
         do {
             let response = try await cachedFetcher.fetch(
@@ -44,7 +45,8 @@ final class ReleaseStore: ReleaseStoreProtocol {
             )
             detailsByID[id] = .loaded(response)
         } catch {
-            detailsByID[id] = .failed(error.localizedDescription)
+            let inFlight = detailsByID[id] ?? .idle
+            detailsByID[id] = inFlight.recoverFromFetchFailure(error.localizedDescription)
         }
     }
 

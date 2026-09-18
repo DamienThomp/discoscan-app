@@ -143,6 +143,36 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.forceRefresh == true)
     }
 
+    @Test func loadReleasesRefreshPreservesStaleDataWhileFetching() async {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.delayNanoseconds = 100_000_000
+        let apiClient = MockCollectionNetworkClient()
+        let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: 1)
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+
+        async let refresh: Void = store.loadReleases(folderId: 1, forceRefresh: true)
+        try? await Task.sleep(for: .milliseconds(10))
+        #expect(store.releasesByFolderID[1] == .refreshing(CollectionFixtures.sampleReleases))
+        await refresh
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+    }
+
+    @Test func loadReleasesRefreshFailurePreservesStaleData() async {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: 1)
+        fetcher.shouldFail = true
+        await store.loadReleases(folderId: 1, forceRefresh: true)
+
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+    }
+
     @Test func deleteReleaseRefreshesAffectedData() async {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()

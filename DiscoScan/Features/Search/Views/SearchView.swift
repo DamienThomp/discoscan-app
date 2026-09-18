@@ -70,7 +70,6 @@ struct SearchView: View {
                 isShowingImageIdentification = false
                 router.submitSearch(.imageSuggested(query: query))
             }
-            .presentationDetents([.fraction(0.3), .medium, .large])
         }
     }
 

@@ -32,7 +32,8 @@ final class SearchStore: SearchStoreProtocol {
             return
         }
 
-        resultsByContext[context] = .loading
+        let current = resultsByContext[context] ?? .idle
+        resultsByContext[context] = current.beginRefresh()
 
         do {
             let response = try await cachedFetcher.fetch(
@@ -44,7 +45,8 @@ final class SearchStore: SearchStoreProtocol {
             )
             resultsByContext[context] = .loaded(response)
         } catch {
-            resultsByContext[context] = .failed(error.localizedDescription)
+            let inFlight = resultsByContext[context] ?? .idle
+            resultsByContext[context] = inFlight.recoverFromFetchFailure(error.localizedDescription)
         }
     }
 }

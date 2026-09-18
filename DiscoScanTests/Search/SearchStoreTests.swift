@@ -48,6 +48,18 @@ struct SearchStoreTests {
         }
     }
 
+    @Test func searchRefreshFailurePreservesStaleResults() async {
+        let fetcher = MockSearchCachedFetcher()
+        let store = SearchStore(cachedFetcher: fetcher)
+        let context = SearchContext.text(query: "Nirvana")
+
+        await store.search(context)
+        fetcher.shouldFail = true
+        await store.search(context, forceRefresh: true)
+
+        #expect(store.results(for: context) == .loaded(SearchTestFixtures.sampleResponse))
+    }
+
     @Test func searchForceRefreshRefetches() async {
         let fetcher = MockSearchCachedFetcher()
         let store = SearchStore(cachedFetcher: fetcher)
