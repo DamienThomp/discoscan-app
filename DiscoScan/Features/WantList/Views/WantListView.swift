@@ -8,6 +8,7 @@ import SwiftUI
 struct WantListView: View {
 
     @Environment(\.wantListStore) private var store
+    @State private var isAnimating: Bool = true
 
     var body: some View {
         ResourceContainerView(
@@ -20,6 +21,9 @@ struct WantListView: View {
                     systemImage: "heart",
                     description: Text("Your want list is empty.")
                 )
+                .symbolRenderingMode(.multicolor)
+                .symbolEffect(.breathe, options: .speed(10).repeat(2), isActive: isAnimating)
+
             } else {
                 List(wants) { item in
                     NavigationLink(value: AppRoute.releaseDetail(id: item.id)) {

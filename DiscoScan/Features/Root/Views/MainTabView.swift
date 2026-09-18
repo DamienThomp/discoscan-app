@@ -8,7 +8,9 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppRouter.self) private var router
 
-    @State private var searchText: String = ""
+    @State private var searchText = ""
+
+    private let recentSearchStore = RecentSearchStore()
 
     var body: some View {
         @Bindable var router = router
@@ -28,10 +30,25 @@ struct MainTabView: View {
 
             Tab(value: .search, role: .search) {
                 AppRouteNavigationStack(path: $router.searchPath) {
-                    SearchView()
-                }.searchable(text: $searchText)
+                    SearchView(searchText: $searchText)
+                }
+                .searchable(text: $searchText, prompt: "Artists, albums, labels…")
+                .onSubmit(of: .search) {
+                    submitTextSearch()
+                }
+                .searchSuggestions {
+                    ForEach(recentSearchStore.load(), id: \.self) { query in
+                        Text(query).searchCompletion(query)
+                    }
+                }
             }
         }
     }
-}
 
+    private func submitTextSearch() {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        recentSearchStore.add(query)
+        router.submitSearch(.text(query: query))
+    }
+}

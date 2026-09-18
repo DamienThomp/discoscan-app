@@ -17,7 +17,7 @@ struct ResourceContainerView<T: Equatable & Sendable, Content: View>: View {
             switch state {
             case .idle, .loading:
                 LoadingView()
-            case .loaded(let value):
+            case .loaded(let value), .refreshing(let value):
                 content(value)
             case .failed(let message):
                 ErrorView(message: message) {

@@ -20,7 +20,7 @@ struct ReleaseDetailView: View {
     }
 
     private var navigationTitle: String {
-        if case .loaded(let release) = detailState {
+        if let release = detailState.value {
             return release.title
         }
         return "Release"
@@ -42,7 +42,7 @@ struct ReleaseDetailView: View {
             }
         }
         .sheet(isPresented: $showFolderPicker) {
-            FolderPickerSheet(releaseId: releaseID).presentationDetents([.fraction(0.25), .large])
+            FolderPickerSheet(releaseId: releaseID).presentationDetents([ .large])
         }
         .task {
             if releaseStore.detail(for: releaseID) == .idle {

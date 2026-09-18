@@ -12,13 +12,16 @@ struct DiscoScanApp: App {
     @State private var collectionStore: CollectionStore
     @State private var wantListStore: WantListStore
     @State private var releaseStore: ReleaseStore
+    @State private var searchStore: SearchStore
     @State private var router = AppRouter()
 
     private let cachedFetcher: any CachedFetcherProtocol
+    private let sleeveIdentifier: any SleeveIdentifierProtocol
 
     init() {
         let dependencies = AppDependencies.make()
         cachedFetcher = dependencies.cachedFetcher
+        sleeveIdentifier = dependencies.sleeveIdentifier
         _authSession = State(initialValue: AuthSession(dependencies: dependencies))
         _collectionStore = State(
             initialValue: CollectionStore(
@@ -38,6 +41,12 @@ struct DiscoScanApp: App {
                 cachedFetcher: dependencies.cachedFetcher
             )
         )
+        _searchStore = State(
+            initialValue: SearchStore(
+                dependencies: dependencies,
+                cachedFetcher: dependencies.cachedFetcher
+            )
+        )
     }
 
     var body: some Scene {
@@ -47,8 +56,10 @@ struct DiscoScanApp: App {
                 .environment(\.collectionStore, collectionStore)
                 .environment(\.wantListStore, wantListStore)
                 .environment(\.releaseStore, releaseStore)
+                .environment(\.searchStore, searchStore)
                 .environment(router)
                 .environment(\.cachedFetcher, cachedFetcher)
+                .environment(\.sleeveIdentifier, sleeveIdentifier)
                 .task {
                     await authSession.bootstrap()
                 }

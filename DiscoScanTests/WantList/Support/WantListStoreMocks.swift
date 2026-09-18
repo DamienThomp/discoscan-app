@@ -10,6 +10,7 @@ import NetworkKit
 final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
+    var shouldFail = false
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -20,6 +21,10 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
     ) async throws -> E.Response {
         fetchCount += 1
         lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh, userScope: userScope)
+
+        if shouldFail {
+            throw URLError(.notConnectedToInternet)
+        }
 
         if endpoint is WantListEndpoint {
             guard let response = WantListFixtures.sampleResponse as? E.Response else {

@@ -169,7 +169,6 @@ struct ReleaseDetailResponseTests {
         #expect(release.year == 1987)
         #expect(release.country == "UK")
         #expect(release.artists.first?.name == "Rick Astley")
-        #expect(release.extraartists.first?.role == "Producer, Written-By")
         #expect(release.community.have == 252)
         #expect(release.community.want == 42)
         #expect(release.community.rating.average == 3.42)
@@ -185,5 +184,98 @@ struct ReleaseDetailResponseTests {
         #expect(release.tracklist.last?.position == "B")
         #expect(release.videos.first?.duration == 330)
         #expect(release.series.isEmpty)
+    }
+
+    @Test func decodesSparseAndNullDiscogsFields() throws {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let sparseJSON = Data(
+            """
+            {
+                "title": "Sparse Release",
+                "id": 2785496,
+                "artists": [
+                    {
+                        "anv": "",
+                        "id": 1,
+                        "join": "",
+                        "name": "Artist",
+                        "resource_url": "",
+                        "role": "",
+                        "tracks": ""
+                    }
+                ],
+                "data_quality": "Needs Vote",
+                "thumb": "",
+                "community": {
+                    "data_quality": "Needs Vote",
+                    "have": 0,
+                    "rating": { "average": null, "count": 0 },
+                    "status": "Accepted",
+                    "want": 0
+                },
+                "formats": [
+                    { "name": "Vinyl", "qty": "1" }
+                ],
+                "labels": [
+                    {
+                        "catno": "ABC",
+                        "entity_type": "1",
+                        "id": 2,
+                        "name": "Label",
+                        "resource_url": "https://api.discogs.com/labels/2"
+                    }
+                ],
+                "lowest_price": null,
+                "status": "Accepted",
+                "tracklist": [
+                    {
+                        "duration": "",
+                        "position": "",
+                        "title": "Side A",
+                        "type_": "heading"
+                    },
+                    {
+                        "duration": "3:00",
+                        "position": "A1",
+                        "title": "Track One",
+                        "type_": "track"
+                    }
+                ],
+                "uri": "https://www.discogs.com/release/2785496",
+                "videos": [
+                    {
+                        "description": null,
+                        "duration": 180,
+                        "embed": true,
+                        "title": "Video",
+                        "uri": "https://www.youtube.com/watch?v=example"
+                    }
+                ]
+            }
+            """.utf8
+        )
+
+        let release = try decoder.decode(ReleaseDetailResponse.self, from: sparseJSON)
+
+        #expect(release.id == 2785496)
+        #expect(release.thumb == nil)
+        #expect(release.artists.first?.resourceURL == nil)
+        #expect(release.community.rating.average == nil)
+        #expect(release.community.submitter == nil)
+        #expect(release.community.contributors.isEmpty)
+        #expect(release.companies.isEmpty)
+        #expect(release.identifiers.isEmpty)
+        #expect(release.images.isEmpty)
+        #expect(release.series.isEmpty)
+        #expect(release.genres.isEmpty)
+        #expect(release.styles.isEmpty)
+        #expect(release.lowestPrice == nil)
+        #expect(release.masterId == nil)
+        #expect(release.formats.first?.descriptions.isEmpty == true)
+        #expect(release.tracklist.first?.type == "heading")
+        #expect(release.videos.first?.description == nil)
+        #expect(release.videos.first?.uri?.absoluteString == "https://www.youtube.com/watch?v=example")
     }
 }

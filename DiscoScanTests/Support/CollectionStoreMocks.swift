@@ -16,6 +16,8 @@ struct MockFetchRecord: Sendable {
 final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
+    var shouldFail = false
+    var delayNanoseconds: UInt64 = 0
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -26,6 +28,14 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
     ) async throws -> E.Response {
         fetchCount += 1
         lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh, userScope: userScope)
+
+        if delayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: delayNanoseconds)
+        }
+
+        if shouldFail {
+            throw URLError(.notConnectedToInternet)
+        }
 
         if endpoint is CollectionFoldersEndpoint {
             guard let response = CollectionFixtures.sampleFoldersResponse as? E.Response else {

@@ -16,18 +16,6 @@
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>DISCOGSConsumerKey</key>
-	<string>$(DISCOGS_CONSUMER_KEY)</string>
-	<key>DISCOGSConsumerSecret</key>
-	<string>$(DISCOGS_CONSUMER_SECRET)</string>
-	<key>DISCOGSCallbackURL</key>
-	<string>$(DISCOGS_CALLBACK_URL)</string>
-	<key>DISCOGSUserAgent</key>
-	<string>$(DISCOGS_USER_AGENT)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -39,6 +27,26 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>DISCOGSCallbackURL</key>
+	<string>$(DISCOGS_CALLBACK_URL)</string>
+	<key>DISCOGSConsumerKey</key>
+	<string>$(DISCOGS_CONSUMER_KEY)</string>
+	<key>DISCOGSConsumerSecret</key>
+	<string>$(DISCOGS_CONSUMER_SECRET)</string>
+	<key>DISCOGSUserAgent</key>
+	<string>$(DISCOGS_USER_AGENT)</string>
+	<key>GEMINIApiKey</key>
+	<string>$(GEMINI_API_KEY)</string>
+	<key>GEMINIModel</key>
+	<string>$(GEMINI_MODEL)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Scan barcodes and photograph record sleeves to identify releases.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a sleeve photo to identify a release.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -50,16 +58,10 @@
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

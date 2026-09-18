@@ -59,4 +59,19 @@ nonisolated struct DiscogsFormat: Codable, Equatable, Sendable {
     let qty: String
     let text: String?
     let descriptions: [String]
+
+    init(name: String, qty: String, text: String? = nil, descriptions: [String] = []) {
+        self.name = name
+        self.qty = qty
+        self.text = text
+        self.descriptions = descriptions
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        qty = try container.decode(String.self, forKey: .qty)
+        text = try container.decodeIfPresent(String.self, forKey: .text)
+        descriptions = try container.decodeDiscogsArray(String.self, forKey: .descriptions)
+    }
 }

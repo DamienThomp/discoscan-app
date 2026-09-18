@@ -2,8 +2,6 @@
 //  CollectionList.swift
 //  DiscoScan
 //
-//  Created by Damien L Thompson on 2026-09-14.
-//
 
 import Foundation
 

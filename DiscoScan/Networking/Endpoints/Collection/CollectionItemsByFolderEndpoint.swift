@@ -21,8 +21,8 @@ nonisolated struct CollectionItemsByFolderEndpoint: EndpointProtocol {
         folderId: Int,
         page: Int = 1,
         perPage: Int = 50,
-        sort: CollectionSortField = .added,
-        sortOrder: CollectionSortOrder = .desc
+        sort: CollectionSortField = .artist,
+        sortOrder: CollectionSortOrder = .asc
     ) {
         self.username = username
         self.folderId = folderId

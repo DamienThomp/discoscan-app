@@ -62,7 +62,7 @@ final class WantListStore: WantListStoreProtocol {
             let username = try requireUsername()
 
             if page == 1 {
-                wants = .loading
+                wants = wants.beginRefresh()
             }
 
             let response = try await cachedFetcher.fetch(
@@ -77,13 +77,13 @@ final class WantListStore: WantListStoreProtocol {
 
             if page == 1 {
                 wants = .loaded(response.wants)
-            } else if case .loaded(let existing) = wants {
+            } else if let existing = wants.value {
                 wants = .loaded(existing + response.wants)
             } else {
                 wants = .loaded(response.wants)
             }
         } catch {
-            wants = .failed(error.localizedDescription)
+            wants = wants.recoverFromFetchFailure(error.localizedDescription)
         }
     }
 
@@ -137,7 +137,7 @@ final class WantListStore: WantListStoreProtocol {
     }
 
     func isInWantList(releaseId: Int) -> Bool {
-        guard case .loaded(let items) = wants else {
+        guard let items = wants.value else {
             return false
         }
         return items.contains { $0.id == releaseId }
