@@ -166,6 +166,11 @@ final class CollectionStore: CollectionStoreProtocol {
                     instanceId: instanceId
                 )
             )
+            if let current = releasesByFolderID[folderId]?.value {
+                releasesByFolderID[folderId] = .loaded(
+                    current.filter { $0.instanceId != instanceId }
+                )
+            }
             await loadReleases(folderId: folderId, forceRefresh: true)
             await loadFolders(forceRefresh: true)
         }

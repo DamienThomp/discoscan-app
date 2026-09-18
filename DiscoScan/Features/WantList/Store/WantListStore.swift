@@ -6,6 +6,7 @@
 import Foundation
 import NetworkKit
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -132,6 +133,9 @@ final class WantListStore: WantListStoreProtocol {
                     releaseId: releaseId
                 )
             )
+            if let current = wants.value {
+                wants = .loaded(current.filter { $0.id != releaseId })
+            }
             await loadWants(forceRefresh: true)
         }
     }

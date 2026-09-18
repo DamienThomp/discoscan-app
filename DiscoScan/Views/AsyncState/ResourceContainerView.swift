@@ -13,18 +13,17 @@ struct ResourceContainerView<T: Equatable & Sendable, Content: View>: View {
     @ViewBuilder let content: (T) -> Content
 
     var body: some View {
-        Group {
+        ZStack {
             switch state {
             case .idle, .loading:
                 LoadingView()
             case .loaded(let value), .refreshing(let value):
-                content(value)
+                content(value).transition(.opacity)
             case .failed(let message):
-                ErrorView(message: message) {
-                    Task { await retry() }
-                }
+                ErrorView(message: message) { Task { await retry() } }.transition(.opacity)
             }
         }
+        .animation(.default, value: state)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

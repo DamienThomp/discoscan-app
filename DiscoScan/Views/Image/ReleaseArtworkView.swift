@@ -80,24 +80,16 @@ struct ReleaseArtworkView: View {
     }
 
     var body: some View {
-        Group {
-            if shouldHideFromAccessibility {
-                artworkImage
-                    .accessibilityHidden(true)
-            } else if let accessibilityLabel {
-                artworkImage
-                    .accessibilityLabel(accessibilityLabel)
-            } else {
-                artworkImage
-            }
-        }
+        artworkImage
+            .accessibilityHidden(shouldHideFromAccessibility)
+            .accessibilityLabel(accessibilityLabel ?? "")
     }
 
     private var artworkImage: some View {
         AsyncImage(url: url) { phase in
             switch phase {
             case .success(let image):
-                image.resizable().scaledToFit()
+                image.resizable().scaledToFill()
             case .failure:
                 placeholder(showProgress: false)
             case .empty:
@@ -107,7 +99,6 @@ struct ReleaseArtworkView: View {
             }
         }
         .modifier(ArtworkFrameModifier(size: size, dimension: dimension))
-        .clipShape(RoundedRectangle(cornerRadius: size.cornerRadius))
     }
 
     private func placeholder(showProgress: Bool) -> some View {
@@ -126,10 +117,12 @@ private struct ArtworkFrameModifier: ViewModifier {
         if size.usesHeroLayout {
             content
                 .frame(maxWidth: dimension, maxHeight: dimension)
+                .clipShape(RoundedRectangle(cornerRadius: size.cornerRadius))
                 .frame(maxWidth: .infinity)
         } else {
             content
                 .frame(width: dimension, height: dimension)
+                .clipShape(RoundedRectangle(cornerRadius: size.cornerRadius))
         }
     }
 }
@@ -148,6 +141,7 @@ private struct ReleaseArtworkPlaceholder: View {
                 ProgressView()
             } else {
                 Image(systemName: "opticaldisc")
+                    .font(.system(size: 64))
                     .font(.title2)
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)

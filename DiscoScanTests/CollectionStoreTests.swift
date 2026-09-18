@@ -185,4 +185,19 @@ struct CollectionStoreTests {
         #expect(fetcher.fetchCount >= 2)
         #expect(store.lastMutationError == nil)
     }
+
+    @Test func deleteReleaseExcludesItemFromRefreshStaleData() async {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.delayNanoseconds = 100_000_000
+        let apiClient = MockCollectionNetworkClient()
+        let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: 1)
+
+        async let deletion: Void = store.deleteRelease(from: 1, releaseId: 100, instanceId: 1000)
+        try? await Task.sleep(for: .milliseconds(10))
+        #expect(store.releasesByFolderID[1] == .refreshing([]))
+        await deletion
+    }
 }

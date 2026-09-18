@@ -38,7 +38,7 @@ struct ImageIdentificationSheet: View {
                         imageData: imageData,
                         isAnalyzing: isAnalyzing,
                         errorMessage: errorMessage
-                    )
+                    ).transition(.opacity)
                 case .confirm:
                     ImageIdentificationConfirmView(
                         identification: $identification,
@@ -49,7 +49,7 @@ struct ImageIdentificationSheet: View {
                             searchText = identification.searchQuery
                             dismiss()
                         }
-                    )
+                    ).transition(.opacity)
                 }
             }
             .navigationTitle("Identify Sleeve")
@@ -83,7 +83,9 @@ struct ImageIdentificationSheet: View {
                 errorMessage = "Could not load the selected photo."
                 return
             }
-            imageData = data
+            withAnimation {
+                imageData = data
+            }
             await analyzeImage()
         } catch {
             errorMessage = error.localizedDescription
@@ -100,7 +102,10 @@ struct ImageIdentificationSheet: View {
         do {
             let result = try await sleeveIdentifier.identify(jpegData: imageData)
             identification = SleeveIdentificationDraft(from: result)
-            step = .confirm
+            withAnimation {
+                step = .confirm
+            }
+
         } catch {
             errorMessage = error.localizedDescription
         }

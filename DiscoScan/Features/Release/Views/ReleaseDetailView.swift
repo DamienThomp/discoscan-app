@@ -32,6 +32,7 @@ struct ReleaseDetailView: View {
             retry: { await releaseStore.loadRelease(id: releaseID, forceRefresh: true) }
         ) { release in
             ReleaseDetailContent(release: release)
+                .transition(.opacity)
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)

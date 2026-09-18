@@ -104,6 +104,22 @@ struct WantListStoreTests {
         #expect(store.lastMutationError == nil)
     }
 
+    @Test func deleteReleaseExcludesItemFromRefreshStaleData() async {
+        let fetcher = MockWantListCachedFetcher()
+        fetcher.delayNanoseconds = 100_000_000
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadWants()
+
+        let remaining = Array(WantListFixtures.sampleWants.dropFirst())
+        async let deletion: Void = store.deleteRelease(releaseId: 1_867_708)
+        try? await Task.sleep(for: .milliseconds(10))
+        #expect(store.wants == .refreshing(remaining))
+        await deletion
+    }
+
     @Test func addReleaseCallsEndpointAndRefreshes() async {
         let fetcher = MockWantListCachedFetcher()
         let apiClient = MockWantListNetworkClient()

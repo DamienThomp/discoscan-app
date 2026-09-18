@@ -39,6 +39,7 @@ struct ImageIdentificationCaptureView: View {
                     }
                     .buttonStyle(.bordered)
                 }
+                .controlSize(.large)
             }
 
             if let errorMessage {

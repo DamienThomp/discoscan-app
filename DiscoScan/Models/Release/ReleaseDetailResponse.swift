@@ -39,7 +39,7 @@ nonisolated struct ReleaseDetailResponse: Codable, Sendable, Equatable {
     let videos: [ReleaseDetailVideo]
     let year: Int?
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         title = try container.decode(String.self, forKey: .title)
         id = try container.decode(Int.self, forKey: .id)
@@ -85,7 +85,7 @@ nonisolated struct ReleaseDetailArtist: Codable, Sendable, Equatable, Identifiab
     let role: String
     let tracks: String
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         anv = try container.decode(String.self, forKey: .anv)
         id = try container.decode(Int.self, forKey: .id)
@@ -106,7 +106,7 @@ nonisolated struct ReleaseDetailCommunity: Codable, Sendable, Equatable {
     let submitter: ReleaseDetailUser?
     let want: Int
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         contributors = try container.decodeDiscogsArray(ReleaseDetailUser.self, forKey: .contributors)
         dataQuality = try container.decode(String.self, forKey: .dataQuality)
@@ -122,7 +122,7 @@ nonisolated struct ReleaseDetailUser: Codable, Sendable, Equatable {
     let resourceURL: URL?
     let username: String
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         resourceURL = container.decodeDiscogsURL(forKey: .resourceURL)
         username = try container.decode(String.self, forKey: .username)
@@ -142,7 +142,7 @@ nonisolated struct ReleaseDetailCompany: Codable, Sendable, Equatable, Identifia
     let name: String
     let resourceURL: URL?
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         catno = try container.decode(String.self, forKey: .catno)
         entityType = try container.decode(String.self, forKey: .entityType)
@@ -166,7 +166,7 @@ nonisolated struct ReleaseDetailImage: Codable, Sendable, Equatable {
     let uri150: URL?
     let width: Int
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         height = try container.decode(Int.self, forKey: .height)
         resourceURL = container.decodeDiscogsURL(forKey: .resourceURL)
@@ -184,7 +184,7 @@ nonisolated struct ReleaseDetailLabel: Codable, Sendable, Equatable, Identifiabl
     let name: String
     let resourceURL: URL?
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         catno = try container.decode(String.self, forKey: .catno)
         entityType = try container.decode(String.self, forKey: .entityType)
@@ -201,7 +201,7 @@ nonisolated struct ReleaseDetailSeries: Codable, Sendable, Equatable, Identifiab
     let name: String?
     let resourceURL: URL?
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         catno = try container.decodeIfPresent(String.self, forKey: .catno)
         entityType = try container.decodeIfPresent(String.self, forKey: .entityType)
@@ -232,7 +232,7 @@ nonisolated struct ReleaseDetailVideo: Codable, Sendable, Equatable {
     let title: String
     let uri: URL?
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         duration = try container.decode(Int.self, forKey: .duration)
