@@ -6,6 +6,7 @@
 import Foundation
 import NetworkKit
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -43,6 +44,7 @@ final class ReleaseStore: ReleaseStoreProtocol {
                 userScope: nil,
                 forceRefresh: forceRefresh
             )
+
             detailsByID[id] = .loaded(response)
         } catch {
             let inFlight = detailsByID[id] ?? .idle

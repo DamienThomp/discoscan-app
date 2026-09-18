@@ -6,7 +6,7 @@
 import Foundation
 
 extension KeyedDecodingContainer {
-    func decodeDiscogsURL(forKey key: Key) -> URL? {
+    nonisolated func decodeDiscogsURL(forKey key: Key) -> URL? {
         guard let string = try? decodeIfPresent(String.self, forKey: key),
               !string.isEmpty else {
             return nil
@@ -14,7 +14,7 @@ extension KeyedDecodingContainer {
         return URL(string: string)
     }
 
-    func decodeDiscogsArray<T: Decodable>(_ type: T.Type, forKey key: Key) throws -> [T] {
+    nonisolated func decodeDiscogsArray<T: Decodable>(_ type: T.Type, forKey key: Key) throws -> [T] {
         try decodeIfPresent([T].self, forKey: key) ?? []
     }
 }

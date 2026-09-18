@@ -62,10 +62,10 @@ enum ReleaseFixtures {
             "images": [
                 {
                     "height": 600,
-                    "resource_url": "https://api-img.discogs.com/z_u8yqxvDcwVnR4tX2HLNLaQO2Y=/fit-in/600x600/filters:strip_icc():format(jpeg):mode_rgb():quality(96)/discogs-images/R-249504-1334592212.jpeg.jpg",
+                    "resource_url": "https://i.discogs.com/eaLFSDEXcmQfGJ63UtCeLKzm0z6YSrh21rHdsvlwrlY/rs:fit/g:sm/q:90/h:594/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIyMTgy/NC0xNDE5ODUwNzI1/LTIwODAuanBlZw.jpeg",
                     "type": "primary",
-                    "uri": "https://api-img.discogs.com/z_u8yqxvDcwVnR4tX2HLNLaQO2Y=/fit-in/600x600/filters:strip_icc():format(jpeg):mode_rgb():quality(96)/discogs-images/R-249504-1334592212.jpeg.jpg",
-                    "uri150": "https://api-img.discogs.com/0ZYgPR4X2HdUKA_jkhPJF4SN5mM=/fit-in/150x150/filters:strip_icc():format(jpeg):mode_rgb()/discogs-images/R-249504-1334592212.jpeg.jpg",
+                    "uri": "https://i.discogs.com/eaLFSDEXcmQfGJ63UtCeLKzm0z6YSrh21rHdsvlwrlY/rs:fit/g:sm/q:90/h:594/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIyMTgy/NC0xNDE5ODUwNzI1/LTIwODAuanBlZw.jpeg",
+                    "uri150": "https://i.discogs.com/eaLFSDEXcmQfGJ63UtCeLKzm0z6YSrh21rHdsvlwrlY/rs:fit/g:sm/q:90/h:594/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIyMTgy/NC0xNDE5ODUwNzI1/LTIwODAuanBlZw.jpeg",
                     "width": 600
                 }
             ],

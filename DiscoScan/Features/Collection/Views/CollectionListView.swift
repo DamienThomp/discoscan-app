@@ -28,6 +28,7 @@ struct CollectionListView: View {
                     systemImage: "square.stack",
                     description: Text("This folder is empty.")
                 )
+                .transition(.opacity) 
                 .symbolRenderingMode(.multicolor)
                 .symbolEffect(.bounce.down, options: .repeat(2), isActive: isAnimating)
             } else {
@@ -48,7 +49,7 @@ struct CollectionListView: View {
                             Label("Remove", systemImage: "trash")
                         }
                     }
-                }
+                }.transition(.opacity)
             }
         }
         .navigationTitle(folderName)

@@ -18,6 +18,7 @@ struct ImageIdentificationConfirmView: View {
                 Section {
                     IdentificationImagePreview(imageData: imageData, maxHeight: 180)
                         .frame(maxWidth: .infinity)
+                        .transition(.opacity)
                 }
             }
 
@@ -28,13 +29,13 @@ struct ImageIdentificationConfirmView: View {
                         systemImage: "questionmark.circle",
                         description: Text("Try the barcode on the back cover or search manually.")
                     )
-                }
+                }.transition(.opacity)
             } else {
                 Section("Best guess") {
                     TextField("Artist", text: $identification.artist)
                     TextField("Album title", text: $identification.title)
                     TextField("Catalog number", text: $identification.catalogNumber)
-                }
+                }.transition(.opacity)
             }
 
             Section {
@@ -52,7 +53,7 @@ struct ImageIdentificationConfirmView: View {
                 Button("Scan barcode instead") {
                     onScanBarcode()
                 }
-            }
+            }.transition(.opacity)
         }
     }
 }

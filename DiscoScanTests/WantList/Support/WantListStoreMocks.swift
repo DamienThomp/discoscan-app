@@ -11,6 +11,7 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
     var shouldFail = false
+    var delayNanoseconds: UInt64 = 0
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -21,6 +22,10 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
     ) async throws -> E.Response {
         fetchCount += 1
         lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh, userScope: userScope)
+
+        if delayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: delayNanoseconds)
+        }
 
         if shouldFail {
             throw URLError(.notConnectedToInternet)

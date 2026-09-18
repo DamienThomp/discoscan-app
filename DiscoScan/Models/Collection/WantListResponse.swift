@@ -67,7 +67,7 @@ nonisolated struct DiscogsFormat: Codable, Equatable, Sendable {
         self.descriptions = descriptions
     }
 
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decode(String.self, forKey: .name)
         qty = try container.decode(String.self, forKey: .qty)
