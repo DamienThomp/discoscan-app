@@ -169,7 +169,6 @@ struct ReleaseDetailResponseTests {
         #expect(release.year == 1987)
         #expect(release.country == "UK")
         #expect(release.artists.first?.name == "Rick Astley")
-        #expect(release.extraartists.first?.role == "Producer, Written-By")
         #expect(release.community.have == 252)
         #expect(release.community.want == 42)
         #expect(release.community.rating.average == 3.42)

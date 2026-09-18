@@ -17,7 +17,6 @@ nonisolated struct ReleaseDetailResponse: Codable, Sendable, Equatable {
     let dateAdded: String?
     let dateChanged: String?
     let estimatedWeight: Int?
-    let extraartists: [ReleaseDetailArtist]
     let formatQuantity: Int?
     let formats: [DiscogsFormat]
     let genres: [String]

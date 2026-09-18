@@ -42,7 +42,7 @@ struct ReleaseDetailView: View {
             }
         }
         .sheet(isPresented: $showFolderPicker) {
-            FolderPickerSheet(releaseId: releaseID).presentationDetents([.fraction(0.25), .large])
+            FolderPickerSheet(releaseId: releaseID).presentationDetents([ .large])
         }
         .task {
             if releaseStore.detail(for: releaseID) == .idle {

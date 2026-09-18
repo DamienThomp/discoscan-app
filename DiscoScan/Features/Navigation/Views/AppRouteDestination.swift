@@ -10,8 +10,8 @@ struct AppRouteDestination: View {
 
     var body: some View {
         switch route {
-        case .searchResults(let query):
-            SearchResultsView(query: query)
+        case .searchResults(let context):
+            SearchResultsView(context: context)
         case .releaseDetail(let id):
             ReleaseDetailView(releaseID: id)
         case .userProfile(let username):

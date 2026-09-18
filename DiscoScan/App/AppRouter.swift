@@ -13,7 +13,7 @@ enum AppTab: Hashable {
 }
 
 enum AppRoute: Hashable {
-    case searchResults(query: String)
+    case searchResults(context: SearchContext)
     case releaseDetail(id: Int)
     case userProfile(username: String)
     case collectionFolder(id: Int, name: String)
@@ -38,6 +38,11 @@ final class AppRouter {
         case .profile:
             profilePath.append(route)
         }
+    }
+
+    func submitSearch(_ context: SearchContext) {
+        selectedTab = .search
+        searchPath.append(AppRoute.searchResults(context: context))
     }
 
     func reset() {

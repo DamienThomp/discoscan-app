@@ -9,16 +9,19 @@ import SwiftData
 
 struct AppDependencies {
     let config: DiscogsConfig
+    let geminiConfig: GeminiConfig
     let tokenStore: TokenStoreProtocol
     let handshakeClient: NetworkManagerProtocol
     let apiClient: NetworkManagerProtocol
     let oauthService: DiscogsOAuthService
     let cacheStorage: SwiftDataCacheStorage
     let cachedFetcher: CachedFetcher
+    let sleeveIdentifier: GeminiSleeveIdentifier
 
     @MainActor
     static func make() -> AppDependencies {
         let config = DiscogsConfig.fromBundle()
+        let geminiConfig = GeminiConfig.fromBundle()
         let tokenStore = KeychainTokenStore()
 
         let hostResolver: @Sendable (APIHost) -> URL = { host in
@@ -71,14 +74,18 @@ struct AppDependencies {
             decoder: decoder
         )
 
+        let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig)
+
         return AppDependencies(
             config: config,
+            geminiConfig: geminiConfig,
             tokenStore: tokenStore,
             handshakeClient: handshakeClient,
             apiClient: apiClient,
             oauthService: oauthService,
             cacheStorage: cacheStorage,
-            cachedFetcher: cachedFetcher
+            cachedFetcher: cachedFetcher,
+            sleeveIdentifier: sleeveIdentifier
         )
     }
 

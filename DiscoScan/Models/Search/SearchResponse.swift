@@ -39,6 +39,20 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         case resourceURL
     }
 
+    init(
+        id: Int,
+        type: String,
+        title: String,
+        thumb: URL? = nil,
+        resourceURL: URL? = nil
+    ) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.thumb = thumb
+        self.resourceURL = resourceURL
+    }
+
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
