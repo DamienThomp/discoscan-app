@@ -62,14 +62,14 @@ struct ImageIdentificationSheet: View {
             .onChange(of: selectedPhotoItem) { _, newItem in
                 Task { await loadPhoto(from: newItem) }
             }
-            .sheet(isPresented: $isShowingCamera) {
+            .fullScreenCover(isPresented: $isShowingCamera) {
                 ImagePickerCameraView { data in
                     isShowingCamera = false
                     imageData = data
                     Task { await analyzeImage() }
                 } onCancel: {
                     isShowingCamera = false
-                }
+                }.ignoresSafeArea()
             }
         }
     }
