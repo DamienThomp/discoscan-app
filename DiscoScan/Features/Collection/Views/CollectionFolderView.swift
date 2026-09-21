@@ -15,22 +15,19 @@ struct CollectionFolderView: View {
             retry: { await store.loadFolders(forceRefresh: true) }
         ) { folders in
             List {
-                Section {
-                    ForEach(folders) { folder in
-                        NavigationLink(value: AppRoute.collectionFolder(id: folder.id, name: folder.name)) {
-                            Label {
-                                Text(folder.name)
-                            } icon: {
-                                Image(systemName: "folder")
-                            }
-                            .badge(folder.count)
+                ForEach(folders) { folder in
+                    NavigationLink(value: AppRoute.collectionFolder(id: folder.id, name: folder.name)) {
+                        Label {
+                            Text(folder.name).font(.title2)
+                        } icon: {
+                            Image(systemName: "folder").font(.system(size: 20))
                         }
-                        .accessibilityLabel("\(folder.name), \(folder.count) items")
+                        .badge(folder.count)
                     }
-                } header: {
-                    Text("Folders")
+                    .accessibilityLabel("\(folder.name), \(folder.count) items")
                 }
             }
+            .listStyle(.plain)
         }
         .task {
             if store.folders == .idle {

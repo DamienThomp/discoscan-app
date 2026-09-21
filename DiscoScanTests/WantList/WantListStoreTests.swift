@@ -91,33 +91,22 @@ struct WantListStoreTests {
         #expect(store.wants == .loaded(WantListFixtures.sampleWants))
     }
 
-    @Test func deleteReleaseCallsEndpointAndRefreshes() async {
+    @Test func deleteReleaseRemovesItemLocallyWithoutReloadingList() async {
         let fetcher = MockWantListCachedFetcher()
-        let apiClient = MockWantListNetworkClient()
-        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
-
-        store.sync(with: .authenticated(identity))
-        await store.deleteRelease(releaseId: 1_867_708)
-
-        #expect(apiClient.lastRequestPath?.contains("/wants/1867708") == true)
-        #expect(fetcher.lastFetch?.forceRefresh == true)
-        #expect(store.lastMutationError == nil)
-    }
-
-    @Test func deleteReleaseExcludesItemFromRefreshStaleData() async {
-        let fetcher = MockWantListCachedFetcher()
-        fetcher.delayNanoseconds = 100_000_000
         let apiClient = MockWantListNetworkClient()
         let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
         await store.loadWants()
+        #expect(store.wants == .loaded(WantListFixtures.sampleWants))
 
-        let remaining = Array(WantListFixtures.sampleWants.dropFirst())
-        async let deletion: Void = store.deleteRelease(releaseId: 1_867_708)
-        try? await Task.sleep(for: .milliseconds(10))
-        #expect(store.wants == .refreshing(remaining))
-        await deletion
+        await store.deleteRelease(releaseId: 1_867_708)
+
+        #expect(apiClient.lastRequestPath?.contains("/wants/1867708") == true)
+        #expect(store.wants == .loaded(Array(WantListFixtures.sampleWants.dropFirst())))
+        #expect(store.canLoadMore())
+        #expect(fetcher.fetchCount == 1)
+        #expect(store.lastMutationError == nil)
     }
 
     @Test func addReleaseCallsEndpointAndRefreshes() async {

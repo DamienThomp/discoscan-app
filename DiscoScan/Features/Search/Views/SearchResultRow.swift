@@ -9,16 +9,32 @@ struct SearchResultRow: View {
     let result: SearchResult
 
     var body: some View {
-        HStack {
-            ReleaseArtworkView(url: result.thumb, size: .thumb)
+        HStack(spacing: 16) {
+            ReleaseArtworkView(url: result.thumb, size: .medium)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(result.title)
                     .font(.headline)
                     .lineLimit(2)
+
                 Text(result.type.capitalized)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+
+                    if let format = result.format {
+                        HStack {
+                            ForEach(format.enumerated(), id: \.offset) { index, item in
+                                Text(item)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if index < format.count - 1 {
+                                    Divider()
+                                        .frame(height: 8)
+                                }
+                            }
+                        }
+                    }
+
             }
         }
         .accessibilityElement(children: .combine)
@@ -34,7 +50,8 @@ struct SearchResultRow: View {
             result: SearchResult(
                 id: 249_504,
                 type: "release",
-                title: "Rick Astley - Never Gonna Give You Up"
+                title: "Rick Astley - Never Gonna Give You Up",
+                format: ["Vinyl", "LP", "Album", "Stereo"]
             )
         )
     }

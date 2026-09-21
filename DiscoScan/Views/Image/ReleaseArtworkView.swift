@@ -12,7 +12,7 @@ enum ReleaseArtworkSize {
 
     var baseDimension: CGFloat {
         switch self {
-        case .thumb: 50
+        case .thumb: 80
         case .medium: 120
         case .large: 280
         }

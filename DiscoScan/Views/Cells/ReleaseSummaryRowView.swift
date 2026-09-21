@@ -9,19 +9,19 @@ struct ReleaseSummaryRowView: View {
     let information: ReleaseBasicInformation
 
     var body: some View {
-        HStack {
-            ReleaseArtworkView(url: information.listArtworkURL, size: .thumb)
+        HStack(spacing: 16) {
+            ReleaseArtworkView(url: information.listArtworkURL, size: .medium)
 
             VStack(alignment: .leading) {
                 Text(information.title)
                     .font(.headline.bold())
-                HStack {
+                Group {
                     Text(information.primaryArtistName)
                     if let year = information.year {
                         Text(year, format: .number.grouping(.never))
                     }
                 }
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
         }
