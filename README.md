@@ -4,6 +4,8 @@ A native iOS app for vinyl collectors. DiscoScan connects to your [Discogs](http
 
 Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme with a shared design token layer and reusable UI components.
 
+> **Note:** This repository is public for portfolio and code review purposes only. It depends on private packages and is **not intended to be forked or built by others** without access to those dependencies.
+
 ## Features
 
 ### Search
@@ -91,7 +93,7 @@ Key integrations:
 
 3. **Open in Xcode**
 
-   Open `DiscoScan.xcodeproj`. Xcode resolves the NetworkKit Swift Package dependency automatically.
+   Open `DiscoScan.xcodeproj`. Xcode resolves the private NetworkKit Swift Package dependency automatically (requires repository access).
 
 4. **Build and run**
 
