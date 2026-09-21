@@ -23,30 +23,10 @@ struct DiscoScanApp: App {
         cachedFetcher = dependencies.cachedFetcher
         sleeveIdentifier = dependencies.sleeveIdentifier
         _authSession = State(initialValue: AuthSession(dependencies: dependencies))
-        _collectionStore = State(
-            initialValue: CollectionStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
-        _wantListStore = State(
-            initialValue: WantListStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
-        _releaseStore = State(
-            initialValue: ReleaseStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
-        _searchStore = State(
-            initialValue: SearchStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
+        _collectionStore = State(initialValue: CollectionStore(dependencies: dependencies))
+        _wantListStore = State(initialValue: WantListStore(dependencies: dependencies))
+        _releaseStore = State(initialValue: ReleaseStore(cachedFetcher: dependencies.cachedFetcher))
+        _searchStore = State(initialValue: SearchStore(cachedFetcher: dependencies.cachedFetcher))
     }
 
     var body: some Scene {

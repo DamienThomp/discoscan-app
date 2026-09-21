@@ -14,8 +14,6 @@ struct AppRouteDestination: View {
             SearchResultsView(context: context)
         case .releaseDetail(let id):
             ReleaseDetailView(releaseID: id)
-        case .userProfile(let username):
-            UserProfileView(username: username)
         case .collectionFolder(let id, let name):
             CollectionListView(folderId: id, folderName: name)
         }

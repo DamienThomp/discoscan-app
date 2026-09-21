@@ -15,7 +15,6 @@ enum AppTab: Hashable {
 enum AppRoute: Hashable {
     case searchResults(context: SearchContext)
     case releaseDetail(id: Int)
-    case userProfile(username: String)
     case collectionFolder(id: Int, name: String)
 }
 

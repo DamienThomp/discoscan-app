@@ -28,8 +28,8 @@ final class CollectionStore: CollectionStoreProtocol {
         self.apiClient = apiClient
     }
 
-    convenience init(dependencies: AppDependencies, cachedFetcher: any CachedFetcherProtocol) {
-        self.init(cachedFetcher: cachedFetcher, apiClient: dependencies.apiClient)
+    convenience init(dependencies: AppDependencies) {
+        self.init(cachedFetcher: dependencies.cachedFetcher, apiClient: dependencies.apiClient)
     }
 
     func sync(with state: AuthSession.State) {
