@@ -2,7 +2,7 @@
 
 A native iOS app for vinyl collectors. DiscoScan connects to your [Discogs](https://www.discogs.com) account so you can search releases, browse your collection, manage your want list, and identify records by barcode or sleeve photo.
 
-Built with SwiftUI, targeting iOS 26.5+.
+Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme with a shared design token layer and reusable UI components.
 
 ## Features
 
@@ -31,7 +31,7 @@ Built with SwiftUI, targeting iOS 26.5+.
 ### Account
 
 - **Discogs OAuth** — Sign in with your Discogs account. Tokens are stored in the Keychain.
-- **Profile tab** — View signed-in username and sign out.
+- **Profile tab** — Avatar, display name, location, collection size, member since, and bio from your Discogs profile. Pull to refresh; sign out from the toolbar.
 
 ## Architecture
 
@@ -40,7 +40,9 @@ DiscoScan follows a protocol-oriented MV pattern:
 | Layer | Description |
 |-------|-------------|
 | **Views** | SwiftUI views bind directly to `@Observable` stores |
-| **Stores** | `CollectionStore`, `WantListStore`, `ReleaseStore`, `SearchStore`, `AuthSession` — async loading via `ResourceState<T>` |
+| **Stores** | `CollectionStore`, `WantListStore`, `ReleaseStore`, `SearchStore`, `ProfileStore`, `AuthSession` — async loading via `ResourceState<T>` |
+| **Async UI** | Screen-level loading/error/empty states via `ResourceContainerView`; paginated release lists via `PaginatedReleaseListView` |
+| **Design** | Static tokens in `Design/` (`AppSpacing`, `AppTypography`, `AppIconSize`); shared components in `Views/` (rows, artwork, brand icon, empty states) |
 | **Networking** | Typed `EndpointProtocol` structs via [NetworkKit](https://github.com/DamienThomp/NetworkKit) |
 | **Caching** | SwiftData-backed `CachedFetcher` with TTL policies per data type |
 | **Navigation** | Typed `AppRoute` + `NavigationPath` via `AppRouter` |
@@ -103,16 +105,26 @@ DiscoScan/
 ├── Auth/             # OAuth, Keychain token storage
 ├── Configuration/    # DiscogsConfig, GeminiConfig, Secrets.xcconfig
 ├── Data/             # CachedFetcher, RecentSearchStore
+├── Design/           # Spacing, typography, and icon size tokens
+├── Environment/      # Store and service environment keys
 ├── Features/
 │   ├── Auth/         # Login
 │   ├── Collection/   # Folders, releases, create folder
+│   ├── Navigation/   # AppRoute stack and destinations
+│   ├── Profile/      # Profile store and My Profile screen
 │   ├── Release/      # Release detail, folder picker
+│   ├── Root/         # RootView, MainTabView
 │   ├── Search/       # Search, barcode, image identification
-│   ├── WantList/     # Want list
-│   └── Profile/      # My profile
+│   └── WantList/     # Want list
 ├── Models/           # Decodable domain types
 ├── Networking/       # Endpoints, interceptors, Gemini client
-└── Views/            # Shared UI (artwork, loading, rows)
+└── Views/            # Shared UI across features
+    ├── AsyncState/   # ResourceContainerView, loading/error/empty states
+    ├── Brand/        # BrandDiscIcon
+    ├── Cells/        # Release rows, tracklist, format tags
+    ├── Detail/       # Detail section blocks
+    ├── Image/        # ReleaseArtworkView, AvatarView
+    └── Text/         # Secondary footnote text
 ```
 
 ## Testing
@@ -120,10 +132,10 @@ DiscoScan/
 The project uses [Swift Testing](https://developer.apple.com/documentation/testing). Run tests in Xcode (⌘U) or via CLI:
 
 ```bash
-xcodebuild test -scheme DiscoScan -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -scheme DiscoScan -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
-Test coverage includes stores, OAuth, caching, rate limiting, search endpoints, and Gemini sleeve identification.
+Test coverage includes stores (collection, want list, release, search, profile), OAuth, caching, rate limiting, search endpoints, and Gemini sleeve identification.
 
 ## Permissions
 

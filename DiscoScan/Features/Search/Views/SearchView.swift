@@ -35,13 +35,13 @@ struct SearchView: View {
                         Label("Identify from photo", systemImage: "camera.viewfinder")
                     }
                     .accessibilityLabel("Identify from photo")
-                }.font(.system(size: 20))
+                }.font(.title3)
             }
 
             Section {
-                Text("Photo ID works best with readable text or recognizable artwork. For plain covers, scan the barcode.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                SecondaryFootnoteText(
+                    text: "Photo ID works best with readable text or recognizable artwork. For plain covers, scan the barcode."
+                )
             }
 
             if !recentSearches.isEmpty {

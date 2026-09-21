@@ -11,11 +11,8 @@ struct LoginView: View {
     @State private var showErrorAlert = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "opticaldisc.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.tint)
-                .accessibilityHidden(true)
+        VStack(spacing: AppSpacing.screen) {
+            BrandDiscIcon()
 
             Text("DiscoScan")
                 .font(.largeTitle.bold())
@@ -52,7 +49,9 @@ struct LoginView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     LoginView()
         .environment(previewAuthSession())
 }
+#endif

@@ -12,12 +12,8 @@ struct LoadingView: View {
     @State private var isAnimating: Bool = true
 
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "opticaldisc.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.tint)
-                .symbolEffect(.rotate, options: .speed(10), isActive: isAnimating)
-                .accessibilityHidden(true)
+        VStack(spacing: AppSpacing.metadata * 2) {
+            BrandDiscIcon(isAnimating: isAnimating)
             Text(text)
                 .font(.title2)
 
@@ -25,6 +21,8 @@ struct LoadingView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     LoadingView()
 }
+#endif

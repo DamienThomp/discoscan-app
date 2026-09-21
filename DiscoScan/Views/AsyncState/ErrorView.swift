@@ -13,11 +13,8 @@ struct ErrorView: View {
     var body: some View {
         ContentUnavailableView {
             VStack {
-                Image(systemName: "opticaldisc.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.tint)
+                BrandDiscIcon()
                     .padding()
-                    .accessibilityHidden(true)
             }
         } description: {
             if let message {
@@ -36,6 +33,8 @@ struct ErrorView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ErrorView(message: "something went wrong", action: { print("retry") })
 }
+#endif

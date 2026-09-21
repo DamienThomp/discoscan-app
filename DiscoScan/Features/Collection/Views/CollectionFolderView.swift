@@ -20,7 +20,7 @@ struct CollectionFolderView: View {
                         Label {
                             Text(folder.name).font(.title2)
                         } icon: {
-                            Image(systemName: "folder").font(.system(size: 20))
+                            Image(systemName: "folder").font(.system(size: AppIconSize.listAction))
                         }
                         .badge(folder.count)
                     }

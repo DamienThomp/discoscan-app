@@ -34,6 +34,7 @@ struct DiscoScanApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .tint(.accentColor)
                 .environment(authSession)
                 .environment(\.collectionStore, collectionStore)
                 .environment(\.wantListStore, wantListStore)
