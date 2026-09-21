@@ -12,26 +12,28 @@ struct MyProfileContent: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                avatarView
+            VStack(spacing: AppSpacing.content) {
+                AvatarView(
+                    url: profile.avatarImageURL,
+                    size: avatarSize,
+                    accessibilityLabel: "Profile photo for \(profile.displayName)"
+                )
 
-                VStack(spacing: 4) {
+                VStack(spacing: AppSpacing.metadata) {
                     Text(profile.displayName)
                         .font(.title2.bold())
                         .multilineTextAlignment(.center)
 
                     Text("@\(profile.username)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .appSecondaryMetadata()
                 }
 
                 if let location = profile.location, !location.isEmpty {
                     Label(location, systemImage: "mappin.and.ellipse")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .appSecondaryMetadata()
                 }
 
-                VStack(spacing: 12) {
+                VStack(spacing: AppSpacing.section) {
                     LabeledContent("Collection", value: profile.displayCollectionCount)
                     LabeledContent("Member since", value: profile.displayRegisteredDate)
                 }
@@ -45,44 +47,7 @@ struct MyProfileContent: View {
                         .padding(.horizontal)
                 }
             }
-            .padding(.vertical, 24)
-        }
-    }
-
-    @ViewBuilder
-    private var avatarView: some View {
-        Group {
-            if let url = profile.avatarImageURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .failure:
-                        avatarPlaceholder
-                    case .empty:
-                        ProgressView()
-                    @unknown default:
-                        avatarPlaceholder
-                    }
-                }
-            } else {
-                avatarPlaceholder
-            }
-        }
-        .frame(width: avatarSize, height: avatarSize)
-        .clipShape(Circle())
-        .accessibilityLabel("Profile photo for \(profile.displayName)")
-    }
-
-    private var avatarPlaceholder: some View {
-        ZStack {
-            Circle()
-                .fill(.quaternary)
-
-            Image(systemName: "person.crop.circle.fill")
-                .font(.system(size: avatarSize * 0.55))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
+            .padding(.vertical, AppSpacing.screen)
         }
     }
 }

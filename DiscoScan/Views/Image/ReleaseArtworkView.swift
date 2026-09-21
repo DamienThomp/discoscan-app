@@ -141,7 +141,6 @@ private struct ReleaseArtworkPlaceholder: View {
                 ProgressView()
             } else {
                 Image(systemName: "opticaldisc")
-                    .font(.system(size: 64))
                     .font(.title2)
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)

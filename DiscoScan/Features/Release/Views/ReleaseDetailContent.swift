@@ -10,11 +10,11 @@ struct ReleaseDetailContent: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
+            LazyVStack(alignment: .leading, spacing: AppSpacing.content) {
                 header
                 metadataSection
                 if let genreStyleSummary = release.genreStyleSummary {
-                    detailSection(title: "Genres & Styles", value: genreStyleSummary)
+                    DetailSectionView(title: "Genres & Styles", value: genreStyleSummary)
                 }
                 if !release.tracklist.isEmpty {
                     tracklistSection
@@ -27,14 +27,14 @@ struct ReleaseDetailContent: View {
     }
 
     private var header: some View {
-        VStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .center, spacing: AppSpacing.metadata * 2) {
             ReleaseArtworkView(
                 url: release.primaryImageURL,
                 size: .large,
                 accessibilityLabel: "Album artwork for \(release.title)"
             )
 
-            VStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .center, spacing: AppSpacing.metadata * 2) {
                 Text(release.title)
                     .font(.title2.bold())
 
@@ -42,7 +42,7 @@ struct ReleaseDetailContent: View {
                     .font(.headline)
                     .foregroundStyle(.secondary)
 
-                HStack(spacing: 8) {
+                HStack(spacing: AppSpacing.metadata * 2) {
                     if let year = release.displayYear {
                         Text(year, format: .number.grouping(.never))
                     }
@@ -53,8 +53,7 @@ struct ReleaseDetailContent: View {
                         Text(released)
                     }
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .appSecondaryMetadata()
             }
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
@@ -64,42 +63,27 @@ struct ReleaseDetailContent: View {
     }
 
     private var metadataSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.section) {
             if let formatSummary = release.formatSummary {
-                detailSection(title: "Format", value: formatSummary)
+                DetailSectionView(title: "Format", value: formatSummary)
             }
             if let labelSummary = release.labelSummary {
-                detailSection(title: "Label", value: labelSummary)
+                DetailSectionView(title: "Label", value: labelSummary)
             }
         }
     }
 
     private var tracklistSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.metadata * 2) {
             Text("Tracklist")
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
+                .appSectionHeader()
 
             ForEach(Array(release.tracklist.enumerated()), id: \.offset) { _, track in
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(track.position)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, alignment: .leading)
-
-                    Text(track.title)
-                        .font(.body)
-
-                    Spacer(minLength: 8)
-
-                    if let duration = track.duration, !duration.isEmpty {
-                        Text(duration)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(trackAccessibilityLabel(for: track))
+                TracklistRowView(
+                    position: track.position,
+                    title: track.title,
+                    duration: track.duration
+                )
             }
         }
         .accessibilityElement(children: .contain)
@@ -114,7 +98,7 @@ struct ReleaseDetailContent: View {
             let formattedAverage = average.formatted(.number.precision(.fractionLength(1)))
             return "\(formattedAverage) avg (\(release.community.rating.count) ratings)"
         }()
-        return detailSection(
+        return DetailSectionView(
             title: "Community",
             value: "\(release.community.have) have · \(release.community.want) want · \(ratingSummary)"
         )
@@ -132,26 +116,5 @@ struct ReleaseDetailContent: View {
             components.append(released)
         }
         return components.joined(separator: ", ")
-    }
-
-    private func trackAccessibilityLabel(for track: ReleaseDetailTrack) -> String {
-        if let duration = track.duration, !duration.isEmpty {
-            return "\(track.position), \(track.title), \(duration)"
-        }
-        return "\(track.position), \(track.title)"
-    }
-
-    private func detailSection(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
-            Text(value)
-                .font(.body)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(value)")
     }
 }

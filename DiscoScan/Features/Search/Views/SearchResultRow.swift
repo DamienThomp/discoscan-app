@@ -9,37 +9,18 @@ struct SearchResultRow: View {
     let result: SearchResult
 
     var body: some View {
-        HStack(spacing: 16) {
-            ReleaseArtworkView(url: result.thumb, size: .medium)
+        ReleaseRowLayout(
+            artworkURL: result.thumb,
+            title: result.title,
+            accessibilityLabel: "\(result.title), \(result.type)"
+        ) {
+            Text(result.type.capitalized)
+                .appSecondaryMetadata()
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(result.title)
-                    .font(.headline)
-                    .lineLimit(2)
-
-                Text(result.type.capitalized)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                    if let format = result.format {
-                        HStack {
-                            ForEach(format.enumerated(), id: \.offset) { index, item in
-                                Text(item)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                if index < format.count - 1 {
-                                    Divider()
-                                        .frame(height: 8)
-                                }
-                            }
-                        }
-                    }
-
+            if let format = result.format {
+                FormatTagsRow(formats: format)
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(result.title), \(result.type)")
-        .accessibilityHint("Shows release details")
     }
 }
 

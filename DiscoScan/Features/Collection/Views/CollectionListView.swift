@@ -11,7 +11,6 @@ struct CollectionListView: View {
     let folderName: String
 
     @Environment(\.collectionStore) private var store
-    @State private var isAnimating: Bool = true
 
     private var releasesState: ResourceState<[CollectionReleaseItem]> {
         store.releasesByFolderID[folderId] ?? .idle
@@ -22,44 +21,26 @@ struct CollectionListView: View {
             state: releasesState,
             retry: { await store.loadReleases(folderId: folderId, forceRefresh: true) }
         ) { releases in
-            if releases.isEmpty {
-                ContentUnavailableView(
-                    "Collection",
+            PaginatedReleaseListView(
+                items: releases,
+                emptyState: .init(
+                    title: "Collection",
                     systemImage: "square.stack",
-                    description: Text("This folder is empty.")
-                )
-                .transition(.opacity) 
-                .symbolRenderingMode(.multicolor)
-                .symbolEffect(.bounce.down, options: .repeat(2), isActive: isAnimating)
-            } else {
-                List {
-                    ForEach(releases) { item in
-                        NavigationLink(value: AppRoute.releaseDetail(id: item.releaseId)) {
-                            ReleaseSummaryRowView(information: item.basicInformation)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                Task {
-                                    await store.deleteRelease(
-                                        from: folderId,
-                                        releaseId: item.releaseId,
-                                        instanceId: item.instanceId
-                                    )
-                                }
-                            } label: {
-                                Label("Remove", systemImage: "trash")
-                            }
-                        }
-                    }
-
-                    if store.canLoadMore(folderId: folderId) {
-                        PaginationTrigger {
-                            await store.loadMoreReleases(folderId: folderId)
-                        }
-                    }
+                    description: "This folder is empty.",
+                    effect: .bounceDown
+                ),
+                releaseID: { $0.releaseId },
+                basicInformation: { $0.basicInformation },
+                canLoadMore: store.canLoadMore(folderId: folderId),
+                loadMore: { await store.loadMoreReleases(folderId: folderId) },
+                delete: { item in
+                    await store.deleteRelease(
+                        from: folderId,
+                        releaseId: item.releaseId,
+                        instanceId: item.instanceId
+                    )
                 }
-                .transition(.opacity)
-            }
+            )
         }
         .navigationTitle(folderName)
         .task {

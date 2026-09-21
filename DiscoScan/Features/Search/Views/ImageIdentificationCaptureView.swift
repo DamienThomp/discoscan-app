@@ -16,7 +16,7 @@ struct ImageIdentificationCaptureView: View {
     let errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: AppSpacing.screen) {
             if let imageData {
                 IdentificationImagePreview(imageData: imageData)
             }
@@ -24,7 +24,7 @@ struct ImageIdentificationCaptureView: View {
             if isAnalyzing {
                 ProgressView("Analyzing sleeve…")
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: AppSpacing.section) {
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                         Label("Choose from Library", systemImage: "photo.on.rectangle")
                             .frame(maxWidth: .infinity)
@@ -43,16 +43,12 @@ struct ImageIdentificationCaptureView: View {
             }
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                SecondaryFootnoteText(text: errorMessage)
             }
 
-            Text("Include the spine or back cover when the front has no text.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            SecondaryFootnoteText(
+                text: "Include the spine or back cover when the front has no text."
+            )
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)

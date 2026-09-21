@@ -36,16 +36,17 @@ nonisolated struct SearchEndpoint: EndpointProtocol {
 
     var queryItems: [URLQueryItem]? {
         var items = [
+            URLQueryItem(name: "type", value: "release"),
             URLQueryItem(name: "page", value: String(page)),
-            URLQueryItem(name: "per_page", value: String(perPage))
+            URLQueryItem(name: "per_page", value: String(perPage)),
         ]
 
         switch mode {
         case .text(let query):
             items.insert(URLQueryItem(name: "q", value: query), at: 0)
+
         case .barcode(let code):
             items.insert(URLQueryItem(name: "barcode", value: code), at: 0)
-            items.insert(URLQueryItem(name: "type", value: "release"), at: 1)
         }
 
         return items

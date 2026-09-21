@@ -9,25 +9,19 @@ struct ReleaseSummaryRowView: View {
     let information: ReleaseBasicInformation
 
     var body: some View {
-        HStack(spacing: 16) {
-            ReleaseArtworkView(url: information.listArtworkURL, size: .medium)
-
-            VStack(alignment: .leading) {
-                Text(information.title)
-                    .font(.headline.bold())
-                Group {
-                    Text(information.primaryArtistName)
-                    if let year = information.displayYear {
-                        Text(year, format: .number.grouping(.never))
-                    }
+        ReleaseRowLayout(
+            artworkURL: information.listArtworkURL,
+            title: information.title,
+            accessibilityLabel: accessibilityLabel
+        ) {
+            Group {
+                Text(information.primaryArtistName)
+                if let year = information.displayYear {
+                    Text(year, format: .number.grouping(.never))
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
             }
+            .appSecondaryMetadata()
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint("Shows release details")
     }
 
     private var accessibilityLabel: String {

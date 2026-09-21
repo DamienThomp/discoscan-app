@@ -13,11 +13,8 @@ struct ErrorView: View {
     var body: some View {
         ContentUnavailableView {
             VStack {
-                Image(systemName: "opticaldisc.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.tint)
+                BrandDiscIcon()
                     .padding()
-                    .accessibilityHidden(true)
             }
         } description: {
             if let message {
