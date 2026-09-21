@@ -33,6 +33,8 @@ struct ErrorView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ErrorView(message: "something went wrong", action: { print("retry") })
 }
+#endif

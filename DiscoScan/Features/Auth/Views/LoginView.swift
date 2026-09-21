@@ -49,7 +49,9 @@ struct LoginView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     LoginView()
         .environment(previewAuthSession())
 }
+#endif

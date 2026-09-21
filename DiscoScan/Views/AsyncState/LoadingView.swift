@@ -21,6 +21,8 @@ struct LoadingView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     LoadingView()
 }
+#endif
