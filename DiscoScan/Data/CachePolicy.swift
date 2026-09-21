@@ -7,6 +7,7 @@ import Foundation
 
 nonisolated enum CacheScope: String, Sendable, CaseIterable {
     case identity
+    case profile
     case search
     case wantlist
     case collection
@@ -14,7 +15,7 @@ nonisolated enum CacheScope: String, Sendable, CaseIterable {
 
     var ttl: TimeInterval {
         switch self {
-        case .identity:
+        case .identity, .profile:
             60 * 60 * 24
         case .search:
             60 * 15
