@@ -22,6 +22,12 @@ nonisolated struct SearchPagination: Codable, Sendable, Equatable {
         case perPage
         case items
     }
+
+    func afterRemovingOneItem() -> SearchPagination {
+        let newItems = max(0, items - 1)
+        let newPages = max(1, (newItems + perPage - 1) / perPage)
+        return SearchPagination(page: page, pages: newPages, perPage: perPage, items: newItems)
+    }
 }
 
 nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identifiable {
@@ -30,6 +36,8 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
     let title: String
     let thumb: URL?
     let resourceURL: URL?
+    let format: [String]?
+    let catno: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -37,6 +45,8 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         case title
         case thumb
         case resourceURL
+        case format
+        case catno
     }
 
     init(
@@ -44,13 +54,17 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         type: String,
         title: String,
         thumb: URL? = nil,
-        resourceURL: URL? = nil
+        resourceURL: URL? = nil,
+        format: [String]? = nil,
+        catno: String? = nil
     ) {
         self.id = id
         self.type = type
         self.title = title
         self.thumb = thumb
         self.resourceURL = resourceURL
+        self.format = format
+        self.catno = catno
     }
 
     init(from decoder: any Decoder) throws {
@@ -58,18 +72,9 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         id = try container.decode(Int.self, forKey: .id)
         type = try container.decode(String.self, forKey: .type)
         title = try container.decode(String.self, forKey: .title)
-        thumb = Self.decodeURL(from: container, forKey: .thumb)
-        resourceURL = Self.decodeURL(from: container, forKey: .resourceURL)
-    }
-
-    private static func decodeURL(
-        from container: KeyedDecodingContainer<CodingKeys>,
-        forKey key: CodingKeys
-    ) -> URL? {
-        guard let string = try? container.decodeIfPresent(String.self, forKey: key),
-              !string.isEmpty else {
-            return nil
-        }
-        return URL(string: string)
+        thumb = container.decodeDiscogsURL(forKey: .thumb)
+        resourceURL = container.decodeDiscogsURL(forKey: .resourceURL)
+        format = try container.decodeIfPresent([String].self, forKey: .format)
+        catno = try container.decodeIfPresent(String.self, forKey: .catno)
     }
 }

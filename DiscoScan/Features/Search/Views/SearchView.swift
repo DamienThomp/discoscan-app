@@ -21,19 +21,21 @@ struct SearchView: View {
 
 
             Section("Find a record") {
-                Button {
-                    isShowingBarcodeScanner = true
-                } label: {
-                    Label("Scan barcode", systemImage: "barcode.viewfinder")
-                }
-                .accessibilityLabel("Scan barcode")
+                Group {
+                    Button {
+                        isShowingBarcodeScanner = true
+                    } label: {
+                        Label("Scan barcode", systemImage: "barcode.viewfinder")
+                    }
+                    .accessibilityLabel("Scan barcode")
 
-                Button {
-                    isShowingImageIdentification = true
-                } label: {
-                    Label("Identify from photo", systemImage: "camera.viewfinder")
-                }
-                .accessibilityLabel("Identify from photo")
+                    Button {
+                        isShowingImageIdentification = true
+                    } label: {
+                        Label("Identify from photo", systemImage: "camera.viewfinder")
+                    }
+                    .accessibilityLabel("Identify from photo")
+                }.font(.system(size: 20))
             }
 
             Section {

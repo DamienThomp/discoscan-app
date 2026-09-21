@@ -13,6 +13,7 @@ struct DiscoScanApp: App {
     @State private var wantListStore: WantListStore
     @State private var releaseStore: ReleaseStore
     @State private var searchStore: SearchStore
+    @State private var profileStore: ProfileStore
     @State private var router = AppRouter()
 
     private let cachedFetcher: any CachedFetcherProtocol
@@ -23,30 +24,11 @@ struct DiscoScanApp: App {
         cachedFetcher = dependencies.cachedFetcher
         sleeveIdentifier = dependencies.sleeveIdentifier
         _authSession = State(initialValue: AuthSession(dependencies: dependencies))
-        _collectionStore = State(
-            initialValue: CollectionStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
-        _wantListStore = State(
-            initialValue: WantListStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
-        _releaseStore = State(
-            initialValue: ReleaseStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
-        _searchStore = State(
-            initialValue: SearchStore(
-                dependencies: dependencies,
-                cachedFetcher: dependencies.cachedFetcher
-            )
-        )
+        _collectionStore = State(initialValue: CollectionStore(dependencies: dependencies))
+        _wantListStore = State(initialValue: WantListStore(dependencies: dependencies))
+        _releaseStore = State(initialValue: ReleaseStore(cachedFetcher: dependencies.cachedFetcher))
+        _searchStore = State(initialValue: SearchStore(cachedFetcher: dependencies.cachedFetcher))
+        _profileStore = State(initialValue: ProfileStore(dependencies: dependencies))
     }
 
     var body: some Scene {
@@ -57,6 +39,7 @@ struct DiscoScanApp: App {
                 .environment(\.wantListStore, wantListStore)
                 .environment(\.releaseStore, releaseStore)
                 .environment(\.searchStore, searchStore)
+                .environment(\.profileStore, profileStore)
                 .environment(router)
                 .environment(\.cachedFetcher, cachedFetcher)
                 .environment(\.sleeveIdentifier, sleeveIdentifier)
@@ -66,6 +49,7 @@ struct DiscoScanApp: App {
                 .onChange(of: authSession.state) { _, newState in
                     collectionStore.sync(with: newState)
                     wantListStore.sync(with: newState)
+                    profileStore.sync(with: newState)
                 }
                 .preferredColorScheme(.dark)
         }

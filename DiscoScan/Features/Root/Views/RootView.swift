@@ -14,13 +14,11 @@ struct RootView: View {
         Group {
             switch authSession.state {
             case .bootstrapping:
-                ProgressView("Loading…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                LoadingView()
             case .unauthenticated, .failed:
                 LoginView()
             case .authenticating:
-                ProgressView("Connecting to Discogs…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                LoadingView(text: "Connecting to Discogs…")
             case .authenticated:
                 MainTabView()
             }

@@ -173,31 +173,23 @@ struct CollectionStoreTests {
         #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
     }
 
-    @Test func deleteReleaseRefreshesAffectedData() async {
+    @Test func deleteReleaseRemovesItemLocallyAndRefreshesFoldersOnly() async {
         let fetcher = MockCollectionCachedFetcher()
-        let apiClient = MockCollectionNetworkClient()
-        let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
-
-        store.sync(with: .authenticated(identity))
-        await store.deleteRelease(from: 1, releaseId: 100, instanceId: 1000)
-
-        #expect(apiClient.lastRequestPath?.contains("/instances/1000") == true)
-        #expect(fetcher.fetchCount >= 2)
-        #expect(store.lastMutationError == nil)
-    }
-
-    @Test func deleteReleaseExcludesItemFromRefreshStaleData() async {
-        let fetcher = MockCollectionCachedFetcher()
-        fetcher.delayNanoseconds = 100_000_000
         let apiClient = MockCollectionNetworkClient()
         let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
         await store.loadReleases(folderId: 1)
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
 
-        async let deletion: Void = store.deleteRelease(from: 1, releaseId: 100, instanceId: 1000)
-        try? await Task.sleep(for: .milliseconds(10))
-        #expect(store.releasesByFolderID[1] == .refreshing([]))
-        await deletion
+        await store.deleteRelease(from: 1, releaseId: 100, instanceId: 1000)
+
+        #expect(apiClient.lastRequestPath?.contains("/instances/1000") == true)
+        #expect(store.releasesByFolderID[1] == .loaded([]))
+        #expect(store.canLoadMore(folderId: 1))
+        #expect(fetcher.fetchCount == 2)
+        #expect(fetcher.lastFetch?.key == "collectionFolders")
+        #expect(fetcher.lastFetch?.forceRefresh == true)
+        #expect(store.lastMutationError == nil)
     }
 }

@@ -38,6 +38,10 @@ nonisolated struct ReleaseBasicInformation: Codable, Equatable, Sendable, Identi
         artists.first?.name ?? "n/a"
     }
 
+    var displayYear: Int? {
+        year.displayYear
+    }
+
     var listArtworkURL: URL? {
         coverImage ?? thumb
     }

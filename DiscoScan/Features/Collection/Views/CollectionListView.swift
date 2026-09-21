@@ -32,24 +32,33 @@ struct CollectionListView: View {
                 .symbolRenderingMode(.multicolor)
                 .symbolEffect(.bounce.down, options: .repeat(2), isActive: isAnimating)
             } else {
-                List(releases) { item in
-                    NavigationLink(value: AppRoute.releaseDetail(id: item.releaseId)) {
-                        ReleaseSummaryRowView(information: item.basicInformation)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            Task {
-                                await store.deleteRelease(
-                                    from: folderId,
-                                    releaseId: item.releaseId,
-                                    instanceId: item.instanceId
-                                )
+                List {
+                    ForEach(releases) { item in
+                        NavigationLink(value: AppRoute.releaseDetail(id: item.releaseId)) {
+                            ReleaseSummaryRowView(information: item.basicInformation)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                Task {
+                                    await store.deleteRelease(
+                                        from: folderId,
+                                        releaseId: item.releaseId,
+                                        instanceId: item.instanceId
+                                    )
+                                }
+                            } label: {
+                                Label("Remove", systemImage: "trash")
                             }
-                        } label: {
-                            Label("Remove", systemImage: "trash")
                         }
                     }
-                }.transition(.opacity)
+
+                    if store.canLoadMore(folderId: folderId) {
+                        PaginationTrigger {
+                            await store.loadMoreReleases(folderId: folderId)
+                        }
+                    }
+                }
+                .transition(.opacity)
             }
         }
         .navigationTitle(folderName)

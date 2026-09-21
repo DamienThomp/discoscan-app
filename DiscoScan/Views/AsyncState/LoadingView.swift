@@ -7,6 +7,8 @@ import SwiftUI
 
 struct LoadingView: View {
 
+    var text: String = "Loading…"
+
     @State private var isAnimating: Bool = true
 
     var body: some View {
@@ -15,7 +17,8 @@ struct LoadingView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
                 .symbolEffect(.rotate, options: .speed(10), isActive: isAnimating)
-            Text("Loading…")
+                .accessibilityHidden(true)
+            Text(text)
                 .font(.title2)
 
         }.frame(maxWidth: .infinity, maxHeight: .infinity)

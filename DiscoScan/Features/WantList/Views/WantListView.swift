@@ -25,17 +25,25 @@ struct WantListView: View {
                 .symbolEffect(.breathe, options: .speed(10).repeat(2), isActive: isAnimating)
 
             } else {
-                List(wants) { item in
-                    NavigationLink(value: AppRoute.releaseDetail(id: item.id)) {
-                        ReleaseSummaryRowView(information: item.basicInformation)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            Task {
-                                await store.deleteRelease(releaseId: item.id)
+                List {
+                    ForEach(wants) { item in
+                        NavigationLink(value: AppRoute.releaseDetail(id: item.id)) {
+                            ReleaseSummaryRowView(information: item.basicInformation)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                Task {
+                                    await store.deleteRelease(releaseId: item.id)
+                                }
+                            } label: {
+                                Label("Remove", systemImage: "trash")
                             }
-                        } label: {
-                            Label("Remove", systemImage: "trash")
+                        }
+                    }
+
+                    if store.canLoadMore() {
+                        PaginationTrigger {
+                            await store.loadMoreWants()
                         }
                     }
                 }

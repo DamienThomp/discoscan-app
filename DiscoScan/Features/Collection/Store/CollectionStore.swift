@@ -18,6 +18,7 @@ final class CollectionStore: CollectionStoreProtocol {
 
     private var username: String?
     private var paginationByFolderID: [Int: SearchPagination] = [:]
+    private var isLoadingMoreByFolderID: [Int: Bool] = [:]
 
     private let cachedFetcher: any CachedFetcherProtocol
     private let apiClient: NetworkManagerProtocol
@@ -27,8 +28,8 @@ final class CollectionStore: CollectionStoreProtocol {
         self.apiClient = apiClient
     }
 
-    convenience init(dependencies: AppDependencies, cachedFetcher: any CachedFetcherProtocol) {
-        self.init(cachedFetcher: cachedFetcher, apiClient: dependencies.apiClient)
+    convenience init(dependencies: AppDependencies) {
+        self.init(cachedFetcher: dependencies.cachedFetcher, apiClient: dependencies.apiClient)
     }
 
     func sync(with state: AuthSession.State) {
@@ -48,6 +49,7 @@ final class CollectionStore: CollectionStoreProtocol {
         folders = .idle
         releasesByFolderID = [:]
         paginationByFolderID = [:]
+        isLoadingMoreByFolderID = [:]
         isMutating = false
         lastMutationError = nil
     }
@@ -110,7 +112,12 @@ final class CollectionStore: CollectionStoreProtocol {
     }
 
     func loadMoreReleases(folderId: Int) async {
-        guard canLoadMore(folderId: folderId) else { return }
+        guard canLoadMore(folderId: folderId),
+              isLoadingMoreByFolderID[folderId] != true else { return }
+
+        isLoadingMoreByFolderID[folderId] = true
+        defer { isLoadingMoreByFolderID[folderId] = false }
+
         let nextPage = (paginationByFolderID[folderId]?.page ?? 0) + 1
         await loadReleases(folderId: folderId, page: nextPage, forceRefresh: false)
     }
@@ -136,6 +143,7 @@ final class CollectionStore: CollectionStoreProtocol {
             )
             releasesByFolderID.removeValue(forKey: folderId)
             paginationByFolderID.removeValue(forKey: folderId)
+            isLoadingMoreByFolderID.removeValue(forKey: folderId)
             await loadFolders(forceRefresh: true)
         }
     }
@@ -171,7 +179,9 @@ final class CollectionStore: CollectionStoreProtocol {
                     current.filter { $0.instanceId != instanceId }
                 )
             }
-            await loadReleases(folderId: folderId, forceRefresh: true)
+            if let pagination = paginationByFolderID[folderId] {
+                paginationByFolderID[folderId] = pagination.afterRemovingOneItem()
+            }
             await loadFolders(forceRefresh: true)
         }
     }

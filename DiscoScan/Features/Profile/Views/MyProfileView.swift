@@ -6,23 +6,15 @@
 import SwiftUI
 
 struct MyProfileView: View {
+    @Environment(\.profileStore) private var store
     @Environment(AuthSession.self) private var authSession
 
     var body: some View {
-        Group {
-            if case .authenticated(let identity) = authSession.state {
-                ContentUnavailableView(
-                    identity.username,
-                    systemImage: "person.crop.circle",
-                    description: Text("Your Discogs profile will appear here.")
-                )
-            } else {
-                ContentUnavailableView(
-                    "Profile",
-                    systemImage: "person.crop.circle",
-                    description: Text("Sign in to view your profile.")
-                )
-            }
+        ResourceContainerView(
+            state: store.profile,
+            retry: { await store.loadProfile(forceRefresh: true) }
+        ) { profile in
+            MyProfileContent(profile: profile)
         }
         .navigationTitle("Profile")
         .toolbar {
@@ -34,5 +26,39 @@ struct MyProfileView: View {
                 }
             }
         }
+        .task {
+            if store.profile == .idle {
+                await store.loadProfile()
+            }
+        }
+        .refreshable {
+            await store.loadProfile(forceRefresh: true)
+        }
     }
 }
+
+#if DEBUG
+#Preview("Loaded") {
+    NavigationStack {
+        MyProfileView()
+    }
+    .environment(\.profileStore, previewProfileStore(.loaded))
+    .environment(previewAuthenticatedAuthSession())
+}
+
+#Preview("Failed") {
+    NavigationStack {
+        MyProfileView()
+    }
+    .environment(\.profileStore, previewProfileStore(.failed("Could not load profile.")))
+    .environment(previewAuthenticatedAuthSession())
+}
+
+#Preview("Loading") {
+    NavigationStack {
+        MyProfileView()
+    }
+    .environment(\.profileStore, previewProfileStore(.loading))
+    .environment(previewAuthenticatedAuthSession())
+}
+#endif

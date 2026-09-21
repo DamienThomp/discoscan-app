@@ -20,10 +20,6 @@ final class ReleaseStore: ReleaseStoreProtocol {
         self.cachedFetcher = cachedFetcher
     }
 
-    convenience init(dependencies: AppDependencies, cachedFetcher: any CachedFetcherProtocol) {
-        self.init(cachedFetcher: cachedFetcher)
-    }
-
     func detail(for releaseId: Int) -> ResourceState<ReleaseDetailResponse> {
         detailsByID[releaseId] ?? .idle
     }

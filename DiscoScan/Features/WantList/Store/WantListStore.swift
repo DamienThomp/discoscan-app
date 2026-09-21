@@ -18,6 +18,7 @@ final class WantListStore: WantListStoreProtocol {
 
     private var username: String?
     private var pagination: SearchPagination?
+    private var isLoadingMore = false
 
     private let cachedFetcher: any CachedFetcherProtocol
     private let apiClient: NetworkManagerProtocol
@@ -27,8 +28,8 @@ final class WantListStore: WantListStoreProtocol {
         self.apiClient = apiClient
     }
 
-    convenience init(dependencies: AppDependencies, cachedFetcher: any CachedFetcherProtocol) {
-        self.init(cachedFetcher: cachedFetcher, apiClient: dependencies.apiClient)
+    convenience init(dependencies: AppDependencies) {
+        self.init(cachedFetcher: dependencies.cachedFetcher, apiClient: dependencies.apiClient)
     }
 
     func sync(with state: AuthSession.State) {
@@ -47,6 +48,7 @@ final class WantListStore: WantListStoreProtocol {
         username = nil
         wants = .idle
         pagination = nil
+        isLoadingMore = false
         isMutating = false
         lastMutationError = nil
     }
@@ -89,7 +91,11 @@ final class WantListStore: WantListStoreProtocol {
     }
 
     func loadMoreWants() async {
-        guard canLoadMore() else { return }
+        guard canLoadMore(), !isLoadingMore else { return }
+
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
         let nextPage = (pagination?.page ?? 0) + 1
         await loadWants(page: nextPage, forceRefresh: false)
     }
@@ -136,7 +142,9 @@ final class WantListStore: WantListStoreProtocol {
             if let current = wants.value {
                 wants = .loaded(current.filter { $0.id != releaseId })
             }
-            await loadWants(forceRefresh: true)
+            if let pagination {
+                self.pagination = pagination.afterRemovingOneItem()
+            }
         }
     }
 

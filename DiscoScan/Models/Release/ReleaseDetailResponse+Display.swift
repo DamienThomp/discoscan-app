@@ -6,6 +6,10 @@
 import Foundation
 
 extension ReleaseDetailResponse {
+    var displayYear: Int? {
+        year.displayYear
+    }
+
     var primaryArtistName: String {
         artists.first?.name ?? "n/a"
     }

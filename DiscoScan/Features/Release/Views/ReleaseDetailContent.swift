@@ -43,7 +43,7 @@ struct ReleaseDetailContent: View {
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: 8) {
-                    if let year = release.year {
+                    if let year = release.displayYear {
                         Text(year, format: .number.grouping(.never))
                     }
                     if let country = release.country {
@@ -122,7 +122,7 @@ struct ReleaseDetailContent: View {
 
     private var headerAccessibilityLabel: String {
         var components = [release.title, release.primaryArtistName]
-        if let year = release.year {
+        if let year = release.displayYear {
             components.append(String(year))
         }
         if let country = release.country {

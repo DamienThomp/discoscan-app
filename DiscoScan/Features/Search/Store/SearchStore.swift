@@ -19,10 +19,6 @@ final class SearchStore: SearchStoreProtocol {
         self.cachedFetcher = cachedFetcher
     }
 
-    convenience init(dependencies: AppDependencies, cachedFetcher: any CachedFetcherProtocol) {
-        self.init(cachedFetcher: cachedFetcher)
-    }
-
     func results(for context: SearchContext) -> ResourceState<SearchResponse> {
         resultsByContext[context] ?? .idle
     }
