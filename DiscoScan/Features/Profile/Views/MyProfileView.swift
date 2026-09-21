@@ -16,12 +16,6 @@ struct MyProfileView: View {
                     systemImage: "person.crop.circle",
                     description: Text("Your Discogs profile will appear here.")
                 )
-            } else {
-                ContentUnavailableView(
-                    "Profile",
-                    systemImage: "person.crop.circle",
-                    description: Text("Sign in to view your profile.")
-                )
             }
         }
         .navigationTitle("Profile")

@@ -17,7 +17,7 @@ struct ReleaseSummaryRowView: View {
                     .font(.headline.bold())
                 Group {
                     Text(information.primaryArtistName)
-                    if let year = information.year {
+                    if let year = information.displayYear {
                         Text(year, format: .number.grouping(.never))
                     }
                 }
@@ -31,7 +31,7 @@ struct ReleaseSummaryRowView: View {
     }
 
     private var accessibilityLabel: String {
-        if let year = information.year {
+        if let year = information.displayYear {
             return "\(information.title), \(information.primaryArtistName), \(year)"
         }
         return "\(information.title), \(information.primaryArtistName)"
