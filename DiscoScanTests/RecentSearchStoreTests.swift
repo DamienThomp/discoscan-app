@@ -30,6 +30,17 @@ struct RecentSearchStoreTests {
         #expect(store.load() == ["Miles Davis"])
     }
 
+    @Test func clearAllRemovesEveryStoredQuery() {
+        let defaults = makeDefaults()
+        let store = RecentSearchStore(defaults: defaults)
+
+        store.add("Kind of Blue")
+        store.add("Bitches Brew")
+        store.clearAll()
+
+        #expect(store.load().isEmpty)
+    }
+
     private func makeDefaults() -> UserDefaults {
         let suiteName = "RecentSearchStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

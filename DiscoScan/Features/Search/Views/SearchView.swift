@@ -52,6 +52,13 @@ struct SearchView: View {
                         }
                     }
                     .onDelete(perform: deleteRecentSearches)
+
+                    Button("Clear Recent Searches") {
+                        clearRecentSearches()
+                    }
+                    .tint(.secondary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityLabel("Clear recent searches")
                 }
             }
         }
@@ -80,6 +87,13 @@ struct SearchView: View {
             recentSearchStore.remove(recentSearches[index])
         }
         recentSearches = recentSearchStore.load()
+    }
+
+    private func clearRecentSearches() {
+        withAnimation {
+            recentSearchStore.clearAll()
+            recentSearches = recentSearchStore.load()
+        }
     }
 }
 
