@@ -38,4 +38,8 @@ struct RecentSearchStore: Sendable {
         let recent = load().filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
         defaults.set(recent, forKey: Self.storageKey)
     }
+
+    func clearAll() {
+        defaults.removeObject(forKey: Self.storageKey)
+    }
 }
