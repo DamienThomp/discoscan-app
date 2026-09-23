@@ -14,6 +14,12 @@ struct SearchResultRow: View {
             title: result.title,
             accessibilityLabel: "\(result.title), \(result.type)"
         ) {
+
+            if let country = result.country {
+                Text(country)
+                    .font(.caption2)
+            }
+
             Text(result.type.capitalized)
                 .appSecondaryMetadata()
 
@@ -32,7 +38,8 @@ struct SearchResultRow: View {
                 id: 249_504,
                 type: "release",
                 title: "Rick Astley - Never Gonna Give You Up",
-                format: ["Vinyl", "LP", "Album", "Stereo"]
+                format: ["Vinyl", "LP", "Album", "Stereo"],
+                country: "United Kingdom",
             )
         )
     }
