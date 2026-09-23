@@ -40,6 +40,7 @@ struct ImageIdentificationCaptureView: View {
                     .buttonStyle(.bordered)
                 }
                 .controlSize(.large)
+
             }
 
             if let errorMessage {
@@ -55,46 +56,36 @@ struct ImageIdentificationCaptureView: View {
     }
 }
 
-struct ImagePickerCameraView: UIViewControllerRepresentable {
-    let onCapture: (Data) -> Void
-    let onCancel: () -> Void
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onCapture: onCapture, onCancel: onCancel)
-    }
-
-    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        let onCapture: (Data) -> Void
-        let onCancel: () -> Void
-
-        init(onCapture: @escaping (Data) -> Void, onCancel: @escaping () -> Void) {
-            self.onCapture = onCapture
-            self.onCancel = onCancel
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            onCancel()
-        }
-
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
-        ) {
-            if let image = info[.originalImage] as? UIImage,
-               let data = image.jpegData(compressionQuality: 0.85) {
-                onCapture(data)
-            } else {
-                onCancel()
-            }
-        }
-    }
+#if DEBUG
+#Preview("Idle") {
+    ImageIdentificationCaptureView(
+        selectedPhotoItem: .constant(nil),
+        isShowingCamera: .constant(false),
+        imageData: nil,
+        isAnalyzing: false,
+        errorMessage: nil
+    )
 }
+
+#Preview("Analyzing") {
+    ImageIdentificationCaptureView(
+        selectedPhotoItem: .constant(nil),
+        isShowingCamera: .constant(false),
+        imageData: nil,
+        isAnalyzing: true,
+        errorMessage: nil
+    )
+}
+
+#Preview("Failed") {
+    ImageIdentificationCaptureView(
+        selectedPhotoItem: .constant(nil),
+        isShowingCamera: .constant(false),
+        imageData: nil,
+        isAnalyzing: false,
+        errorMessage: "Could not load the selected photo."
+    )
+}
+#endif
+
+

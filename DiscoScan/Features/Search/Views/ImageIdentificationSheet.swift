@@ -14,39 +14,31 @@ struct ImageIdentificationSheet: View {
 
     let onSearch: (String) -> Void
 
-    @State private var step: Step = .capture
+    @State private var phase: ImageIdentificationPhase = .capturing
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var imageData: Data?
-    @State private var identification = SleeveIdentificationDraft()
-    @State private var errorMessage: String?
-    @State private var isAnalyzing = false
     @State private var isShowingCamera = false
-
-    enum Step {
-        case capture
-        case confirm
-    }
 
     var body: some View {
         NavigationStack {
             Group {
-                switch step {
-                case .capture:
+                switch phase {
+                case .capturing, .analyzing, .captureFailed:
                     ImageIdentificationCaptureView(
                         selectedPhotoItem: $selectedPhotoItem,
                         isShowingCamera: $isShowingCamera,
                         imageData: imageData,
-                        isAnalyzing: isAnalyzing,
-                        errorMessage: errorMessage
+                        isAnalyzing: phase == .analyzing,
+                        errorMessage: phase.captureErrorMessage
                     ).transition(.opacity)
-                case .confirm:
+                case .confirming:
                     ImageIdentificationConfirmView(
-                        identification: $identification,
+                        identification: identificationBinding,
                         imageData: imageData,
                         onSearch: onSearch,
                         onScanBarcode: { dismiss() },
                         onSearchManually: {
-                            searchText = identification.searchQuery
+                            searchText = identificationBinding.wrappedValue.searchQuery
                             dismiss()
                         }
                     ).transition(.opacity)
@@ -65,56 +57,127 @@ struct ImageIdentificationSheet: View {
             .fullScreenCover(isPresented: $isShowingCamera) {
                 ImagePickerCameraView { data in
                     isShowingCamera = false
-                    imageData = data
-                    Task { await analyzeImage() }
+                    beginAnalysis(with: data)
+                    Task { await runAnalysis() }
                 } onCancel: {
                     isShowingCamera = false
                 }.ignoresSafeArea()
             }
+            .sensoryFeedback(trigger: feedbackPhase) { _, newPhase in
+                switch newPhase {
+                case .confirmed:
+                    .success
+                case .failed:
+                    .error
+                default:
+                    nil
+                }
+            }
+        }
+    }
+
+    private var feedbackPhase: ImageIdentificationFeedbackPhase {
+        phase.feedbackPhase
+    }
+
+    private var identificationBinding: Binding<SleeveIdentificationDraft> {
+        Binding(
+            get: {
+                if case .confirming(let draft) = phase {
+                    draft
+                } else {
+                    SleeveIdentificationDraft()
+                }
+            },
+            set: { phase = .confirming($0) }
+        )
+    }
+
+    private func beginAnalysis(with data: Data) {
+        withAnimation {
+            imageData = data
+            phase = .analyzing
+        }
+    }
+
+    private func completeAnalysis(with result: SleeveIdentification) {
+        withAnimation {
+            phase = .confirming(SleeveIdentificationDraft(from: result))
+        }
+    }
+
+    private func failCapture(_ message: String) {
+        withAnimation {
+            phase = .captureFailed(message)
         }
     }
 
     private func loadPhoto(from item: PhotosPickerItem?) async {
         guard let item else { return }
-        errorMessage = nil
 
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                errorMessage = "Could not load the selected photo."
+                failCapture("Could not load the selected photo.")
                 return
             }
-            withAnimation {
-                imageData = data
-            }
-            await analyzeImage()
+            beginAnalysis(with: data)
+            await runAnalysis()
         } catch {
-            errorMessage = error.localizedDescription
+            failCapture(error.localizedDescription)
         }
     }
 
-    private func analyzeImage() async {
+    private func runAnalysis() async {
         guard let imageData else { return }
-
-        isAnalyzing = true
-        errorMessage = nil
-        defer { isAnalyzing = false }
 
         do {
             let result = try await sleeveIdentifier.identify(jpegData: imageData)
-            identification = SleeveIdentificationDraft(from: result)
-            withAnimation {
-                step = .confirm
-            }
-
+            completeAnalysis(with: result)
         } catch {
-            errorMessage = error.localizedDescription
+            failCapture(error.localizedDescription)
         }
     }
 }
 
 #if DEBUG
-#Preview {
+#Preview("Capturing") {
     ImageIdentificationSheet(searchText: .constant("")) { _ in }
         .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
+}
+
+#Preview("Confirming") {
+    NavigationStack {
+        ImageIdentificationConfirmView(
+            identification: .constant(previewSleeveIdentificationDraft()),
+            imageData: nil,
+            onSearch: { _ in },
+            onScanBarcode: {},
+            onSearchManually: {}
+        )
+        .navigationTitle("Identify Sleeve")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+#Preview("Confirming Empty") {
+    NavigationStack {
+        ImageIdentificationConfirmView(
+            identification: .constant(SleeveIdentificationDraft()),
+            imageData: nil,
+            onSearch: { _ in },
+            onScanBarcode: {},
+            onSearchManually: {}
+        )
+        .navigationTitle("Identify Sleeve")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private func previewSleeveIdentificationDraft() -> SleeveIdentificationDraft {
+    var draft = SleeveIdentificationDraft()
+    draft.artist = "Nine Inch Nails"
+    draft.title = "Year Zero"
+    draft.catalogNumber = "17064-2"
+    return draft
 }
 #endif
