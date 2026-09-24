@@ -60,8 +60,7 @@ final class AuthSession {
 
             if let cached = try? await cachedFetcher.cachedValue(
                 IdentityEndpoint(),
-                key: Self.identityCacheKey,
-                userScope: nil
+                key: Self.identityCacheKey
             ) {
                 state = .authenticated(cached)
             }
@@ -104,7 +103,7 @@ final class AuthSession {
 
     func logout() async {
         try? await tokenStore.clear()
-        try? await cacheStorage.clear(userScope: nil)
+        try? await cacheStorage.clearAll()
         state = .unauthenticated
     }
 
@@ -126,13 +125,12 @@ final class AuthSession {
                 IdentityEndpoint(),
                 key: Self.identityCacheKey,
                 scope: .identity,
-                userScope: nil,
                 forceRefresh: true
             )
         } catch let error as NetworkError {
             if case .serverError(let statusCode, _, _) = error, statusCode == 401 {
                 try? await tokenStore.clear()
-                try? await cacheStorage.clear(userScope: nil)
+                try? await cacheStorage.clearAll()
                 throw error
             }
             throw error

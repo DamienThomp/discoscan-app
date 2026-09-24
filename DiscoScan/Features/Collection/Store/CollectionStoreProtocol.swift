@@ -69,6 +69,7 @@ protocol CollectionStoreProtocol: AnyObject, Observable {
     func canLoadMore(folderId: Int) -> Bool
     func loadFolders(forceRefresh: Bool) async
     func loadReleases(folderId: Int, page: Int, forceRefresh: Bool) async
+    func refreshReleases(folderId: Int) async
     func loadMoreReleases(folderId: Int) async
     func createFolder(name: FolderName) async throws
     func deleteFolder(id: Int) async

@@ -15,6 +15,7 @@ protocol WantListStoreProtocol: AnyObject, Observable {
     func sync(with state: AuthSession.State)
     func canLoadMore() -> Bool
     func loadWants(page: Int, forceRefresh: Bool) async
+    func refreshWants() async
     func loadMoreWants() async
     func addRelease(releaseId: Int, notes: String?, rating: Int?) async
     func editRelease(releaseId: Int, notes: String?, rating: Int?) async

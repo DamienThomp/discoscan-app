@@ -9,25 +9,27 @@ struct WantListView: View {
 
     @Environment(\.wantListStore) private var store
 
+    private var emptyState: AnimatedEmptyStateView.Configuration {
+        .init(
+            title: "Want List",
+            systemImage: "heart",
+            description: "Your want list is empty.",
+            effect: .breathe
+        )
+    }
+
     var body: some View {
         ResourceContainerView(
             state: store.wants,
-            retry: { await store.loadWants(forceRefresh: true) }
+            retry: { await store.refreshWants() }
         ) { wants in
             PaginatedReleaseListView(
                 items: wants,
-                emptyState: .init(
-                    title: "Want List",
-                    systemImage: "heart",
-                    description: "Your want list is empty.",
-                    effect: .breathe
-                ),
-                releaseID: { $0.id },
-                basicInformation: { $0.basicInformation },
+                emptyState: emptyState,
                 canLoadMore: store.canLoadMore(),
                 loadMore: { await store.loadMoreWants() },
                 delete: { item in
-                    await store.deleteRelease(releaseId: item.id)
+                    await store.deleteRelease(releaseId: item.releaseId)
                 }
             )
         }
@@ -37,7 +39,7 @@ struct WantListView: View {
             }
         }
         .refreshable {
-            await store.loadWants(forceRefresh: true)
+            await store.refreshWants()
         }
     }
 }

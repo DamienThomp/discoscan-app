@@ -35,9 +35,3 @@ nonisolated struct CachedEntry: Sendable {
         now.timeIntervalSince(fetchedAt) < scope.ttl
     }
 }
-
-nonisolated enum CachePolicy {
-    static func namespacedKey(_ key: String, userScope: String?) -> String {
-        "\(userScope ?? "-")|\(key)"
-    }
-}

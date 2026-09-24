@@ -37,7 +37,6 @@ final class ReleaseStore: ReleaseStoreProtocol {
                 ReleaseDetailEndpoint(releaseId: id, currAbbr: nil),
                 key: Self.cacheKey(releaseId: id),
                 scope: .release,
-                userScope: nil,
                 forceRefresh: forceRefresh
             )
 

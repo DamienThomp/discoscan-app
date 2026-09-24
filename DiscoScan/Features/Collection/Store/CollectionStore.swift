@@ -70,7 +70,6 @@ final class CollectionStore: CollectionStoreProtocol {
                 CollectionFoldersEndpoint(userName: username),
                 key: Self.foldersCacheKey,
                 scope: .collection,
-                userScope: username,
                 forceRefresh: forceRefresh
             )
 
@@ -92,7 +91,6 @@ final class CollectionStore: CollectionStoreProtocol {
                 CollectionItemsByFolderEndpoint(username: username, folderId: folderId, page: page),
                 key: Self.releasesCacheKey(folderId: folderId, page: page),
                 scope: .collection,
-                userScope: username,
                 forceRefresh: forceRefresh
             )
 
@@ -109,6 +107,12 @@ final class CollectionStore: CollectionStoreProtocol {
             let current = releasesByFolderID[folderId] ?? .idle
             releasesByFolderID[folderId] = current.recoverFromFetchFailure(error.localizedDescription)
         }
+    }
+
+    func refreshReleases(folderId: Int) async {
+        await cachedFetcher.invalidateKeys(matchingPrefix: Self.releasesCachePrefix(folderId: folderId))
+        isLoadingMoreByFolderID.removeValue(forKey: folderId)
+        await loadReleases(folderId: folderId, page: 1, forceRefresh: true)
     }
 
     func loadMoreReleases(folderId: Int) async {
@@ -158,7 +162,7 @@ final class CollectionStore: CollectionStoreProtocol {
                     releaseId: releaseId
                 )
             )
-            await loadReleases(folderId: folderId, forceRefresh: true)
+            await refreshReleases(folderId: folderId)
             await loadFolders(forceRefresh: true)
         }
     }
@@ -209,5 +213,9 @@ final class CollectionStore: CollectionStoreProtocol {
 
     private static func releasesCacheKey(folderId: Int, page: Int) -> String {
         "collectionFolder-\(folderId)-page-\(page)"
+    }
+
+    private static func releasesCachePrefix(folderId: Int) -> String {
+        "collectionFolder-\(folderId)-page-"
     }
 }

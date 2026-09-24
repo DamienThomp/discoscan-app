@@ -8,9 +8,9 @@ import SwiftData
 
 @ModelActor
 actor SwiftDataCacheStorage {
-    func entry(for namespacedKey: String) throws -> CachedEntry? {
+    func entry(for key: String) throws -> CachedEntry? {
         var descriptor = FetchDescriptor<CachedRecord>(
-            predicate: #Predicate { $0.cacheKey == namespacedKey }
+            predicate: #Predicate { $0.cacheKey == key }
         )
         descriptor.fetchLimit = 1
 
@@ -25,12 +25,10 @@ actor SwiftDataCacheStorage {
         _ payload: Data,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         fetchedAt: Date
     ) throws {
-        let namespacedKey = CachePolicy.namespacedKey(key, userScope: userScope)
         var descriptor = FetchDescriptor<CachedRecord>(
-            predicate: #Predicate { $0.cacheKey == namespacedKey }
+            predicate: #Predicate { $0.cacheKey == key }
         )
         descriptor.fetchLimit = 1
 
@@ -38,12 +36,10 @@ actor SwiftDataCacheStorage {
             existing.payload = payload
             existing.fetchedAt = fetchedAt
             existing.scopeRawValue = scope.rawValue
-            existing.userScope = userScope
         } else {
             let record = CachedRecord(
-                cacheKey: namespacedKey,
+                cacheKey: key,
                 scopeRawValue: scope.rawValue,
-                userScope: userScope,
                 payload: payload,
                 fetchedAt: fetchedAt
             )
@@ -53,15 +49,22 @@ actor SwiftDataCacheStorage {
         try modelContext.save()
     }
 
-    func clear(userScope: String?) throws {
-        if let userScope {
-            try modelContext.delete(model: CachedRecord.self, where: #Predicate {
-                $0.userScope == userScope
-            })
-        } else {
-            try modelContext.delete(model: CachedRecord.self)
-        }
+    func removeEntry(for key: String) throws {
+        try modelContext.delete(model: CachedRecord.self, where: #Predicate {
+            $0.cacheKey == key
+        })
+        try modelContext.save()
+    }
 
+    func removeEntries(matchingPrefix prefix: String) throws {
+        try modelContext.delete(model: CachedRecord.self, where: #Predicate {
+            $0.cacheKey.starts(with: prefix)
+        })
+        try modelContext.save()
+    }
+
+    func clearAll() throws {
+        try modelContext.delete(model: CachedRecord.self)
         try modelContext.save()
     }
 }

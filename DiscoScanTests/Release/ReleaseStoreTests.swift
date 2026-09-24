@@ -28,7 +28,6 @@ struct ReleaseStoreTests {
 
         #expect(fetcher.lastFetch?.key == "release-249504")
         #expect(fetcher.lastFetch?.forceRefresh == false)
-        #expect(fetcher.lastFetch?.userScope == nil)
     }
 
     @Test func loadReleaseFailsSetsFailedState() async {

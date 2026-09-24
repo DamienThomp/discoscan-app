@@ -99,11 +99,10 @@ final class MockReleaseCachedFetcher: CachedFetcherProtocol, @unchecked Sendable
         _ endpoint: E,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         forceRefresh: Bool
     ) async throws -> E.Response {
         fetchCount += 1
-        lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh, userScope: userScope)
+        lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh)
 
         if shouldFail {
             throw URLError(.notConnectedToInternet)
@@ -121,9 +120,12 @@ final class MockReleaseCachedFetcher: CachedFetcherProtocol, @unchecked Sendable
 
     func cachedValue<E: EndpointProtocol>(
         _ endpoint: E,
-        key: String,
-        userScope: String?
+        key: String
     ) async throws -> E.Response? {
         nil
     }
+
+    func invalidate(key: String) async {}
+
+    func invalidateKeys(matchingPrefix prefix: String) async {}
 }
