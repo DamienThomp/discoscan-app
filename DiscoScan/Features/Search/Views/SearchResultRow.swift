@@ -15,16 +15,24 @@ struct SearchResultRow: View {
             accessibilityLabel: "\(result.title), \(result.type)"
         ) {
 
-            if let country = result.country {
-                Text(country)
-                    .font(.caption2)
-            }
+            Group {
 
-            Text(result.type.capitalized)
-                .appSecondaryMetadata()
+                if let country = result.country {
+                    Text(country)
+                        .font(.caption2)
+                }
 
-            if let format = result.format {
-                FormatTagsRow(formats: format)
+                HStack {
+                    Text(result.type.capitalized)
+
+                    if let year = result.year {
+                        Text(year)
+                    }
+                }.appSecondaryMetadata()
+
+                if let format = result.format {
+                    FormatTagsRow(formats: format)
+                }
             }
         }
     }
@@ -40,6 +48,7 @@ struct SearchResultRow: View {
                 title: "Rick Astley - Never Gonna Give You Up",
                 format: ["Vinyl", "LP", "Album", "Stereo"],
                 country: "United Kingdom",
+                year: "1984"
             )
         )
     }

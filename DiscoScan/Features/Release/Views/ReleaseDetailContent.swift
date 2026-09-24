@@ -43,6 +43,7 @@ struct ReleaseDetailContent: View {
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: AppSpacing.metadata * 2) {
+
                     if let year = release.displayYear {
                         Text(year, format: .number.grouping(.never))
                     }
@@ -52,8 +53,13 @@ struct ReleaseDetailContent: View {
                     if let released = release.releasedFormatted ?? release.released {
                         Text(released)
                     }
+                    if let lowestPrice = release.lowestPrice {
+                        Text(lowestPrice, format: .currency(code: "USD"))
+                    }
                 }
                 .appSecondaryMetadata()
+
+
             }
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)

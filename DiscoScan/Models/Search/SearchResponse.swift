@@ -39,6 +39,7 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
     let format: [String]?
     let catno: String?
     let country: String?
+    let year: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -49,6 +50,7 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         case format
         case catno
         case country
+        case year
     }
 
     init(
@@ -59,7 +61,8 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         resourceURL: URL? = nil,
         format: [String]? = nil,
         catno: String? = nil,
-        country: String? = nil
+        country: String? = nil,
+        year: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -69,6 +72,7 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         self.format = format
         self.catno = catno
         self.country = country
+        self.year = year
     }
 
     init(from decoder: any Decoder) throws {
@@ -81,5 +85,6 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         format = try container.decodeIfPresent([String].self, forKey: .format)
         catno = try container.decodeIfPresent(String.self, forKey: .catno)
         country = try container.decodeIfPresent(String.self, forKey: .country)
+        year = try container.decodeIfPresent(String.self, forKey: .year)
     }
 }
