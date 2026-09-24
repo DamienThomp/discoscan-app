@@ -15,7 +15,7 @@ struct TracklistRowView: View {
             Text(position)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
-                .frame(width: 28, alignment: .leading)
+                .frame(width: AppLayout.trackPositionWidth, alignment: .leading)
 
             Text(title)
                 .font(.body)
@@ -28,6 +28,7 @@ struct TracklistRowView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(AppSpacing.compact)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }

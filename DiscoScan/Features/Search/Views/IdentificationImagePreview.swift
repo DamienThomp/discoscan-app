@@ -16,7 +16,7 @@ struct IdentificationImagePreview: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxHeight: maxHeight)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.standard))
                 .accessibilityHidden(true)
         }
     }

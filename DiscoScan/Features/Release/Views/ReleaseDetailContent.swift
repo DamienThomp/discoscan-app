@@ -9,41 +9,49 @@ struct ReleaseDetailContent: View {
     let release: ReleaseDetailResponse
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: AppSpacing.content) {
-                header
-                metadataSection
-                if let genreStyleSummary = release.genreStyleSummary {
-                    DetailSectionView(title: "Genres & Styles", value: genreStyleSummary)
+        GeometryReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: AppSpacing.content) {
+                    header
+                    VStack(alignment: .leading, spacing: AppSpacing.row) {
+                        metadataSection
+                        if let genreStyleSummary = release.genreStyleSummary {
+                            DetailSectionView(title: "Genres & Styles", value: genreStyleSummary)
+                        }
+                        if !release.tracklist.isEmpty {
+                            tracklistSection
+                        }
+                        communitySection
+                    }
+                    .padding(AppSpacing.content)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.quaternary)
                 }
-                if !release.tracklist.isEmpty {
-                    tracklistSection
-                }
-                communitySection
             }
-            .padding()
+            .scrollIndicators(.hidden)
+            .ignoresSafeArea(edges: .bottom)
         }
-        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity)
     }
 
     private var header: some View {
-        VStack(alignment: .center, spacing: AppSpacing.metadata * 2) {
+        VStack(alignment: .center, spacing: AppSpacing.compact) {
             ReleaseArtworkView(
                 url: release.primaryImageURL,
                 size: .large,
                 accessibilityLabel: "Album artwork for \(release.title)"
             )
 
-            VStack(alignment: .center, spacing: AppSpacing.metadata * 2) {
+            VStack(alignment: .center, spacing: AppSpacing.compact) {
                 Text(release.title)
                     .font(.title2.bold())
 
                 Text(release.primaryArtistName)
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tint)
 
-                HStack(spacing: AppSpacing.metadata * 2) {
-
+                HStack(spacing: AppSpacing.compact) {
                     if let year = release.displayYear {
                         Text(year, format: .number.grouping(.never))
                     }
@@ -54,17 +62,16 @@ struct ReleaseDetailContent: View {
                         Text(released)
                     }
                     if let lowestPrice = release.lowestPrice {
-                        Text(lowestPrice, format: .currency(code: "USD"))
+                        Text(lowestPrice, format: .currency(code: CurrencyAbbreviations.cad.rawValue))
                     }
                 }
                 .appSecondaryMetadata()
-
-
             }
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(headerAccessibilityLabel)
         }
+        .padding(.horizontal, AppSpacing.content)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -80,16 +87,18 @@ struct ReleaseDetailContent: View {
     }
 
     private var tracklistSection: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.metadata * 2) {
+        VStack(alignment: .leading, spacing: AppSpacing.compact) {
             Text("Tracklist")
                 .appSectionHeader()
 
-            ForEach(Array(release.tracklist.enumerated()), id: \.offset) { _, track in
+            ForEach(Array(release.tracklist.enumerated()), id: \.offset) { index, track in
                 TracklistRowView(
                     position: track.position,
                     title: track.title,
                     duration: track.duration
                 )
+
+                Divider()
             }
         }
         .accessibilityElement(children: .contain)

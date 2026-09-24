@@ -4,8 +4,6 @@ A native iOS app for vinyl collectors. DiscoScan connects to your [Discogs](http
 
 Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme with a shared design token layer and reusable UI components.
 
-> **Note:** This repository is public for portfolio and code review purposes only. It depends on private packages and is **not intended to be forked or built by others** without access to those dependencies.
-
 ## Features
 
 ### Search
@@ -39,15 +37,15 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 
 DiscoScan follows a protocol-oriented MV pattern:
 
-| Layer | Description |
-|-------|-------------|
-| **Views** | SwiftUI views bind directly to `@Observable` stores |
-| **Stores** | `CollectionStore`, `WantListStore`, `ReleaseStore`, `SearchStore`, `ProfileStore`, `AuthSession` — async loading via `ResourceState<T>` |
-| **Async UI** | Screen-level loading/error/empty states via `ResourceContainerView`; paginated release lists via `PaginatedReleaseListView` |
-| **Design** | Static tokens in `Design/` (`AppSpacing`, `AppTypography`, `AppIconSize`); shared components in `Views/` (rows, artwork, brand icon, empty states) |
-| **Networking** | Typed `EndpointProtocol` structs via [NetworkKit](https://github.com/DamienThomp/NetworkKit) |
-| **Caching** | SwiftData-backed `CachedFetcher` with TTL policies per data type |
-| **Navigation** | Typed `AppRoute` + `NavigationPath` via `AppRouter` |
+| Layer          | Description                                                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Views**      | SwiftUI views bind directly to `@Observable` stores                                                                                                |
+| **Stores**     | `CollectionStore`, `WantListStore`, `ReleaseStore`, `SearchStore`, `ProfileStore`, `AuthSession` — async loading via `ResourceState<T>`            |
+| **Async UI**   | Screen-level loading/error/empty states via `ResourceContainerView`; paginated release lists via `PaginatedReleaseListView`                        |
+| **Design**     | Static tokens in `Design/` (`AppSpacing`, `AppTypography`, `AppIconSize`); shared components in `Views/` (rows, artwork, brand icon, empty states) |
+| **Networking** | Typed `EndpointProtocol` structs via [NetworkKit](https://github.com/DamienThomp/NetworkKit)                                                       |
+| **Caching**    | SwiftData-backed `CachedFetcher` with TTL policies per data type                                                                                   |
+| **Navigation** | Typed `AppRoute` + `NavigationPath` via `AppRouter`                                                                                                |
 
 Key integrations:
 
@@ -80,14 +78,14 @@ Key integrations:
 
    Edit `Secrets.xcconfig`:
 
-   | Key | Description |
-   |-----|-------------|
-   | `DISCOGS_CONSUMER_KEY` | Discogs app consumer key |
-   | `DISCOGS_CONSUMER_SECRET` | Discogs app consumer secret |
-   | `DISCOGS_CALLBACK_URL` | OAuth callback — use `discoscan:/oauth/callback` |
-   | `DISCOGS_USER_AGENT` | User-Agent string (include contact URL per Discogs policy) |
-   | `GEMINI_API_KEY` | Google Gemini API key |
-   | `GEMINI_MODEL` | Model name (default: `gemini-3.5-flash-lite`) |
+   | Key                       | Description                                                |
+   | ------------------------- | ---------------------------------------------------------- |
+   | `DISCOGS_CONSUMER_KEY`    | Discogs app consumer key                                   |
+   | `DISCOGS_CONSUMER_SECRET` | Discogs app consumer secret                                |
+   | `DISCOGS_CALLBACK_URL`    | OAuth callback — use `discoscan:/oauth/callback`           |
+   | `DISCOGS_USER_AGENT`      | User-Agent string (include contact URL per Discogs policy) |
+   | `GEMINI_API_KEY`          | Google Gemini API key                                      |
+   | `GEMINI_MODEL`            | Model name (default: `gemini-3.5-flash-lite`)              |
 
    In your Discogs developer settings, set the callback URL to `discoscan:/oauth/callback`.
 
