@@ -61,7 +61,6 @@ struct CollectionStoreTests {
         #expect(store.folders == .loaded(CollectionFixtures.sampleFolders))
         #expect(fetcher.lastFetch?.forceRefresh == false)
         #expect(fetcher.lastFetch?.key == "collectionFolders")
-        #expect(fetcher.lastFetch?.userScope == "tester")
     }
 
     @Test func loadFoldersFailsWhenNotAuthenticated() async {
@@ -158,6 +157,19 @@ struct CollectionStoreTests {
         #expect(store.releasesByFolderID[1] == .refreshing(CollectionFixtures.sampleReleases))
         await refresh
         #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+    }
+
+    @Test func refreshReleasesInvalidatesCachedPagesBeforeFetchingPageOne() async {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = CollectionStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.refreshReleases(folderId: 1)
+
+        #expect(fetcher.lastInvalidatedPrefix == "collectionFolder-1-page-")
+        #expect(fetcher.lastFetch?.key == "collectionFolder-1-page-1")
+        #expect(fetcher.lastFetch?.forceRefresh == true)
     }
 
     @Test func loadReleasesRefreshFailurePreservesStaleData() async {

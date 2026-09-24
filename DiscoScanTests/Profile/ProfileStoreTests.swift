@@ -65,7 +65,6 @@ struct ProfileStoreTests {
         await store.loadProfile()
 
         #expect(fetcher.lastFetch?.key == "userProfile")
-        #expect(fetcher.lastFetch?.userScope == "tester")
         #expect(fetcher.lastFetch?.forceRefresh == false)
     }
 

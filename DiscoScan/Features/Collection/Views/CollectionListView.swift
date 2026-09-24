@@ -16,21 +16,23 @@ struct CollectionListView: View {
         store.releasesByFolderID[folderId] ?? .idle
     }
 
+    private var emptyState: AnimatedEmptyStateView.Configuration {
+        .init(
+            title: "Collection",
+            systemImage: "square.stack",
+            description: "This folder is empty.",
+            effect: .bounceDown
+        )
+    }
+
     var body: some View {
         ResourceContainerView(
             state: releasesState,
-            retry: { await store.loadReleases(folderId: folderId, forceRefresh: true) }
+            retry: { await store.refreshReleases(folderId: folderId) }
         ) { releases in
             PaginatedReleaseListView(
                 items: releases,
-                emptyState: .init(
-                    title: "Collection",
-                    systemImage: "square.stack",
-                    description: "This folder is empty.",
-                    effect: .bounceDown
-                ),
-                releaseID: { $0.releaseId },
-                basicInformation: { $0.basicInformation },
+                emptyState: emptyState,
                 canLoadMore: store.canLoadMore(folderId: folderId),
                 loadMore: { await store.loadMoreReleases(folderId: folderId) },
                 delete: { item in
@@ -49,7 +51,7 @@ struct CollectionListView: View {
             }
         }
         .refreshable {
-            await store.loadReleases(folderId: folderId, forceRefresh: true)
+            await store.refreshReleases(folderId: folderId)
         }
     }
 }

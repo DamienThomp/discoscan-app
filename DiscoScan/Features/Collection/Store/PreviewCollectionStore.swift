@@ -54,6 +54,8 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
 
     func loadReleases(folderId: Int, page: Int, forceRefresh: Bool) async {}
 
+    func refreshReleases(folderId: Int) async {}
+
     func loadMoreReleases(folderId: Int) async {}
 
     func createFolder(name: FolderName) async throws {}

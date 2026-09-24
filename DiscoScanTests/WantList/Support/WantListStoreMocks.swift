@@ -10,6 +10,8 @@ import NetworkKit
 final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
+    private(set) var lastInvalidatedKey: String?
+    private(set) var lastInvalidatedPrefix: String?
     var shouldFail = false
     var delayNanoseconds: UInt64 = 0
 
@@ -17,11 +19,10 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
         _ endpoint: E,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         forceRefresh: Bool
     ) async throws -> E.Response {
         fetchCount += 1
-        lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh, userScope: userScope)
+        lastFetch = MockFetchRecord(key: key, forceRefresh: forceRefresh)
 
         if delayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: delayNanoseconds)
@@ -43,10 +44,17 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
 
     func cachedValue<E: EndpointProtocol>(
         _ endpoint: E,
-        key: String,
-        userScope: String?
+        key: String
     ) async throws -> E.Response? {
         nil
+    }
+
+    func invalidate(key: String) async {
+        lastInvalidatedKey = key
+    }
+
+    func invalidateKeys(matchingPrefix prefix: String) async {
+        lastInvalidatedPrefix = prefix
     }
 }
 

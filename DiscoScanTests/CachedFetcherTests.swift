@@ -50,7 +50,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
 
@@ -59,7 +58,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
 
@@ -95,7 +93,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
         #expect(requestCount == 1)
@@ -110,7 +107,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
         #expect(requestCount == 1)
@@ -141,7 +137,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
         #expect(requestCount == 1)
@@ -151,7 +146,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: true
         )
         #expect(requestCount == 1)
@@ -184,14 +178,12 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: true
         )
         async let second = fetcher.fetch(
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: true
         )
 
@@ -222,7 +214,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
 
@@ -234,10 +225,72 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: true
         )
         #expect(identity.username == "tester")
+    }
+
+    @Test func invalidateRemovesCachedEntry() async throws {
+        let tokenStore = InMemoryTokenStore()
+        try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
+
+        var requestCount = 0
+        MockURLProtocol.requestHandler = { request in
+            requestCount += 1
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "Content-Type": "application/json",
+                    "X-Discogs-Ratelimit-Remaining": "59",
+                    "X-Discogs-Ratelimit": "60"
+                ]
+            )!
+            return (response, self.identityJSON)
+        }
+
+        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage, now: { Date(timeIntervalSince1970: 5_000) })
+
+        _ = try await fetcher.fetch(
+            IdentityEndpoint(),
+            key: "identity",
+            scope: .identity,
+            forceRefresh: false
+        )
+        #expect(requestCount == 1)
+
+        await fetcher.invalidate(key: "identity")
+        #expect(try await storage.entry(for: "identity") == nil)
+
+        requestCount = 0
+        _ = try await fetcher.fetch(
+            IdentityEndpoint(),
+            key: "identity",
+            scope: .identity,
+            forceRefresh: false
+        )
+        #expect(requestCount == 1)
+    }
+
+    @Test func invalidateKeysMatchingPrefixRemovesOnlyMatchingEntries() async throws {
+        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+        let fetchedAt = Date(timeIntervalSince1970: 6_000)
+
+        try await storage.store(Data("page1".utf8), key: "collectionFolder-1-page-1", scope: .collection, fetchedAt: fetchedAt)
+        try await storage.store(Data("page2".utf8), key: "collectionFolder-1-page-2", scope: .collection, fetchedAt: fetchedAt)
+        try await storage.store(Data("other".utf8), key: "collectionFolders", scope: .collection, fetchedAt: fetchedAt)
+
+        let tokenStore = InMemoryTokenStore()
+        try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
+        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage, now: { fetchedAt })
+
+        await fetcher.invalidateKeys(matchingPrefix: "collectionFolder-1-page-")
+
+        #expect(try await storage.entry(for: "collectionFolder-1-page-1") == nil)
+        #expect(try await storage.entry(for: "collectionFolder-1-page-2") == nil)
+        #expect(try await storage.entry(for: "collectionFolders") != nil)
     }
 
     @Test func rateLimit429FallsBackToStaleCache() async throws {
@@ -263,7 +316,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: false
         )
 
@@ -281,7 +333,6 @@ struct CachedFetcherTests {
             IdentityEndpoint(),
             key: "identity",
             scope: .identity,
-            userScope: nil,
             forceRefresh: true
         )
         #expect(identity.username == "tester")

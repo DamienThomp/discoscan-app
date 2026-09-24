@@ -34,7 +34,6 @@ struct AuthSessionOfflineTests {
             identityJSON,
             key: AuthSession.identityCacheKey,
             scope: .identity,
-            userScope: nil,
             fetchedAt: Date()
         )
 
@@ -61,7 +60,6 @@ struct AuthSessionOfflineTests {
             identityJSON,
             key: AuthSession.identityCacheKey,
             scope: .identity,
-            userScope: nil,
             fetchedAt: Date()
         )
 
@@ -87,7 +85,7 @@ struct AuthSessionOfflineTests {
             #expect(Bool(true))
         }
 
-        let cachedEntry = try await storage.entry(for: CachePolicy.namespacedKey(AuthSession.identityCacheKey, userScope: nil))
+        let cachedEntry = try await storage.entry(for: AuthSession.identityCacheKey)
         #expect(cachedEntry == nil)
     }
 
@@ -100,14 +98,13 @@ struct AuthSessionOfflineTests {
             identityJSON,
             key: AuthSession.identityCacheKey,
             scope: .identity,
-            userScope: nil,
             fetchedAt: Date()
         )
 
         let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
         await session.logout()
 
-        let cachedEntry = try await storage.entry(for: CachePolicy.namespacedKey(AuthSession.identityCacheKey, userScope: nil))
+        let cachedEntry = try await storage.entry(for: AuthSession.identityCacheKey)
         #expect(cachedEntry == nil)
     }
 

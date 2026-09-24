@@ -60,7 +60,6 @@ struct WantListStoreTests {
         #expect(store.wants == .loaded(WantListFixtures.sampleWants))
         #expect(fetcher.lastFetch?.forceRefresh == false)
         #expect(fetcher.lastFetch?.key == "wants-page-1")
-        #expect(fetcher.lastFetch?.userScope == "tester")
         #expect(store.canLoadMore())
     }
 
@@ -76,6 +75,19 @@ struct WantListStoreTests {
         } else {
             Issue.record("Expected wants to fail when unauthenticated")
         }
+    }
+
+    @Test func refreshWantsInvalidatesCachedPagesBeforeFetchingPageOne() async {
+        let fetcher = MockWantListCachedFetcher()
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.refreshWants()
+
+        #expect(fetcher.lastInvalidatedPrefix == "wants-page-")
+        #expect(fetcher.lastFetch?.key == "wants-page-1")
+        #expect(fetcher.lastFetch?.forceRefresh == true)
     }
 
     @Test func loadWantsRefreshFailurePreservesStaleData() async {

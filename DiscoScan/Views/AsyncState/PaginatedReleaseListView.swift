@@ -5,11 +5,9 @@
 
 import SwiftUI
 
-struct PaginatedReleaseListView<Item: Identifiable>: View {
+struct PaginatedReleaseListView<Item: PaginatedReleaseItem>: View {
     let items: [Item]
     let emptyState: AnimatedEmptyStateView.Configuration
-    let releaseID: (Item) -> Int
-    let basicInformation: (Item) -> ReleaseBasicInformation
     let canLoadMore: Bool
     let loadMore: () async -> Void
     let delete: (Item) async -> Void
@@ -21,8 +19,8 @@ struct PaginatedReleaseListView<Item: Identifiable>: View {
         } else {
             List {
                 ForEach(items) { item in
-                    NavigationLink(value: AppRoute.releaseDetail(id: releaseID(item))) {
-                        ReleaseSummaryRowView(information: basicInformation(item))
+                    NavigationLink(value: AppRoute.releaseDetail(id: item.releaseId)) {
+                        ReleaseSummaryRowView(information: item.basicInformation)
                     }
                     .swipeActions {
                         Button(role: .destructive) {

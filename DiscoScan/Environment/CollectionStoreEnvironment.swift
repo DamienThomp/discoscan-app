@@ -29,6 +29,10 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
         fatalError("collectionStore environment value was not injected.")
     }
 
+    func refreshReleases(folderId: Int) async {
+        fatalError("collectionStore environment value was not injected.")
+    }
+
     func loadMoreReleases(folderId: Int) async {
         fatalError("collectionStore environment value was not injected.")
     }

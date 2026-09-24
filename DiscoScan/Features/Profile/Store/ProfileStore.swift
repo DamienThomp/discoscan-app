@@ -46,7 +46,6 @@ final class ProfileStore: ProfileStoreProtocol {
                 UserProfileEndpoint(username: username),
                 key: Self.cacheKey,
                 scope: .profile,
-                userScope: username,
                 forceRefresh: forceRefresh
             )
 

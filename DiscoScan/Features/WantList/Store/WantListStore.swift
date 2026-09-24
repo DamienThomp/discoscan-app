@@ -72,7 +72,6 @@ final class WantListStore: WantListStoreProtocol {
                 WantListEndpoint(username: username, page: page),
                 key: Self.cacheKey(page: page),
                 scope: .wantlist,
-                userScope: username,
                 forceRefresh: forceRefresh
             )
 
@@ -88,6 +87,12 @@ final class WantListStore: WantListStoreProtocol {
         } catch {
             wants = wants.recoverFromFetchFailure(error.localizedDescription)
         }
+    }
+
+    func refreshWants() async {
+        await cachedFetcher.invalidateKeys(matchingPrefix: Self.wantsCachePrefix)
+        isLoadingMore = false
+        await loadWants(page: 1, forceRefresh: true)
     }
 
     func loadMoreWants() async {
@@ -111,7 +116,7 @@ final class WantListStore: WantListStoreProtocol {
                     rating: rating
                 )
             )
-            await loadWants(forceRefresh: true)
+            await refreshWants()
         }
     }
 
@@ -126,7 +131,7 @@ final class WantListStore: WantListStoreProtocol {
                     rating: rating
                 )
             )
-            await loadWants(forceRefresh: true)
+            await refreshWants()
         }
     }
 
@@ -180,7 +185,9 @@ final class WantListStore: WantListStoreProtocol {
         return username
     }
 
+    private static let wantsCachePrefix = "wants-page-"
+
     private static func cacheKey(page: Int) -> String {
-        "wants-page-\(page)"
+        "\(wantsCachePrefix)\(page)"
     }
 }

@@ -39,6 +39,8 @@ final class PreviewWantListStore: WantListStoreProtocol {
 
     func loadWants(page: Int, forceRefresh: Bool) async {}
 
+    func refreshWants() async {}
+
     func loadMoreWants() async {}
 
     func addRelease(releaseId: Int, notes: String?, rating: Int?) async {}

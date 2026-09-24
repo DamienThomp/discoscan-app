@@ -91,11 +91,10 @@ final class MockSearchCachedFetcher: CachedFetcherProtocol, @unchecked Sendable 
         _ endpoint: E,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         forceRefresh: Bool
     ) async throws -> E.Response {
         fetchCount += 1
-        lastFetch = MockSearchFetchRecord(key: key, scope: scope, forceRefresh: forceRefresh, userScope: userScope)
+        lastFetch = MockSearchFetchRecord(key: key, scope: scope, forceRefresh: forceRefresh)
 
         if shouldFail {
             throw URLError(.notConnectedToInternet)
@@ -113,16 +112,18 @@ final class MockSearchCachedFetcher: CachedFetcherProtocol, @unchecked Sendable 
 
     func cachedValue<E: EndpointProtocol>(
         _ endpoint: E,
-        key: String,
-        userScope: String?
+        key: String
     ) async throws -> E.Response? {
         nil
     }
+
+    func invalidate(key: String) async {}
+
+    func invalidateKeys(matchingPrefix prefix: String) async {}
 }
 
 struct MockSearchFetchRecord: Sendable {
     let key: String
     let scope: CacheScope
     let forceRefresh: Bool
-    let userScope: String?
 }

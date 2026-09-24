@@ -11,7 +11,6 @@ private actor UnimplementedCachedFetcher: CachedFetcherProtocol {
         _ endpoint: E,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         forceRefresh: Bool
     ) async throws -> E.Response {
         fatalError("cachedFetcher environment value was not injected.")
@@ -19,10 +18,17 @@ private actor UnimplementedCachedFetcher: CachedFetcherProtocol {
 
     func cachedValue<E: EndpointProtocol>(
         _ endpoint: E,
-        key: String,
-        userScope: String?
+        key: String
     ) async throws -> E.Response? {
         nil
+    }
+
+    func invalidate(key: String) async {
+        fatalError("cachedFetcher environment value was not injected.")
+    }
+
+    func invalidateKeys(matchingPrefix prefix: String) async {
+        fatalError("cachedFetcher environment value was not injected.")
     }
 }
 

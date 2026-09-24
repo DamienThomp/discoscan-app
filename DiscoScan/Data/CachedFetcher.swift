@@ -11,15 +11,17 @@ protocol CachedFetcherProtocol: Sendable {
         _ endpoint: E,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         forceRefresh: Bool
     ) async throws -> E.Response
 
     func cachedValue<E: EndpointProtocol>(
         _ endpoint: E,
-        key: String,
-        userScope: String?
+        key: String
     ) async throws -> E.Response?
+
+    func invalidate(key: String) async
+
+    func invalidateKeys(matchingPrefix prefix: String) async
 }
 
 actor CachedFetcher: CachedFetcherProtocol {
@@ -48,69 +50,69 @@ actor CachedFetcher: CachedFetcherProtocol {
         _ endpoint: E,
         key: String,
         scope: CacheScope,
-        userScope: String?,
         forceRefresh: Bool
     ) async throws -> E.Response {
-        let namespacedKey = CachePolicy.namespacedKey(key, userScope: userScope)
         let currentTime = now()
 
-        if !forceRefresh, let entry = try await storage.entry(for: namespacedKey),
+        if !forceRefresh, let entry = try await storage.entry(for: key),
            entry.isFresh(for: scope, now: currentTime) {
             return try decode(entry.payload, as: E.Response.self)
         }
 
         if await rateLimitTracker.shouldThrottle(now: currentTime),
-           let entry = try await storage.entry(for: namespacedKey),
+           let entry = try await storage.entry(for: key),
            !forceRefresh {
             return try decode(entry.payload, as: E.Response.self)
         }
 
         let data = try await fetchData(
             endpoint,
-            namespacedKey: namespacedKey,
             key: key,
-            scope: scope,
-            userScope: userScope
+            scope: scope
         )
         return try decode(data, as: E.Response.self)
     }
 
     func cachedValue<E: EndpointProtocol>(
         _ endpoint: E,
-        key: String,
-        userScope: String?
+        key: String
     ) async throws -> E.Response? {
-        let namespacedKey = CachePolicy.namespacedKey(key, userScope: userScope)
-        guard let entry = try await storage.entry(for: namespacedKey) else {
+        guard let entry = try await storage.entry(for: key) else {
             return nil
         }
         return try decode(entry.payload, as: E.Response.self)
     }
 
+    func invalidate(key: String) async {
+        try? await storage.removeEntry(for: key)
+        inflight.removeValue(forKey: key)
+    }
+
+    func invalidateKeys(matchingPrefix prefix: String) async {
+        try? await storage.removeEntries(matchingPrefix: prefix)
+        inflight.keys.filter { $0.hasPrefix(prefix) }.forEach { inflight.removeValue(forKey: $0) }
+    }
+
     private func fetchData<E: EndpointProtocol>(
         _ endpoint: E,
-        namespacedKey: String,
         key: String,
-        scope: CacheScope,
-        userScope: String?
+        scope: CacheScope
     ) async throws -> Data {
-        if let existingTask = inflight[namespacedKey] {
+        if let existingTask = inflight[key] {
             return try await existingTask.value
         }
 
         let task = Task<Data, Error> {
             try await self.performNetworkFetch(
                 endpoint,
-                namespacedKey: namespacedKey,
                 key: key,
-                scope: scope,
-                userScope: userScope
+                scope: scope
             )
         }
-        inflight[namespacedKey] = task
+        inflight[key] = task
 
         defer {
-            inflight.removeValue(forKey: namespacedKey)
+            inflight.removeValue(forKey: key)
         }
 
         return try await task.value
@@ -118,10 +120,8 @@ actor CachedFetcher: CachedFetcherProtocol {
 
     private func performNetworkFetch<E: EndpointProtocol>(
         _ endpoint: E,
-        namespacedKey: String,
         key: String,
-        scope: CacheScope,
-        userScope: String?
+        scope: CacheScope
     ) async throws -> Data {
         do {
             let response = try await apiClient.responseData(for: endpoint)
@@ -129,20 +129,19 @@ actor CachedFetcher: CachedFetcherProtocol {
                 response.value,
                 key: key,
                 scope: scope,
-                userScope: userScope,
                 fetchedAt: now()
             )
             return response.value
         } catch let error as NetworkError {
             switch error {
             case .transportError:
-                if let entry = try await storage.entry(for: namespacedKey) {
+                if let entry = try await storage.entry(for: key) {
                     return entry.payload
                 }
                 throw error
             case .serverError(let statusCode, _, _) where statusCode == 429:
                 await rateLimitTracker.markExhausted(at: now())
-                if let entry = try await storage.entry(for: namespacedKey) {
+                if let entry = try await storage.entry(for: key) {
                     return entry.payload
                 }
                 throw error

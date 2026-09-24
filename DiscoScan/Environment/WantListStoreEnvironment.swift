@@ -24,6 +24,10 @@ private final class UnimplementedWantListStore: WantListStoreProtocol {
         fatalError("wantListStore environment value was not injected.")
     }
 
+    func refreshWants() async {
+        fatalError("wantListStore environment value was not injected.")
+    }
+
     func loadMoreWants() async {
         fatalError("wantListStore environment value was not injected.")
     }

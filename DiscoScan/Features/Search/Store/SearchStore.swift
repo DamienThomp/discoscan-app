@@ -36,7 +36,6 @@ final class SearchStore: SearchStoreProtocol {
                 context.endpoint,
                 key: context.cacheKey,
                 scope: .search,
-                userScope: nil,
                 forceRefresh: forceRefresh
             )
             resultsByContext[context] = .loaded(response)
