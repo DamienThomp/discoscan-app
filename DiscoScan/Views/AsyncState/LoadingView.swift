@@ -12,7 +12,7 @@ struct LoadingView: View {
     @State private var isAnimating: Bool = true
 
     var body: some View {
-        VStack(spacing: AppSpacing.metadata * 2) {
+        VStack(spacing: AppSpacing.compact) {
             BrandDiscIcon(isAnimating: isAnimating)
             Text(text)
                 .font(.title2)

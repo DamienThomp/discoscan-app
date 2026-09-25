@@ -28,7 +28,7 @@ struct FolderPickerSheet: View {
                         }
                     }
                     .pickerStyle(.inline)
-                }
+                }.opacity(collectionStore.isMutating ? 0.5 : 1)
             }
             .navigationTitle("Add to Collection")
             .navigationBarTitleDisplayMode(.inline)
@@ -68,6 +68,12 @@ struct FolderPickerSheet: View {
             } message: {
                 if let message = collectionStore.lastMutationError {
                     Text(message)
+                }
+            }.overlay {
+                if collectionStore.isMutating {
+                    ProgressView()
+                        .padding(AppSpacing.row)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AppCornerRadius.compact))
                 }
             }
         }

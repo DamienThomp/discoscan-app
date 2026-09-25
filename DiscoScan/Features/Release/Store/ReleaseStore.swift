@@ -34,7 +34,7 @@ final class ReleaseStore: ReleaseStoreProtocol {
 
         do {
             let response = try await cachedFetcher.fetch(
-                ReleaseDetailEndpoint(releaseId: id, currAbbr: nil),
+                ReleaseDetailEndpoint(releaseId: id, currAbbr: .cad),
                 key: Self.cacheKey(releaseId: id),
                 scope: .release,
                 forceRefresh: forceRefresh
