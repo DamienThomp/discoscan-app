@@ -25,6 +25,7 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 - Format, label, genres & styles
 - Full tracklist with durations
 - Community stats (have / want / ratings)
+- **Apple Music link** — When a release is available on Apple Music, an Apple Music button appears on the detail screen and opens the album in the Music app. Lookup uses barcode (UPC) when available, then falls back to artist and title search.
 - **Add to collection** — Pick a folder and add the release
 - **Want list toggle** — Heart button to add or remove
 
@@ -51,6 +52,7 @@ Key integrations:
 
 - **Discogs API** — OAuth 1.0a, rate-limit handling, collection/wantlist/search/release endpoints
 - **Google Gemini** — Sleeve identification from JPEG photos
+- **Apple MusicKit** — Catalog lookup by UPC or artist/title search; deep links to the Music app
 
 ## Requirements
 
@@ -58,6 +60,7 @@ Key integrations:
 - iPhone or simulator with camera (for barcode / photo features)
 - Discogs developer account ([register here](https://www.discogs.com/settings/developers))
 - Google Gemini API key (for sleeve photo identification)
+- Apple Developer account with MusicKit enabled for the app’s bundle identifier (for Apple Music catalog lookup)
 
 ## Setup
 
@@ -117,7 +120,7 @@ DiscoScan/
 │   ├── Search/       # Search, barcode, image identification
 │   └── WantList/     # Want list
 ├── Models/           # Decodable domain types
-├── Networking/       # Endpoints, interceptors, Gemini client
+├── Networking/       # Endpoints, interceptors, Gemini client, Apple Music catalog
 └── Views/            # Shared UI across features
     ├── AsyncState/   # ResourceContainerView, loading/error/empty states
     ├── Brand/        # BrandDiscIcon
@@ -141,6 +144,7 @@ Test coverage includes stores (collection, want list, release, search, profile),
 
 The app requests:
 
+- **Apple Music** — Finding releases on Apple Music and opening them in the Music app
 - **Camera** — Barcode scanning and sleeve photos
 - **Photo Library** — Choosing an existing sleeve photo
 
