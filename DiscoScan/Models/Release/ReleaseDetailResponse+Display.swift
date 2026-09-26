@@ -14,6 +14,10 @@ extension ReleaseDetailResponse {
         artists.first?.name ?? "n/a"
     }
 
+    var barcode: String? {
+        identifiers.first(where: { $0.type == "Barcode" })?.value
+    }
+
     var primaryImageURL: URL? {
         images.first(where: { $0.type == "primary" })?.uri ?? thumb
     }
