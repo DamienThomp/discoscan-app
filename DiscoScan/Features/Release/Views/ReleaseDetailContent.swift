@@ -6,6 +6,10 @@
 import SwiftUI
 
 struct ReleaseDetailContent: View {
+
+    @Environment(\.appleMusicCatalog) private var catalog
+    @State private var url: URL?
+
     let release: ReleaseDetailResponse
 
     var body: some View {
@@ -70,9 +74,15 @@ struct ReleaseDetailContent: View {
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(headerAccessibilityLabel)
+
+            AppleMusicLinkButton(url: url)
+                .padding(.top, AppSpacing.compact)
         }
         .padding(.horizontal, AppSpacing.content)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .task(id: release.id) {
+            url = await catalog.albumURL(for: release)
+        }
     }
 
     private var metadataSection: some View {

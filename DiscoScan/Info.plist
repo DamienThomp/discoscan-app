@@ -43,6 +43,8 @@
 	<string>$(GEMINI_MODEL)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Open releases in Apple Music.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Scan barcodes and photograph record sleeves to identify releases.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

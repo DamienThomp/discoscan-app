@@ -17,6 +17,7 @@ struct AppDependencies {
     let cacheStorage: SwiftDataCacheStorage
     let cachedFetcher: CachedFetcher
     let sleeveIdentifier: GeminiSleeveIdentifier
+    let appleMusicCatalog: AppleMusicCatalogService
 
     @MainActor
     static func make() -> AppDependencies {
@@ -75,6 +76,7 @@ struct AppDependencies {
         )
 
         let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig)
+        let appleMusicCatalog = AppleMusicCatalogService()
 
         return AppDependencies(
             config: config,
@@ -85,7 +87,8 @@ struct AppDependencies {
             oauthService: oauthService,
             cacheStorage: cacheStorage,
             cachedFetcher: cachedFetcher,
-            sleeveIdentifier: sleeveIdentifier
+            sleeveIdentifier: sleeveIdentifier,
+            appleMusicCatalog: appleMusicCatalog
         )
     }
 

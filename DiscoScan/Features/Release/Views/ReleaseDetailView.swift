@@ -102,6 +102,7 @@ struct ReleaseDetailView: View {
     .environment(\.releaseStore, previewReleaseStore(.loaded(id: 249_504)))
     .environment(\.wantListStore, previewWantListStore(.wantsLoaded))
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
+    .environment(\.appleMusicCatalog, PreviewAppleMusicCatalog())
 }
 
 #Preview("Loading") {
@@ -111,6 +112,7 @@ struct ReleaseDetailView: View {
     .environment(\.releaseStore, previewReleaseStore(.loading(id: 249_504)))
     .environment(\.wantListStore, previewWantListStore(.wantsEmpty))
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
+    .environment(\.appleMusicCatalog, PreviewAppleMusicCatalog())
 }
 
 #Preview("Failed") {
@@ -120,5 +122,6 @@ struct ReleaseDetailView: View {
     .environment(\.releaseStore, previewReleaseStore(.failed(id: 249_504, message: "Could not load release.")))
     .environment(\.wantListStore, previewWantListStore(.wantsEmpty))
     .environment(\.collectionStore, previewCollectionStore(.foldersLoaded))
+    .environment(\.appleMusicCatalog, PreviewAppleMusicCatalog())
 }
 #endif
