@@ -48,12 +48,16 @@ struct ReleaseDetailContent: View {
             )
 
             VStack(alignment: .center, spacing: AppSpacing.compact) {
-                Text(release.title)
-                    .font(.title2.bold())
 
-                Text(release.primaryArtistName)
-                    .font(.headline)
-                    .foregroundStyle(.tint)
+                Group {
+                    Text(release.title)
+                        .font(.title2.bold())
+
+                    Text(release.primaryArtistName)
+                        .font(.headline)
+                        .foregroundStyle(.tint)
+                }
+                .multilineTextAlignment(.center)
 
                 HStack(spacing: AppSpacing.compact) {
                     if let year = release.displayYear {
@@ -81,7 +85,10 @@ struct ReleaseDetailContent: View {
         .padding(.horizontal, AppSpacing.content)
         .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: release.id) {
-            url = await catalog.albumURL(for: release)
+            let releaseUrl = await catalog.albumURL(for: release)
+            withAnimation {
+                url = releaseUrl
+            }
         }
     }
 
