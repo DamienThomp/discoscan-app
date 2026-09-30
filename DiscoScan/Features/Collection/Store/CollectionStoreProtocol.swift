@@ -62,6 +62,8 @@ enum CollectionStoreError: LocalizedError, Equatable {
 protocol CollectionStoreProtocol: AnyObject, Observable {
     var folders: ResourceState<[CollectionFolderResponse]> { get }
     var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] { get }
+    var folder0Sync: CollectionSyncPhase { get }
+    var folder0Items: ResourceState<[CollectionReleaseItem]> { get }
     var isMutating: Bool { get }
     var lastMutationError: String? { get }
 
@@ -73,8 +75,11 @@ protocol CollectionStoreProtocol: AnyObject, Observable {
     func loadMoreReleases(folderId: Int) async
     func createFolder(name: FolderName) async throws
     func deleteFolder(id: Int) async
-    func addRelease(releaseId: Int, folderId: Int) async
+    func addRelease(releaseId: Int, folderId: Int, snapshot: CollectionItemSnapshot) async
     func deleteRelease(from folderId: Int, releaseId: Int, instanceId: Int) async
+    func ensureFolder0IndexReady() async
+    func refreshCollectionIndex() async
+    func searchFolder0(query: String) -> [CollectionReleaseItem]
 }
 
 extension CollectionStoreProtocol {
@@ -90,7 +95,4 @@ extension CollectionStoreProtocol {
         await loadReleases(folderId: folderId, page: 1, forceRefresh: forceRefresh)
     }
 
-    func addRelease(releaseId: Int) async {
-        await addRelease(releaseId: releaseId, folderId: 1)
-    }
 }

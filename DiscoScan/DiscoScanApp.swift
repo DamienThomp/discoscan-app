@@ -15,6 +15,7 @@ struct DiscoScanApp: App {
     @State private var searchStore: SearchStore
     @State private var profileStore: ProfileStore
     @State private var router = AppRouter()
+    @Environment(\.scenePhase) private var scenePhase
 
     private let cachedFetcher: any CachedFetcherProtocol
     private let sleeveIdentifier: any SleeveIdentifierProtocol
@@ -54,6 +55,14 @@ struct DiscoScanApp: App {
                     collectionStore.sync(with: newState)
                     wantListStore.sync(with: newState)
                     profileStore.sync(with: newState)
+                    if case .authenticated = newState {
+                        Task { await collectionStore.ensureFolder0IndexReady() }
+                    }
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active,
+                          case .authenticated = authSession.state else { return }
+                    Task { await collectionStore.refreshCollectionIndex() }
                 }
                 .preferredColorScheme(.dark)
         }

@@ -7,6 +7,7 @@ import SwiftUI
 
 struct FolderPickerSheet: View {
     let releaseId: Int
+    let snapshot: CollectionItemSnapshot?
 
     @Environment(\.collectionStore) private var collectionStore
     @Environment(\.dismiss) private var dismiss
@@ -41,9 +42,11 @@ struct FolderPickerSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         Task {
+                            guard let snapshot else { return }
                             await collectionStore.addRelease(
                                 releaseId: releaseId,
-                                folderId: selectedFolderId
+                                folderId: selectedFolderId,
+                                snapshot: snapshot
                             )
                             if collectionStore.lastMutationError == nil {
                                 dismiss()
@@ -52,7 +55,7 @@ struct FolderPickerSheet: View {
                             }
                         }
                     }
-                    .disabled(collectionStore.isMutating)
+                    .disabled(collectionStore.isMutating || snapshot == nil)
                     .accessibilityLabel(
                         collectionStore.isMutating ? "Adding release" : "Add"
                     )

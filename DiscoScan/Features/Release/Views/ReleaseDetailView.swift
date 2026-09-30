@@ -43,7 +43,11 @@ struct ReleaseDetailView: View {
             }
         }
         .sheet(isPresented: $showFolderPicker) {
-            FolderPickerSheet(releaseId: releaseID).presentationDetents([ .large])
+            FolderPickerSheet(
+                releaseId: releaseID,
+                snapshot: detailState.value?.asCollectionSnapshot()
+            )
+            .presentationDetents([.large])
         }
         .task {
             if releaseStore.detail(for: releaseID) == .idle {
@@ -88,7 +92,7 @@ struct ReleaseDetailView: View {
         } label: {
             Image(systemName: "plus.square.on.square")
         }
-        .disabled(collectionStore.isMutating)
+        .disabled(collectionStore.isMutating || detailState.value == nil)
         .accessibilityLabel("Add to Collection")
         .accessibilityHint("Opens folder picker")
     }
