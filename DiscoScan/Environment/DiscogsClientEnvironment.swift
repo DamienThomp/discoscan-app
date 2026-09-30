@@ -32,6 +32,8 @@ private actor UnimplementedCachedFetcher: CachedFetcherProtocol {
     }
 }
 
+private let unimplementedCachedFetcher = UnimplementedCachedFetcher()
+
 extension EnvironmentValues {
-    @Entry var cachedFetcher: any CachedFetcherProtocol = UnimplementedCachedFetcher()
+    @Entry var cachedFetcher: any CachedFetcherProtocol = unimplementedCachedFetcher
 }

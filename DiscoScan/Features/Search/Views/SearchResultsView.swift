@@ -7,7 +7,6 @@ import SwiftUI
 
 struct SearchResultsView: View {
     @Environment(\.searchStore) private var searchStore
-    @Environment(AppRouter.self) private var router
 
     let context: SearchContext
 
