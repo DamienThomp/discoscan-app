@@ -60,9 +60,6 @@ struct ReleaseDetailContent: View {
                 .multilineTextAlignment(.center)
 
                 HStack(spacing: AppSpacing.compact) {
-                    if let year = release.displayYear {
-                        Text(year, format: .number.grouping(.never))
-                    }
                     if let country = release.country {
                         Text(country)
                     }
