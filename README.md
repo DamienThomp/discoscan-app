@@ -14,8 +14,10 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 
 ### Library
 
-- **Collection folders** — Browse Discogs collection folders with item counts. Pull to refresh.
-- **Folder contents** — View releases in a folder and swipe to remove items from your collection.
+- **Collection folders** — Browse Discogs collection folders with item counts. Pull to refresh the folder list.
+- **All folder** — The Discogs “All” folder (folder id `0`) is backed by a local SwiftData index synced from Discogs. The full collection loads offline after sync. A sync banner shows checking/syncing progress; failures surface a message with a Retry action. Sync runs after sign-in, when opening All, on pull-to-refresh, and when the app returns to the foreground if the index is stale or incomplete.
+- **Other folders** — Custom and system folders load releases from the Discogs API with pagination (50 per page). Pull to refresh and infinite scroll load additional pages.
+- **Folder contents** — View releases in any folder and swipe to remove items from your collection. Add/delete updates the local All-folder index and folder counts.
 - **Create folders** — Add custom collection folders from the Library tab.
 - **Want list** — Toggle between Collection and Wantlist. Add or remove releases from the want list on release detail or via swipe-to-delete.
 
@@ -46,6 +48,7 @@ DiscoScan follows a protocol-oriented MV pattern:
 | **Design**     | Static tokens in `Design/` (`AppSpacing`, `AppTypography`, `AppIconSize`); shared components in `Views/` (rows, artwork, brand icon, empty states) |
 | **Networking** | Typed `EndpointProtocol` structs via [NetworkKit](https://github.com/DamienThomp/NetworkKit)                                                       |
 | **Caching**    | SwiftData-backed `CachedFetcher` with TTL policies per data type                                                                                   |
+| **Collection index** | `CollectionSyncService` paginates Discogs folder `0` into `CollectionLocalIndex` (SwiftData). `CollectionStore` serves All from the index and other folders from the network. |
 | **Navigation** | Typed `AppRoute` + `NavigationPath` via `AppRouter`                                                                                                |
 
 Key integrations:
@@ -107,7 +110,7 @@ DiscoScan/
 ├── App/              # AppDependencies, AppRouter
 ├── Auth/             # OAuth, Keychain token storage
 ├── Configuration/    # DiscogsConfig, GeminiConfig, Secrets.xcconfig
-├── Data/             # CachedFetcher, RecentSearchStore
+├── Data/             # CachedFetcher, collection local index & sync, RecentSearchStore
 ├── Design/           # Spacing, typography, and icon size tokens
 ├── Environment/      # Store and service environment keys
 ├── Features/
@@ -138,7 +141,7 @@ The project uses [Swift Testing](https://developer.apple.com/documentation/testi
 xcodebuild test -scheme DiscoScan -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
-Test coverage includes stores (collection, want list, release, search, profile), OAuth, caching, rate limiting, search endpoints, and Gemini sleeve identification.
+Test coverage includes stores (collection, want list, release, search, profile), collection sync and local index behavior, OAuth, caching, rate limiting, search endpoints, and Gemini sleeve identification.
 
 ## Permissions
 
