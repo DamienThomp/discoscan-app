@@ -19,6 +19,10 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
     private(set) var lastInvalidatedPrefix: String?
     var shouldFail = false
     var delayNanoseconds: UInt64 = 0
+    var folderZeroRemoteCount = 10
+    var folderZeroPages: [[CollectionReleaseItem]] = [CollectionFixtures.sampleReleases]
+    var failOnFolderZeroPage: Int?
+    var foldersMissingAllFolder = false
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -37,14 +41,45 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
             throw URLError(.notConnectedToInternet)
         }
 
-        if endpoint is CollectionFoldersEndpoint {
-            guard let response = CollectionFixtures.sampleFoldersResponse as? E.Response else {
+        if let foldersEndpoint = endpoint as? CollectionFoldersEndpoint {
+            let folders = CollectionFixtures.sampleFolders.compactMap { folder -> CollectionFolderResponse? in
+                guard folder.isAllFolder else { return folder }
+                guard !foldersMissingAllFolder else { return nil }
+                return CollectionFolderResponse(
+                    id: folder.id,
+                    count: folderZeroRemoteCount,
+                    name: folder.name,
+                    resourceUrl: folder.resourceUrl
+                )
+            }
+            guard let response = CollectionFoldersResponse(folders: folders) as? E.Response else {
                 throw URLError(.badURL)
             }
             return response
         }
 
-        if endpoint is CollectionItemsByFolderEndpoint {
+        if let itemsEndpoint = endpoint as? CollectionItemsByFolderEndpoint {
+            if itemsEndpoint.folderId == .zero {
+                if let failOnFolderZeroPage, itemsEndpoint.page == failOnFolderZeroPage {
+                    throw URLError(.notConnectedToInternet)
+                }
+                let pageIndex = itemsEndpoint.page - 1
+                let releases = pageIndex < folderZeroPages.count ? folderZeroPages[pageIndex] : []
+                let response = CollectionReleasesResponse(
+                    pagination: SearchPagination(
+                        page: itemsEndpoint.page,
+                        pages: max(1, folderZeroPages.count),
+                        perPage: 100,
+                        items: folderZeroRemoteCount
+                    ),
+                    releases: releases
+                )
+                guard let typed = response as? E.Response else {
+                    throw URLError(.badURL)
+                }
+                return typed
+            }
+
             guard let response = CollectionFixtures.sampleReleasesResponse as? E.Response else {
                 throw URLError(.badURL)
             }

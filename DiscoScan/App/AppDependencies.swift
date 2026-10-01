@@ -15,6 +15,8 @@ struct AppDependencies {
     let apiClient: NetworkManagerProtocol
     let oauthService: DiscogsOAuthService
     let cacheStorage: SwiftDataCacheStorage
+    let collectionLocalIndex: CollectionLocalIndex
+    let collectionSyncService: CollectionSyncService
     let cachedFetcher: CachedFetcher
     let sleeveIdentifier: GeminiSleeveIdentifier
     let appleMusicCatalog: AppleMusicCatalogService
@@ -68,11 +70,16 @@ struct AppDependencies {
 
         let modelContainer = makeModelContainer()
         let cacheStorage = SwiftDataCacheStorage(modelContainer: modelContainer)
+        let collectionLocalIndex = CollectionLocalIndex(modelContainer: modelContainer)
         let cachedFetcher = CachedFetcher(
             apiClient: apiClient,
             storage: cacheStorage,
             rateLimitTracker: rateLimitTracker,
             decoder: decoder
+        )
+        let collectionSyncService = CollectionSyncService(
+            index: collectionLocalIndex,
+            cachedFetcher: cachedFetcher
         )
 
         let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig)
@@ -86,6 +93,8 @@ struct AppDependencies {
             apiClient: apiClient,
             oauthService: oauthService,
             cacheStorage: cacheStorage,
+            collectionLocalIndex: collectionLocalIndex,
+            collectionSyncService: collectionSyncService,
             cachedFetcher: cachedFetcher,
             sleeveIdentifier: sleeveIdentifier,
             appleMusicCatalog: appleMusicCatalog
@@ -94,11 +103,20 @@ struct AppDependencies {
 
     private static func makeModelContainer() -> ModelContainer {
         do {
-            return try ModelContainer(for: CachedRecord.self)
+            return try ModelContainer(
+                for: CachedRecord.self,
+                LocalCollectionItem.self,
+                CollectionSyncMetadata.self
+            )
         } catch {
             do {
                 let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-                return try ModelContainer(for: CachedRecord.self, configurations: configuration)
+                return try ModelContainer(
+                    for: CachedRecord.self,
+                    LocalCollectionItem.self,
+                    CollectionSyncMetadata.self,
+                    configurations: configuration
+                )
             } catch {
                 fatalError("Failed to create in-memory ModelContainer: \(error)")
             }
