@@ -62,8 +62,9 @@ enum CollectionStoreError: LocalizedError, Equatable {
 protocol CollectionStoreProtocol: AnyObject, Observable {
     var folders: ResourceState<[CollectionFolderResponse]> { get }
     var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] { get }
-    var folder0Sync: CollectionSyncPhase { get }
-    var folder0Items: ResourceState<[CollectionReleaseItem]> { get }
+    var folderZeroSync: CollectionSyncPhase { get }
+    var folderZeroItems: ResourceState<[CollectionReleaseItem]> { get }
+    var isFolderZeroSyncActive: Bool { get }
     var isMutating: Bool { get }
     var lastMutationError: String? { get }
 
@@ -77,9 +78,22 @@ protocol CollectionStoreProtocol: AnyObject, Observable {
     func deleteFolder(id: Int) async
     func addRelease(releaseId: Int, folderId: Int, snapshot: CollectionItemSnapshot) async
     func deleteRelease(from folderId: Int, releaseId: Int, instanceId: Int) async
-    func ensureFolder0IndexReady() async
+    func ensureFolderZeroIndexReady() async
+    func syncFolderZeroIndex(forceRefresh: Bool) async
+    func repairFolderZeroIndexIfNeeded() async
     func refreshCollectionIndex() async
-    func searchFolder0(query: String) -> [CollectionReleaseItem]
+    func searchFolderZero(query: String) -> [CollectionReleaseItem]
+}
+
+extension CollectionStoreProtocol {
+    var isFolderZeroSyncActive: Bool {
+        switch folderZeroSync {
+        case .checking, .syncing:
+            true
+        case .idle, .failed:
+            false
+        }
+    }
 }
 
 extension CollectionStoreProtocol {
@@ -95,4 +109,11 @@ extension CollectionStoreProtocol {
         await loadReleases(folderId: folderId, page: 1, forceRefresh: forceRefresh)
     }
 
+    func syncFolderZeroIndex() async {
+        await syncFolderZeroIndex(forceRefresh: false)
+    }
+
+    func addRelease(releaseId: Int, snapshot: CollectionItemSnapshot) async {
+        await addRelease(releaseId: releaseId, folderId: 1, snapshot: snapshot)
+    }
 }

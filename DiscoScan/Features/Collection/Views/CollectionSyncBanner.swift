@@ -7,6 +7,7 @@ import SwiftUI
 
 struct CollectionSyncBanner: View {
     let phase: CollectionSyncPhase
+    var onRetry: (() async -> Void)?
 
     var body: some View {
         switch phase {
@@ -30,12 +31,22 @@ struct CollectionSyncBanner: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Syncing collection, \(synced) of \(total)")
         case .failed(let message):
-            Label(message, systemImage: "exclamationmark.triangle")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, AppSpacing.row)
-                .padding(.vertical, AppSpacing.compact)
+            VStack(alignment: .leading, spacing: AppSpacing.compact) {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let onRetry {
+                    Button("Retry") {
+                        Task { await onRetry() }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, AppSpacing.row)
+            .padding(.vertical, AppSpacing.compact)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Collection sync failed, \(message)")
         }
     }
 }
@@ -48,6 +59,11 @@ struct CollectionSyncBanner: View {
 
 #Preview("Checking") {
     CollectionSyncBanner(phase: .checking)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Failed") {
+    CollectionSyncBanner(phase: .failed("Couldn't sync your collection.")) {}
         .preferredColorScheme(.dark)
 }
 #endif

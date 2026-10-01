@@ -56,13 +56,16 @@ struct DiscoScanApp: App {
                     wantListStore.sync(with: newState)
                     profileStore.sync(with: newState)
                     if case .authenticated = newState {
-                        Task { await collectionStore.ensureFolder0IndexReady() }
+                        Task { await collectionStore.ensureFolderZeroIndexReady() }
                     }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active,
                           case .authenticated = authSession.state else { return }
-                    Task { await collectionStore.refreshCollectionIndex() }
+                    Task {
+                        await collectionStore.repairFolderZeroIndexIfNeeded()
+                        await collectionStore.syncFolderZeroIndex(forceRefresh: false)
+                    }
                 }
                 .preferredColorScheme(.dark)
         }

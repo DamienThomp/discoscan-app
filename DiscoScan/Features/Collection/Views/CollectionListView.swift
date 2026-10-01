@@ -14,41 +14,49 @@ struct CollectionListView: View {
 
     @State private var searchText = ""
 
-    private var isFolder0: Bool { folderId == 0 }
+    private var isFolderZero: Bool { folderId == .zero }
 
     private var releasesState: ResourceState<[CollectionReleaseItem]> {
-        isFolder0 ? store.folder0Items : (store.releasesByFolderID[folderId] ?? .idle)
+        isFolderZero ? store.folderZeroItems : (store.releasesByFolderID[folderId] ?? .idle)
     }
 
     private var displayedItems: [CollectionReleaseItem] {
-        guard isFolder0 else {
+        guard isFolderZero else {
             return releasesState.value ?? []
         }
-        return store.searchFolder0(query: searchText)
+        return store.searchFolderZero(query: searchText)
     }
 
     private var emptyState: AnimatedEmptyStateView.Configuration {
-        .init(
+        let description: String = if isFolderZero && !searchText.isEmpty {
+            "No matching releases in your collection."
+        } else if isFolderZero {
+            "Your collection is empty."
+        } else {
+            "This folder is empty."
+        }
+
+        return .init(
             title: "Collection",
             systemImage: "square.stack",
-            description: isFolder0 && !searchText.isEmpty
-                ? "No matching releases in your collection."
-                : "This folder is empty.",
+            description: description,
             effect: .bounceDown
         )
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if isFolder0 {
-                CollectionSyncBanner(phase: store.folder0Sync)
+            if isFolderZero {
+                CollectionSyncBanner(phase: store.folderZeroSync) {
+                    await store.syncFolderZeroIndex(forceRefresh: true)
+                }
             }
 
             ResourceContainerView(
                 state: releasesState,
                 retry: {
-                    if isFolder0 {
-                        await store.refreshCollectionIndex()
+                    if isFolderZero {
+                        await store.syncFolderZeroIndex(forceRefresh: true)
                     } else {
                         await store.refreshReleases(folderId: folderId)
                     }
@@ -57,7 +65,7 @@ struct CollectionListView: View {
                 PaginatedReleaseListView(
                     items: displayedItems,
                     emptyState: emptyState,
-                    canLoadMore: isFolder0 ? false : store.canLoadMore(folderId: folderId),
+                    canLoadMore: isFolderZero ? false : store.canLoadMore(folderId: folderId),
                     loadMore: { await store.loadMoreReleases(folderId: folderId) },
                     delete: { item in
                         await store.deleteRelease(
@@ -70,19 +78,19 @@ struct CollectionListView: View {
             }
         }
         .navigationTitle(folderName)
-        .if(isFolder0) { view in
+        .if(isFolderZero) { view in
             view.searchable(text: $searchText, prompt: "Search your collection…")
         }
         .task {
-            if isFolder0 {
-                await store.ensureFolder0IndexReady()
+            if isFolderZero {
+                await store.ensureFolderZeroIndexReady()
             } else if releasesState == .idle {
                 await store.loadReleases(folderId: folderId)
             }
         }
         .refreshable {
-            if isFolder0 {
-                await store.refreshCollectionIndex()
+            if isFolderZero {
+                await store.syncFolderZeroIndex(forceRefresh: true)
             } else {
                 await store.refreshReleases(folderId: folderId)
             }
@@ -109,11 +117,11 @@ private extension View {
     .environment(\.collectionStore, previewCollectionStore(.releasesLoaded(folderId: 1)))
 }
 
-#Preview("Folder 0 Loaded") {
+#Preview("Folder Zero Loaded") {
     PreviewAppRouteStack {
-        CollectionListView(folderId: 0, folderName: "All")
+        CollectionListView(folderId: .zero, folderName: "All")
     }
-    .environment(\.collectionStore, previewCollectionStore(.folder0Loaded))
+    .environment(\.collectionStore, previewCollectionStore(.folderZeroLoaded))
 }
 
 #Preview("Empty") {

@@ -10,8 +10,8 @@ import SwiftUI
 private final class UnimplementedCollectionStore: CollectionStoreProtocol {
     private(set) var folders: ResourceState<[CollectionFolderResponse]> = .idle
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
-    private(set) var folder0Sync: CollectionSyncPhase = .idle
-    private(set) var folder0Items: ResourceState<[CollectionReleaseItem]> = .idle
+    private(set) var folderZeroSync: CollectionSyncPhase = .idle
+    private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -55,7 +55,15 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
         fatalError("collectionStore environment value was not injected.")
     }
 
-    func ensureFolder0IndexReady() async {
+    func ensureFolderZeroIndexReady() async {
+        fatalError("collectionStore environment value was not injected.")
+    }
+
+    func syncFolderZeroIndex(forceRefresh: Bool) async {
+        fatalError("collectionStore environment value was not injected.")
+    }
+
+    func repairFolderZeroIndexIfNeeded() async {
         fatalError("collectionStore environment value was not injected.")
     }
 
@@ -63,7 +71,7 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
         fatalError("collectionStore environment value was not injected.")
     }
 
-    func searchFolder0(query: String) -> [CollectionReleaseItem] {
+    func searchFolderZero(query: String) -> [CollectionReleaseItem] {
         fatalError("collectionStore environment value was not injected.")
     }
 }

@@ -15,8 +15,8 @@ enum PreviewCollectionStoreScenario {
     case releasesEmpty(folderId: Int)
     case releasesFailed(folderId: Int, message: String)
     case releasesLoading(folderId: Int)
-    case folder0Loaded
-    case folder0Syncing
+    case folderZeroLoaded
+    case folderZeroSyncing
 }
 
 @MainActor
@@ -24,8 +24,8 @@ enum PreviewCollectionStoreScenario {
 final class PreviewCollectionStore: CollectionStoreProtocol {
     private(set) var folders: ResourceState<[CollectionFolderResponse]> = .idle
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
-    private(set) var folder0Sync: CollectionSyncPhase = .idle
-    private(set) var folder0Items: ResourceState<[CollectionReleaseItem]> = .idle
+    private(set) var folderZeroSync: CollectionSyncPhase = .idle
+    private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -47,11 +47,11 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
             releasesByFolderID[folderId] = .failed(message)
         case .releasesLoading(let folderId):
             releasesByFolderID[folderId] = .loading
-        case .folder0Loaded:
-            folder0Items = .loaded(CollectionFixtures.sampleReleases)
-        case .folder0Syncing:
-            folder0Items = .loaded(CollectionFixtures.sampleReleases)
-            folder0Sync = .syncing(synced: 450, total: 2100)
+        case .folderZeroLoaded:
+            folderZeroItems = .loaded(CollectionFixtures.sampleReleases)
+        case .folderZeroSyncing:
+            folderZeroItems = .loaded(CollectionFixtures.sampleReleases)
+            folderZeroSync = .syncing(synced: 450, total: 2100)
         }
     }
 
@@ -75,12 +75,16 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
 
     func deleteRelease(from folderId: Int, releaseId: Int, instanceId: Int) async {}
 
-    func ensureFolder0IndexReady() async {}
+    func ensureFolderZeroIndexReady() async {}
+
+    func syncFolderZeroIndex(forceRefresh: Bool) async {}
+
+    func repairFolderZeroIndexIfNeeded() async {}
 
     func refreshCollectionIndex() async {}
 
-    func searchFolder0(query: String) -> [CollectionReleaseItem] {
-        guard let items = folder0Items.value else { return [] }
+    func searchFolderZero(query: String) -> [CollectionReleaseItem] {
+        guard let items = folderZeroItems.value else { return [] }
         guard !query.isEmpty else { return items }
         return items.filter { item in
             let searchable = LocalCollectionItem.makeSearchableText(

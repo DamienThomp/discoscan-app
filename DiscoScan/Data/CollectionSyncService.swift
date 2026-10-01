@@ -13,16 +13,35 @@ enum CollectionSyncPhase: Equatable, Sendable {
     case failed(String)
 }
 
+enum CollectionSyncError: LocalizedError, Equatable {
+    case allFolderNotFound
+    case paginationFailed(page: Int, message: String)
+    case indexWriteFailed(message: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .allFolderNotFound:
+            "Couldn't read your collection size from Discogs."
+        case .paginationFailed(let page, let message):
+            "Couldn't sync collection page \(page): \(message)"
+        case .indexWriteFailed(let message):
+            "Couldn't save collection index: \(message)"
+        }
+    }
+}
+
 protocol CollectionSyncServiceProtocol: Sendable {
     func progressStream() async -> AsyncStream<CollectionSyncPhase>
-    func refreshIfNeeded(username: String, forceFoldersRefresh: Bool) async
+    @discardableResult
+    func refreshIfNeeded(username: String, forceFoldersRefresh: Bool) async -> CollectionSyncPhase
     func repairIfUnsealed(username: String) async
 }
 
+/// Syncs the Discogs folder id `.zero` ("All") into the local SwiftData collection index.
 actor CollectionSyncService: CollectionSyncServiceProtocol {
     private let index: any CollectionLocalIndexProtocol
     private let cachedFetcher: any CachedFetcherProtocol
-    private var isSyncInFlight = false
+    private var inFlightRefresh: Task<CollectionSyncPhase, Never>?
     private var progressContinuations: [UUID: AsyncStream<CollectionSyncPhase>.Continuation] = [:]
 
     init(
@@ -43,25 +62,29 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
         }
     }
 
-    func refreshIfNeeded(username: String, forceFoldersRefresh: Bool) async {
-        await performRefresh(username: username, forceFoldersRefresh: forceFoldersRefresh)
+    func refreshIfNeeded(username: String, forceFoldersRefresh: Bool) async -> CollectionSyncPhase {
+        if let inFlightRefresh {
+            return await inFlightRefresh.value
+        }
+
+        let task = Task { await performRefresh(username: username, forceFoldersRefresh: forceFoldersRefresh) }
+        inFlightRefresh = task
+        let phase = await task.value
+        inFlightRefresh = nil
+        return phase
     }
 
     func repairIfUnsealed(username: String) async {
         do {
             if try await index.hasUnsealedGeneration(username: username) {
-                await performRefresh(username: username, forceFoldersRefresh: false)
+                await refreshIfNeeded(username: username, forceFoldersRefresh: false)
             }
         } catch {
             emit(.failed(error.localizedDescription))
         }
     }
 
-    private func performRefresh(username: String, forceFoldersRefresh: Bool) async {
-        guard !isSyncInFlight else { return }
-        isSyncInFlight = true
-        defer { isSyncInFlight = false }
-
+    private func performRefresh(username: String, forceFoldersRefresh: Bool) async -> CollectionSyncPhase {
         do {
             emit(.checking)
 
@@ -72,16 +95,15 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
                 forceRefresh: forceFoldersRefresh
             )
 
-            guard let remoteTotal = foldersResponse.folders.first(where: { $0.id == 0 })?.count else {
-                emit(.idle)
-                return
+            guard let remoteTotal = foldersResponse.allFolder?.count else {
+                throw CollectionSyncError.allFolderNotFound
             }
 
             let localTotal = try await index.count(username: username)
             let isUnsealed = try await index.hasUnsealedGeneration(username: username)
             guard localTotal != remoteTotal || isUnsealed else {
                 emit(.idle)
-                return
+                return .idle
             }
 
             let generation = try await index.beginSyncGeneration(username: username)
@@ -92,8 +114,11 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
             )
             _ = try await index.sweep(username: username, keeping: generation)
             emit(.idle)
+            return .idle
         } catch {
-            emit(.failed(error.localizedDescription))
+            let phase = CollectionSyncPhase.failed(error.localizedDescription)
+            emit(phase)
+            return phase
         }
     }
 
@@ -106,24 +131,35 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
         var synced = 0
 
         while true {
-            let response = try await cachedFetcher.fetch(
-                CollectionItemsByFolderEndpoint(
-                    username: username,
-                    folderId: 0,
-                    page: page,
-                    perPage: 100
-                ),
-                key: "collectionFolder-0-page-\(page)",
-                scope: .collection,
-                forceRefresh: true
-            )
+            do {
+                let response = try await cachedFetcher.fetch(
+                    CollectionItemsByFolderEndpoint(
+                        username: username,
+                        folderId: .zero,
+                        page: page,
+                        perPage: 100
+                    ),
+                    key: "collectionFolder-\(Int.zero)-page-\(page)",
+                    scope: .collection,
+                    forceRefresh: true
+                )
 
-            try await index.upsertSynced(response.releases, username: username, generation: generation)
-            synced += response.releases.count
-            emit(.syncing(synced: min(synced, remoteTotal), total: remoteTotal))
+                do {
+                    try await index.upsertSynced(response.releases, username: username, generation: generation)
+                } catch {
+                    throw CollectionSyncError.indexWriteFailed(message: error.localizedDescription)
+                }
 
-            guard page < response.pagination.pages else { break }
-            page += 1
+                synced += response.releases.count
+                emit(.syncing(synced: min(synced, remoteTotal), total: remoteTotal))
+
+                guard page < response.pagination.pages else { break }
+                page += 1
+            } catch let error as CollectionSyncError {
+                throw error
+            } catch {
+                throw CollectionSyncError.paginationFailed(page: page, message: error.localizedDescription)
+            }
         }
     }
 
