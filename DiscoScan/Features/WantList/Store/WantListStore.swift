@@ -77,13 +77,13 @@ final class WantListStore: WantListStoreProtocol {
 
             pagination = response.pagination
 
-            if page == 1 {
-                wants = .loaded(response.wants)
-            } else if let existing = wants.value {
-                wants = .loaded(existing + response.wants)
+            let items = if page > 1, let existing = wants.value {
+                existing + response.wants
             } else {
-                wants = .loaded(response.wants)
+                response.wants
             }
+
+            wants = .loaded(items)
         } catch {
             wants = wants.recoverFromFetchFailure(error.localizedDescription)
         }

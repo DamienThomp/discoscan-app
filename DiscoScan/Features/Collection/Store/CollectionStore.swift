@@ -96,13 +96,13 @@ final class CollectionStore: CollectionStoreProtocol {
 
             paginationByFolderID[folderId] = response.pagination
 
-            if page == 1 {
-                releasesByFolderID[folderId] = .loaded(response.releases)
-            } else if let existing = releasesByFolderID[folderId]?.value {
-                releasesByFolderID[folderId] = .loaded(existing + response.releases)
+            let releases = if page > 1, let existing = releasesByFolderID[folderId]?.value {
+                existing + response.releases
             } else {
-                releasesByFolderID[folderId] = .loaded(response.releases)
+                response.releases
             }
+
+            releasesByFolderID[folderId] = .loaded(releases)
         } catch {
             let current = releasesByFolderID[folderId] ?? .idle
             releasesByFolderID[folderId] = current.recoverFromFetchFailure(error.localizedDescription)
