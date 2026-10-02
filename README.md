@@ -57,6 +57,10 @@ Key integrations:
 - **Google Gemini** — Sleeve identification from JPEG photos
 - **Apple MusicKit** — Catalog lookup by UPC or artist/title search; deep links to the Music app
 
+## Documentation
+
+For business logic and internal data flows, see [docs/README.md](docs/README.md).
+
 ## Requirements
 
 - Xcode with iOS 26.5 SDK
