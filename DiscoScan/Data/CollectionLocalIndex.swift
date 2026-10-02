@@ -109,7 +109,7 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
     }
 
     private func fetchDescriptor(username: String) -> FetchDescriptor<LocalCollectionItem> {
-        var descriptor = FetchDescriptor<LocalCollectionItem>(
+        let descriptor = FetchDescriptor<LocalCollectionItem>(
             predicate: #Predicate { $0.username == username },
             sortBy: [SortDescriptor(\.dateAdded, order: .reverse)]
         )

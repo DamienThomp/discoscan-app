@@ -77,7 +77,7 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
     func repairIfUnsealed(username: String) async {
         do {
             if try await index.hasUnsealedGeneration(username: username) {
-                await refreshIfNeeded(username: username, forceFoldersRefresh: false)
+                let _ = await refreshIfNeeded(username: username, forceFoldersRefresh: false)
             }
         } catch {
             emit(.failed(error.localizedDescription))
