@@ -11,7 +11,6 @@ struct ReleaseDetailView: View {
 
     @Environment(\.releaseStore) private var releaseStore
     @Environment(\.wantListStore) private var wantListStore
-    @Environment(\.collectionStore) private var collectionStore
 
     @State private var showFolderPicker = false
 
@@ -38,8 +37,11 @@ struct ReleaseDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                wantListButton
-                addToCollectionButton
+                WantListToolbarButton(releaseId: releaseID)
+                AddToCollectionToolbarButton(
+                    isPresentingFolderPicker: $showFolderPicker,
+                    isEnabled: detailState.value != nil
+                )
             }
         }
         .sheet(isPresented: $showFolderPicker) {
@@ -55,46 +57,6 @@ struct ReleaseDetailView: View {
             }
             await wantListStore.ensureWantsLoaded()
         }
-    }
-
-    private var wantListButton: some View {
-        Button {
-            Task {
-                if wantListStore.isInWantList(releaseId: releaseID) {
-                    await wantListStore.deleteRelease(releaseId: releaseID)
-                } else {
-                    await wantListStore.addRelease(releaseId: releaseID)
-                }
-            }
-        } label: {
-            Image(systemName: wantListStore.isInWantList(releaseId: releaseID) ? "heart.fill" : "heart")
-        }
-        .disabled(wantListStore.isMutating)
-        .accessibilityLabel(wantListAccessibilityLabel)
-        .accessibilityHint("Double tap to toggle want list status")
-        .accessibilityAddTraits(
-            wantListStore.isInWantList(releaseId: releaseID) ? .isSelected : []
-        )
-    }
-
-    private var wantListAccessibilityLabel: String {
-        if wantListStore.isMutating {
-            return "Updating want list"
-        }
-        return wantListStore.isInWantList(releaseId: releaseID)
-            ? "Remove from Want List"
-            : "Add to Want List"
-    }
-
-    private var addToCollectionButton: some View {
-        Button {
-            showFolderPicker = true
-        } label: {
-            Image(systemName: "plus.square.on.square")
-        }
-        .disabled(collectionStore.isMutating || detailState.value == nil)
-        .accessibilityLabel("Add to Collection")
-        .accessibilityHint("Opens folder picker")
     }
 }
 

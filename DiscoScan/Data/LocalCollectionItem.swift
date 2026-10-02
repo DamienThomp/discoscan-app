@@ -116,7 +116,7 @@ nonisolated final class LocalCollectionItem {
     }
 }
 
-enum CollectionSearchMatching {
+nonisolated enum CollectionSearchMatching {
     static func matches(query: String, searchableText: String) -> Bool {
         let tokens = query
             .trimmingCharacters(in: .whitespacesAndNewlines)
