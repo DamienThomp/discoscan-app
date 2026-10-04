@@ -11,6 +11,7 @@ private final class UnimplementedWantListStore: WantListStoreProtocol {
     private(set) var wants: ResourceState<[WantListItem]> = .idle
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
+    private(set) var wantsNeedsReconcile = false
 
     func sync(with state: AuthSession.State) {
         fatalError("wantListStore environment value was not injected.")

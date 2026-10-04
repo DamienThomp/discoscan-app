@@ -11,10 +11,11 @@ enum CollectionStoreTestSupport {
     static func makeStore(
         fetcher: MockCollectionCachedFetcher,
         apiClient: MockCollectionNetworkClient,
-        modelContainer: ModelContainer? = nil
+        modelContainer: ModelContainer? = nil,
+        localIndex: (any CollectionLocalIndexProtocol)? = nil
     ) throws -> CollectionStore {
         let container = try modelContainer ?? TestModelContainer.make()
-        let index = CollectionLocalIndex(modelContainer: container)
+        let index = localIndex ?? CollectionLocalIndex(modelContainer: container)
         let syncService = CollectionSyncService(index: index, cachedFetcher: fetcher)
         return CollectionStore(
             cachedFetcher: fetcher,

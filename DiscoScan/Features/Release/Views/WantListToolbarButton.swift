@@ -18,22 +18,36 @@ struct WantListToolbarButton: View {
         wantListStore.isInWantList(releaseId: releaseId)
     }
 
+    private var isLoadingWants: Bool {
+        switch wantListStore.wants {
+        case .idle, .loading:
+            true
+        case .loaded, .refreshing, .failed:
+            false
+        }
+    }
+
     private var isDisabled: Bool {
-        isInWantList || wantListStore.isMutating
+        isInWantList || wantListStore.isMutating || isLoadingWants
     }
 
     var body: some View {
         Button {
-            addToWantList()
+            handleTap()
         } label: {
             Image(systemName: isInWantList ? "heart.fill" : "heart")
         }
         .disabled(isDisabled)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint("Tap to add to Want List")
+        .accessibilityHint(accessibilityHint)
         .accessibilityAddTraits(isInWantList ? .isSelected : [])
         .sensoryFeedback(.success, trigger: successFeedbackTrigger)
         .sensoryFeedback(.error, trigger: errorFeedbackTrigger)
+        .task {
+            if case .idle = wantListStore.wants {
+                await wantListStore.loadWants()
+            }
+        }
         .alert("Could Not Add to Want List", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -47,10 +61,30 @@ struct WantListToolbarButton: View {
         if wantListStore.isMutating {
             return "Updating want list"
         }
+        if isLoadingWants {
+            return "Loading want list"
+        }
+        if case .failed = wantListStore.wants {
+            return "Want list unavailable"
+        }
         return isInWantList ? "Release is in your Want List" : "Add to Want List"
     }
 
-    private func addToWantList() {
+    private var accessibilityHint: String {
+        if case .failed = wantListStore.wants {
+            return "Tap to retry loading your want list"
+        }
+        return "Tap to add to Want List"
+    }
+
+    private func handleTap() {
+        if case .failed = wantListStore.wants {
+            Task {
+                await wantListStore.loadWants(forceRefresh: true)
+            }
+            return
+        }
+
         guard !isInWantList else { return }
 
         Task {

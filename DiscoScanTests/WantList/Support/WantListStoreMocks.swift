@@ -73,6 +73,21 @@ final class MockWantListNetworkClient: NetworkManagerProtocol, @unchecked Sendab
             return response
         }
 
+        if let addEndpoint = endpoint as? AddReleaseToWantListEndpoint, E.Response.self == WantListItem.self {
+            let template = WantListFixtures.sampleWants[0]
+            let item = WantListItem(
+                id: addEndpoint.releaseId,
+                rating: addEndpoint.rating ?? 0,
+                notes: addEndpoint.notes,
+                resourceURL: template.resourceURL,
+                basicInformation: template.basicInformation
+            )
+            guard let response = item as? E.Response else {
+                throw URLError(.badURL)
+            }
+            return response
+        }
+
         if E.Response.self == WantListItem.self {
             guard let response = WantListFixtures.sampleWants.first as? E.Response else {
                 throw URLError(.badURL)

@@ -15,6 +15,7 @@ final class WantListStore: WantListStoreProtocol {
     private(set) var wants: ResourceState<[WantListItem]> = .idle
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
+    private(set) var wantsNeedsReconcile = false
 
     private var username: String?
     private var pagination: SearchPagination?
@@ -51,6 +52,7 @@ final class WantListStore: WantListStoreProtocol {
         isLoadingMore = false
         isMutating = false
         lastMutationError = nil
+        wantsNeedsReconcile = false
     }
 
     func canLoadMore() -> Bool {
@@ -108,7 +110,7 @@ final class WantListStore: WantListStoreProtocol {
     func addRelease(releaseId: Int, notes: String?, rating: Int?) async {
         await performMutation {
             let username = try requireUsername()
-            _ = try await apiClient.request(
+            let added = try await apiClient.request(
                 for: AddReleaseToWantListEndpoint(
                     username: username,
                     releaseId: releaseId,
@@ -116,7 +118,9 @@ final class WantListStore: WantListStoreProtocol {
                     rating: rating
                 )
             )
+            insertWantLocally(added)
             await refreshWants()
+            wantsNeedsReconcile = !isInWantList(releaseId: releaseId)
         }
     }
 
@@ -168,6 +172,7 @@ final class WantListStore: WantListStoreProtocol {
 
     private func performMutation(_ operation: () async throws -> Void) async {
         isMutating = true
+        lastMutationError = nil
         defer { isMutating = false }
 
         do {
@@ -175,6 +180,16 @@ final class WantListStore: WantListStoreProtocol {
             lastMutationError = nil
         } catch {
             lastMutationError = error.localizedDescription
+        }
+    }
+
+    private func insertWantLocally(_ item: WantListItem) {
+        if var current = wants.value {
+            current.removeAll { $0.id == item.id }
+            current.insert(item, at: 0)
+            wants = .loaded(current)
+        } else {
+            wants = .loaded([item])
         }
     }
 

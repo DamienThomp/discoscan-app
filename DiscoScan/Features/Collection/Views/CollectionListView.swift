@@ -13,6 +13,7 @@ struct CollectionListView: View {
     @Environment(\.collectionStore) private var store
 
     @State private var searchText = ""
+    @State private var deleteErrorMessage: String?
 
     private var isFolderZero: Bool { folderId == .zero }
 
@@ -73,10 +74,21 @@ struct CollectionListView: View {
                             releaseId: item.releaseId,
                             instanceId: item.instanceId
                         )
+                        if let message = store.lastMutationError {
+                            deleteErrorMessage = message
+                        }
                     }
                 )
             }
         }
+        .mutationErrorAlert(
+            title: "Could Not Remove Release",
+            isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            ),
+            message: deleteErrorMessage
+        )
         .navigationTitle(folderName)
         .if(isFolderZero) { view in
             view.searchable(text: $searchText, prompt: "Search your collection…")

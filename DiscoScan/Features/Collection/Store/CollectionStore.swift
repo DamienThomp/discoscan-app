@@ -6,6 +6,7 @@
 import Foundation
 import NetworkKit
 import Observation
+import os
 
 @MainActor
 @Observable
@@ -22,6 +23,8 @@ final class CollectionStore: CollectionStoreProtocol {
     private var paginationByFolderID: [Int: SearchPagination] = [:]
     private var isLoadingMoreByFolderID: [Int: Bool] = [:]
     private var progressTask: Task<Void, Never>?
+
+    private static let logger = Logger(subsystem: "com.discoscan", category: "CollectionStore")
 
     private let cachedFetcher: any CachedFetcherProtocol
     private let apiClient: NetworkManagerProtocol
@@ -192,11 +195,21 @@ final class CollectionStore: CollectionStoreProtocol {
                 folderId: folderId,
                 dateAdded: Self.currentISO8601Date()
             )
-            try await localIndex.upsertLive(item, username: username)
-            bumpFolderCounts(selectedFolderId: folderId, delta: 1)
-            if let current = releasesByFolderID[folderId]?.value {
-                releasesByFolderID[folderId] = .loaded([item] + current)
+
+            let localSucceeded = try await writeToLocalIndexWithRecovery(
+                username: username,
+                folderId: folderId,
+                instanceId: item.instanceId,
+                expectingPresent: true
+            ) {
+                try await localIndex.upsertLive(item, username: username)
             }
+
+            guard localSucceeded else {
+                throw CollectionStoreError.remoteAddSucceededLocalFailed
+            }
+
+            applyAddInMemoryUpdates(item: item, folderId: folderId)
             await reloadFolderZeroItems()
             await loadFolders(forceRefresh: true)
         }
@@ -213,18 +226,24 @@ final class CollectionStore: CollectionStoreProtocol {
                     instanceId: instanceId
                 )
             )
-            try await localIndex.delete(instanceId: instanceId, username: username)
-            bumpFolderCounts(selectedFolderId: folderId, delta: -1)
-            if let current = releasesByFolderID[folderId]?.value {
-                releasesByFolderID[folderId] = .loaded(
-                    current.filter { $0.instanceId != instanceId }
-                )
+
+            let localSucceeded = try await writeToLocalIndexWithRecovery(
+                username: username,
+                folderId: folderId,
+                instanceId: instanceId,
+                expectingPresent: false
+            ) {
+                try await localIndex.delete(instanceId: instanceId, username: username)
             }
-            if let pagination = paginationByFolderID[folderId] {
-                paginationByFolderID[folderId] = pagination.afterRemovingOneItem()
+
+            if localSucceeded {
+                applyDeleteInMemoryUpdates(folderId: folderId, instanceId: instanceId)
+                await reloadFolderZeroItems()
+                await loadFolders(forceRefresh: true)
+            } else {
+                applyDeleteInMemoryUpdates(folderId: folderId, instanceId: instanceId)
+                throw CollectionStoreError.remoteDeleteSucceededLocalFailed
             }
-            await reloadFolderZeroItems()
-            await loadFolders(forceRefresh: true)
         }
     }
 
@@ -393,6 +412,68 @@ final class CollectionStore: CollectionStoreProtocol {
         }
     }
 
+    private func writeToLocalIndexWithRecovery(
+        username: String,
+        folderId: Int,
+        instanceId: Int,
+        expectingPresent: Bool,
+        write: () async throws -> Void
+    ) async throws -> Bool {
+        do {
+            try await write()
+            return true
+        } catch {
+            do {
+                try await write()
+                return true
+            } catch let retryError {
+                Self.logger.error("Local index write failed after retry: \(retryError.localizedDescription)")
+                return await repairAfterPartialMutation(
+                    username: username,
+                    folderId: folderId,
+                    instanceId: instanceId,
+                    expectingPresent: expectingPresent
+                )
+            }
+        }
+    }
+
+    private func repairAfterPartialMutation(
+        username: String,
+        folderId: Int,
+        instanceId: Int,
+        expectingPresent: Bool
+    ) async -> Bool {
+        await Task.detached { @MainActor in
+            await self.syncFolderZeroIndex(forceRefresh: true)
+            if folderId != .zero {
+                await self.refreshReleases(folderId: folderId)
+            }
+            await self.loadFolders(forceRefresh: true)
+            return (try? await self.localIndex.contains(instanceId: instanceId, username: username))
+                == expectingPresent
+        }.value
+    }
+
+    private func applyAddInMemoryUpdates(item: CollectionReleaseItem, folderId: Int) {
+        bumpFolderCounts(selectedFolderId: folderId, delta: 1)
+        if let current = releasesByFolderID[folderId]?.value {
+            releasesByFolderID[folderId] = .loaded([item] + current)
+        }
+    }
+
+    private func applyDeleteInMemoryUpdates(folderId: Int, instanceId: Int) {
+        bumpFolderCounts(selectedFolderId: folderId, delta: -1)
+        if let current = releasesByFolderID[folderId]?.value {
+            releasesByFolderID[folderId] = .loaded(
+                current.filter { $0.instanceId != instanceId }
+            )
+        }
+        if let pagination = paginationByFolderID[folderId] {
+            paginationByFolderID[folderId] = pagination.afterRemovingOneItem()
+        }
+    }
+
     private func bumpFolderCounts(selectedFolderId: Int, delta: Int) {
         guard case .loaded(let folderList) = folders else { return }
         let updated = folderList.map { folder in
@@ -409,6 +490,7 @@ final class CollectionStore: CollectionStoreProtocol {
 
     private func performMutation(_ operation: () async throws -> Void) async {
         isMutating = true
+        lastMutationError = nil
         defer { isMutating = false }
 
         do {

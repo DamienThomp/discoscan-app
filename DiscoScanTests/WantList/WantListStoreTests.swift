@@ -178,4 +178,31 @@ struct WantListStoreTests {
         #expect(fetcher.lastFetch?.forceRefresh == true)
         #expect(store.lastMutationError == nil)
     }
+
+    @Test func `Add release inserts returned item when refresh fails`() async {
+        let fetcher = MockWantListCachedFetcher()
+        fetcher.shouldFail = true
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.addRelease(releaseId: 249_504)
+
+        #expect(store.isInWantList(releaseId: 249_504))
+        #expect(store.lastMutationError == nil)
+        #expect(store.wantsNeedsReconcile == false)
+    }
+
+    @Test func `Add release sets stale flag when refresh omits new item`() async {
+        let fetcher = MockWantListCachedFetcher()
+        let apiClient = MockWantListNetworkClient()
+        let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.addRelease(releaseId: 249_504)
+
+        #expect(store.lastMutationError == nil)
+        #expect(store.wantsNeedsReconcile == true)
+        #expect(store.isInWantList(releaseId: 249_504) == false)
+    }
 }

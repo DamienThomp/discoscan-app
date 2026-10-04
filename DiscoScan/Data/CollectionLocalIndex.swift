@@ -10,6 +10,7 @@ protocol CollectionLocalIndexProtocol: Sendable {
     func count(username: String) async throws -> Int
     func hasUnsealedGeneration(username: String) async throws -> Bool
     func allItems(username: String) async throws -> [CollectionReleaseItem]
+    func contains(instanceId: Int, username: String) async throws -> Bool
     func upsertLive(_ item: CollectionReleaseItem, username: String) async throws
     func delete(instanceId: Int, username: String) async throws
     func search(username: String, query: String) async throws -> [CollectionReleaseItem]
@@ -22,6 +23,15 @@ protocol CollectionLocalIndexProtocol: Sendable {
 
 @ModelActor
 actor CollectionLocalIndex: CollectionLocalIndexProtocol {
+
+    private var saveOverride: (@Sendable () throws -> Void)?
+
+    #if DEBUG
+    func setSaveOverride(_ handler: (@Sendable () throws -> Void)?) {
+        saveOverride = handler
+    }
+    #endif
+
     func count(username: String) throws -> Int {
         try modelContext.fetchCount(fetchDescriptor(username: username))
     }
@@ -35,21 +45,34 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
         return records.map { $0.toCollectionReleaseItem() }
     }
 
-    func upsertLive(_ item: CollectionReleaseItem, username: String) throws {
-        let meta = try fetchOrCreateMetadata(username: username)
-        try upsertRow(item, username: username, generation: meta.activeGeneration)
-        meta.localCount = try count(username: username)
-        try modelContext.save()
-    }
-
-    func delete(instanceId: Int, username: String) throws {
+    func contains(instanceId: Int, username: String) throws -> Bool {
         let predicate = #Predicate<LocalCollectionItem> {
             $0.username == username && $0.instanceId == instanceId
         }
-        try modelContext.delete(model: LocalCollectionItem.self, where: predicate)
-        let meta = try fetchOrCreateMetadata(username: username)
-        meta.localCount = try count(username: username)
-        try modelContext.save()
+        return try modelContext.fetchCount(FetchDescriptor(predicate: predicate)) > 0
+    }
+
+    func upsertLive(_ item: CollectionReleaseItem, username: String) throws {
+        try saveAfter {
+            let meta = try fetchOrCreateMetadata(username: username)
+            try upsertRow(item, username: username, generation: meta.activeGeneration)
+            meta.localCount = try count(username: username)
+        }
+    }
+
+    func delete(instanceId: Int, username: String) throws {
+        try saveAfter {
+            let predicate = #Predicate<LocalCollectionItem> {
+                $0.username == username && $0.instanceId == instanceId
+            }
+            var descriptor = FetchDescriptor<LocalCollectionItem>(predicate: predicate)
+            descriptor.fetchLimit = 1
+            if let existing = try modelContext.fetch(descriptor).first {
+                modelContext.delete(existing)
+            }
+            let meta = try fetchOrCreateMetadata(username: username)
+            meta.localCount = try count(username: username)
+        }
     }
 
     func search(username: String, query: String) throws -> [CollectionReleaseItem] {
@@ -66,20 +89,22 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
     }
 
     func clear(username: String) throws {
-        let predicate = #Predicate<LocalCollectionItem> { $0.username == username }
-        try modelContext.delete(model: LocalCollectionItem.self, where: predicate)
-        let metadataPredicate = #Predicate<CollectionSyncMetadata> { $0.username == username }
-        try modelContext.delete(model: CollectionSyncMetadata.self, where: metadataPredicate)
-        try modelContext.save()
+        try saveAfter {
+            let predicate = #Predicate<LocalCollectionItem> { $0.username == username }
+            try modelContext.delete(model: LocalCollectionItem.self, where: predicate)
+            let metadataPredicate = #Predicate<CollectionSyncMetadata> { $0.username == username }
+            try modelContext.delete(model: CollectionSyncMetadata.self, where: metadataPredicate)
+        }
     }
 
     func beginSyncGeneration(username: String) throws -> Int {
-        let meta = try fetchOrCreateMetadata(username: username)
-        if meta.activeGeneration == meta.sealedGeneration {
-            meta.activeGeneration += 1
+        try saveAfter {
+            let meta = try fetchOrCreateMetadata(username: username)
+            if meta.activeGeneration == meta.sealedGeneration {
+                meta.activeGeneration += 1
+            }
+            return meta.activeGeneration
         }
-        try modelContext.save()
-        return meta.activeGeneration
     }
 
     func upsertSynced(
@@ -87,25 +112,46 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
         username: String,
         generation: Int
     ) throws {
-        for item in items {
-            try upsertRow(item, username: username, generation: generation)
+        try saveAfter {
+            for item in items {
+                try upsertRow(item, username: username, generation: generation)
+            }
         }
-        try modelContext.save()
     }
 
     func sweep(username: String, keeping generation: Int) throws -> Int {
-        let predicate = #Predicate<LocalCollectionItem> {
-            $0.username == username && $0.syncGeneration < generation
-        }
-        let staleCount = try modelContext.fetchCount(FetchDescriptor(predicate: predicate))
-        try modelContext.delete(model: LocalCollectionItem.self, where: predicate)
+        try saveAfter {
+            let predicate = #Predicate<LocalCollectionItem> {
+                $0.username == username && $0.syncGeneration < generation
+            }
+            let staleCount = try modelContext.fetchCount(FetchDescriptor(predicate: predicate))
+            try modelContext.delete(model: LocalCollectionItem.self, where: predicate)
 
-        let meta = try fetchOrCreateMetadata(username: username)
-        meta.sealedGeneration = generation
-        meta.localCount = try count(username: username)
-        meta.lastSyncedAt = Date()
-        try modelContext.save()
-        return staleCount
+            let meta = try fetchOrCreateMetadata(username: username)
+            meta.sealedGeneration = generation
+            meta.localCount = try count(username: username)
+            meta.lastSyncedAt = Date()
+            return staleCount
+        }
+    }
+
+    private func saveAfter<T>(_ work: () throws -> T) throws -> T {
+        do {
+            let result = try work()
+            try performSave()
+            return result
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    private func performSave() throws {
+        if let saveOverride {
+            try saveOverride()
+        } else {
+            try modelContext.save()
+        }
     }
 
     private func fetchDescriptor(username: String) -> FetchDescriptor<LocalCollectionItem> {

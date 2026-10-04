@@ -19,6 +19,7 @@ final class PreviewWantListStore: WantListStoreProtocol {
     private(set) var wants: ResourceState<[WantListItem]> = .idle
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
+    private(set) var wantsNeedsReconcile = false
 
     init(scenario: PreviewWantListStoreScenario) {
         switch scenario {

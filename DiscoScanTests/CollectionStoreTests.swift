@@ -336,4 +336,151 @@ struct CollectionStoreTests {
         #expect(store.folderZeroItems.value?.count == 1)
         #expect(store.folderZeroSync == .idle)
     }
+
+    @Test func `Local write retry succeeds without full repair`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .failOnceThenSucceed)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: failingIndex
+        )
+
+        store.sync(with: .authenticated(identity))
+        await store.addRelease(
+            releaseId: 249_504,
+            folderId: 1,
+            snapshot: CollectionStoreTestSupport.sampleSnapshot
+        )
+
+        #expect(store.lastMutationError == nil)
+        #expect(store.folderZeroItems.value?.count == 1)
+        #expect(fetcher.fetchCount == 1)
+    }
+
+    @Test func `Add release triggers repair when local upsert always fails`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .alwaysFail)
+        let fetcher = MockCollectionCachedFetcher()
+        let repairedItem = CollectionStoreTestSupport.sampleSnapshot.asCollectionReleaseItem(
+            releaseId: 249_504,
+            instanceId: 2000,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00-00:00"
+        )
+        fetcher.folderZeroRemoteCount = 1
+        fetcher.folderZeroPages = [[repairedItem]]
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: failingIndex
+        )
+
+        store.sync(with: .authenticated(identity))
+        await store.loadFolders()
+        await store.addRelease(
+            releaseId: 249_504,
+            folderId: 1,
+            snapshot: CollectionStoreTestSupport.sampleSnapshot
+        )
+
+        #expect(store.lastMutationError == nil)
+        #expect(try await realIndex.contains(instanceId: 2000, username: identity.username))
+    }
+
+    @Test func `Add release surfaces error when local upsert and repair both fail`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .alwaysFail)
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.shouldFail = true
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: failingIndex
+        )
+
+        store.sync(with: .authenticated(identity))
+        await store.addRelease(
+            releaseId: 249_504,
+            folderId: 1,
+            snapshot: CollectionStoreTestSupport.sampleSnapshot
+        )
+
+        #expect(store.lastMutationError == CollectionStoreError.remoteAddSucceededLocalFailed.localizedDescription)
+    }
+
+    @Test func `Delete release triggers repair when local delete always fails`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .alwaysFail)
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.folderZeroRemoteCount = 0
+        fetcher.folderZeroPages = [[]]
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: failingIndex
+        )
+
+        store.sync(with: .authenticated(identity))
+        let instanceId = 2000
+        let item = CollectionStoreTestSupport.sampleSnapshot.asCollectionReleaseItem(
+            releaseId: 249_504,
+            instanceId: instanceId,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00-00:00"
+        )
+        try await realIndex.upsertLive(item, username: identity.username)
+        await store.loadFolders()
+
+        await store.deleteRelease(from: 1, releaseId: 249_504, instanceId: instanceId)
+
+        #expect(store.lastMutationError == nil)
+        #expect(try await realIndex.contains(instanceId: instanceId, username: identity.username) == false)
+    }
+
+    @Test func `Repair completes when originating task is cancelled`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .alwaysFail)
+        let fetcher = MockCollectionCachedFetcher()
+        let repairedItem = CollectionStoreTestSupport.sampleSnapshot.asCollectionReleaseItem(
+            releaseId: 249_504,
+            instanceId: 2000,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00-00:00"
+        )
+        fetcher.folderZeroRemoteCount = 1
+        fetcher.folderZeroPages = [[repairedItem]]
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: failingIndex
+        )
+
+        store.sync(with: .authenticated(identity))
+        await store.loadFolders()
+
+        let addTask = Task {
+            await store.addRelease(
+                releaseId: 249_504,
+                folderId: 1,
+                snapshot: CollectionStoreTestSupport.sampleSnapshot
+            )
+        }
+        addTask.cancel()
+        _ = await addTask.value
+
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(try await realIndex.contains(instanceId: 2000, username: identity.username))
+    }
 }
