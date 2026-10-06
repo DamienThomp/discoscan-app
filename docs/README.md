@@ -56,5 +56,5 @@ flowchart TB
 | `DiscoScan/Auth/` | OAuth, Keychain tokens, `AuthSession` |
 | `DiscoScan/Data/` | `CachedFetcher`, collection sync, local index |
 | `DiscoScan/Features/*/Store/` | Feature stores (`CollectionStore`, `SearchStore`, `ProfileStore`, …) |
-| `DiscoScan/Networking/` | Typed Discogs endpoints, Gemini client |
+| `DiscoScan/Networking/` | Typed Discogs and Gemini endpoints (NetworkKit) |
 | `DiscoScan/Views/AsyncState/` | `ResourceContainerView` and loading/error UI |

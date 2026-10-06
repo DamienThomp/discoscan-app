@@ -22,9 +22,13 @@ flowchart TB
     subgraph photoPath [Sleeve photo]
         photoBtn[SearchView Identify from photo]
         sheet[ImageIdentificationSheet]
-        gemini[GeminiSleeveIdentifier]
+        gemini[GeminiSleeveIdentifier via NetworkKit]
         confirm[User confirms fields]
-        photoBtn --> sheet --> gemini --> confirm
+        failed[Capture failed with recovery actions]
+        photoBtn --> sheet --> gemini
+        gemini --> confirm
+        gemini --> failed
+        failed --> sheet
     end
 
     router[AppRouter.submitSearch]
@@ -86,15 +90,45 @@ Barcode scans do **not** add to recent searches.
 
 ## Sleeve photo identification
 
-1. `ImageIdentificationSheet` manages phases: capturing → analyzing → confirming.
-2. Photo from library (`PhotosPicker`) or camera.
-3. [`GeminiSleeveIdentifier`](../DiscoScan/Networking/Gemini/GeminiSleeveIdentifier.swift) sends a downscaled JPEG to Google Gemini and parses JSON `{ artist, title, catalogNumber }`.
-4. User edits fields in the confirm step, then taps **Search Discogs**.
-5. `SearchView` closes the sheet and calls `submitSearch(.imageSuggested(query:))`.
+### Phases
+
+[`ImageIdentificationSheet`](../DiscoScan/Features/Search/Views/ImageIdentificationSheet.swift) drives [`ImageIdentificationPhase`](../DiscoScan/Models/Search/ImageIdentificationPhase.swift):
+
+| Phase | UI | Next step |
+| ----- | -- | --------- |
+| `capturing` | Picker controls + tip | User picks library photo or takes camera photo |
+| `analyzing` | Image preview + progress | Gemini identification runs |
+| `captureFailed` | Image preview (if available) + error + recovery actions | Retry, pick another photo, search manually, or scan barcode |
+| `confirming` | Editable fields or empty-state guidance | User searches Discogs or exits |
+
+Analysis is triggered by an `analysisAttempt` counter (not `imageData` identity), so **Try Again** re-runs with the same photo without re-picking. After a library pick loads, `selectedPhotoItem` is cleared so picking the same photo again still fires the load task.
+
+### Identification request
+
+1. Photo from library (`PhotosPicker`) or camera.
+2. [`GeminiSleeveIdentifier`](../DiscoScan/Networking/Gemini/GeminiSleeveIdentifier.swift) (via [`SleeveIdentifierProtocol`](../DiscoScan/Networking/Gemini/SleeveIdentifierProtocol.swift)) downscales the JPEG and sends it through [`GeminiGenerateContentEndpoint`](../DiscoScan/Networking/Endpoints/Gemini/GeminiGenerateContentEndpoint.swift) (NetworkKit).
+3. The response envelope is parsed; inner JSON `{ artist, title, catalogNumber }` becomes `SleeveIdentification`.
+4. Network and parse failures map to provider-neutral [`SleeveIdentificationError`](../DiscoScan/Networking/Gemini/SleeveIdentifierProtocol.swift), then to UI-facing [`ImageIdentificationFailure`](../DiscoScan/Models/Search/ImageIdentificationFailure.swift).
+
+### Confirm and search
+
+1. User edits fields in the confirm step, then taps **Search Discogs**.
+2. If all fields are empty, the confirm view offers **Try Another Photo**, **Scan barcode instead**, and **Search manually**.
+3. `SearchView` closes the sheet and calls `submitSearch(.imageSuggested(query:))`.
 
 The composed query joins non-empty trimmed artist, title, and catalog number with spaces.
 
 Photo searches do **not** add to recent searches.
+
+### Capture failure recovery
+
+[`ImageIdentificationCaptureView`](../DiscoScan/Features/Search/Views/ImageIdentificationCaptureView.swift) shows a dedicated failed layout (`ContentUnavailableView` + actions), not a footnote.
+
+| Failure | Retryable | Primary actions | Fallback |
+| ------- | --------- | --------------- | -------- |
+| Photo unavailable | No | Choose Another Photo, Take Photo | Search Manually |
+| Offline, rate limited, service down, unreadable response, unknown | Yes | Try Again | Choose Another Photo, Take Photo, Search Manually |
+| Not configured (4xx / bad API key) | No | Search Manually, Scan Barcode | — |
 
 ## SearchStore
 
@@ -143,10 +177,12 @@ The endpoint supports pagination parameters but the UI only requests page 1.
 
 | Situation | UI treatment |
 | --------- | ------------ |
-| Network failure | `ResourceState.failed` → `ErrorView` with retry |
+| Network failure (Discogs search) | `ResourceState.failed` → `ErrorView` with retry |
 | Refresh failure with stale data | Reverts to `.loaded(stale)` — no error screen |
 | Loaded with zero results | Empty state: "No releases matched this search." |
-| Gemini failure | Footnote error in capture view; user can retry or fall back to barcode |
+| Photo load failure | `captureFailed(.photoUnavailable)` → Choose Another Photo / Take Photo |
+| Gemini / analysis failure | `captureFailed` → `ContentUnavailableView` with typed recovery actions (retry, pick another photo, search manually, scan barcode) |
+| Empty identification result | Confirm view: "Try Another Photo", barcode, or manual search |
 | Scanner unavailable | `ContentUnavailableView` |
 
 ## Intentional limits
