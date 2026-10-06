@@ -7,23 +7,6 @@ import Foundation
 import NetworkKit
 import UIKit
 
-enum GeminiSleeveIdentifierError: LocalizedError, Equatable {
-    case invalidResponse
-    case rateLimited
-    case httpStatus(Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            "Could not read a response from the image service."
-        case .rateLimited:
-            "Too many requests. Try again in a moment."
-        case .httpStatus(let code):
-            "Image identification failed (HTTP \(code))."
-        }
-    }
-}
-
 struct GeminiSleeveIdentifier: SleeveIdentifierProtocol {
     static let prompt = """
     You identify vinyl record sleeves. Extract the artist name, album title, and catalog number \
@@ -51,22 +34,48 @@ struct GeminiSleeveIdentifier: SleeveIdentifierProtocol {
         let response: GeminiGenerateContentResponse
         do {
             response = try await client.request(for: endpoint)
-        } catch NetworkError.serverError(let statusCode, _, _) {
-            throw statusCode == 429
-                ? GeminiSleeveIdentifierError.rateLimited
-                : GeminiSleeveIdentifierError.httpStatus(statusCode)
+        } catch NetworkError.taskCancelled {
+            throw CancellationError()
+        } catch let error as NetworkError {
+            throw Self.mapNetworkError(error)
         }
 
         return try Self.decodeIdentification(from: response)
+    }
+
+    private static func mapNetworkError(_ error: NetworkError) -> SleeveIdentificationError {
+        switch error {
+        case .taskCancelled:
+            .serviceUnavailable
+        case .serverError(let statusCode, _, _):
+            if statusCode == 429 {
+                .rateLimited
+            } else if [400, 401, 403, 404].contains(statusCode) {
+                .notConfigured
+            } else {
+                .serviceUnavailable
+            }
+        case .unauthorized:
+            .notConfigured
+        case .transportError:
+            .offline
+        case .decodingError, .emptyResponse, .invalidUrl, .encodingError:
+            .unreadableResponse
+        }
     }
 
     private static func decodeIdentification(
         from response: GeminiGenerateContentResponse
     ) throws -> SleeveIdentification {
         guard let jsonData = response.identificationJSON?.data(using: .utf8) else {
-            throw GeminiSleeveIdentifierError.invalidResponse
+            throw SleeveIdentificationError.unreadableResponse
         }
-        return try JSONDecoder().decode(SleeveIdentification.self, from: jsonData)
+
+        do {
+            return try JSONDecoder().decode(SleeveIdentification.self, from: jsonData)
+        } catch {
+            throw SleeveIdentificationError.unreadableResponse
+        }
     }
 
     private static func downscaledJPEGData(from data: Data, maxDimension: CGFloat = 1024) -> Data? {

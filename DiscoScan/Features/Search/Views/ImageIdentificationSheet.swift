@@ -19,6 +19,7 @@ struct ImageIdentificationSheet: View {
     @State private var draft = SleeveIdentificationDraft()
     @State private var imageData: Data?
     @State private var isShowingCamera = false
+    @State private var analysisAttempt = 0
 
     var body: some View {
         NavigationStack {
@@ -28,9 +29,14 @@ struct ImageIdentificationSheet: View {
                     ImageIdentificationCaptureView(
                         selectedPhotoItem: $selectedPhotoItem,
                         isShowingCamera: $isShowingCamera,
+                        phase: phase,
                         imageData: imageData,
-                        isAnalyzing: phase == .analyzing,
-                        errorMessage: phase.captureErrorMessage
+                        onRetry: retryAnalysis,
+                        onSearchManually: {
+                            searchText = draft.searchQuery
+                            dismiss()
+                        },
+                        onScanBarcode: { dismiss() }
                     ).transition(.opacity)
                 case .confirming:
                     ImageIdentificationConfirmView(
@@ -41,7 +47,8 @@ struct ImageIdentificationSheet: View {
                         onSearchManually: {
                             searchText = draft.searchQuery
                             dismiss()
-                        }
+                        },
+                        onTryAnotherPhoto: tryAnotherPhoto
                     ).transition(.opacity)
                 }
             }
@@ -53,9 +60,9 @@ struct ImageIdentificationSheet: View {
                 }
             }
             .task(id: selectedPhotoItem) {
-               await loadPhoto(from: selectedPhotoItem)
+                await loadPhoto(from: selectedPhotoItem)
             }
-            .task(id: imageData) {
+            .task(id: analysisAttempt) {
                 await runAnalysis()
             }
             .fullScreenCover(isPresented: $isShowingCamera) {
@@ -87,6 +94,14 @@ struct ImageIdentificationSheet: View {
         withAnimation {
             imageData = data
             phase = .analyzing
+            analysisAttempt += 1
+        }
+    }
+
+    private func retryAnalysis() {
+        withAnimation {
+            phase = .analyzing
+            analysisAttempt += 1
         }
     }
 
@@ -97,34 +112,48 @@ struct ImageIdentificationSheet: View {
         }
     }
 
-    private func failCapture(_ message: String) {
+    private func failCapture(_ failure: ImageIdentificationFailure) {
         withAnimation {
-            phase = .captureFailed(message)
+            phase = .captureFailed(failure)
+        }
+    }
+
+    private func tryAnotherPhoto() {
+        withAnimation {
+            imageData = nil
+            draft = SleeveIdentificationDraft()
+            phase = .capturing
         }
     }
 
     private func loadPhoto(from item: PhotosPickerItem?) async {
         guard let item else { return }
 
+        defer { selectedPhotoItem = nil }
+
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
-                failCapture("Could not load the selected photo.")
+                failCapture(.photoUnavailable)
                 return
             }
             beginAnalysis(with: data)
         } catch {
-            failCapture(error.localizedDescription)
+            failCapture(.photoUnavailable)
         }
     }
 
     private func runAnalysis() async {
-        guard let imageData else { return }
+        guard analysisAttempt > 0, let imageData else { return }
 
         do {
             let result = try await sleeveIdentifier.identify(jpegData: imageData)
+            guard !Task.isCancelled else { return }
             completeAnalysis(with: result)
+        } catch is CancellationError {
+            return
         } catch {
-            failCapture(error.localizedDescription)
+            guard !Task.isCancelled else { return }
+            failCapture(ImageIdentificationFailure(error: error))
         }
     }
 }
@@ -142,7 +171,8 @@ struct ImageIdentificationSheet: View {
             imageData: nil,
             onSearch: { _ in },
             onScanBarcode: {},
-            onSearchManually: {}
+            onSearchManually: {},
+            onTryAnotherPhoto: {}
         )
         .navigationTitle("Identify Sleeve")
         .navigationBarTitleDisplayMode(.inline)
@@ -156,7 +186,8 @@ struct ImageIdentificationSheet: View {
             imageData: nil,
             onSearch: { _ in },
             onScanBarcode: {},
-            onSearchManually: {}
+            onSearchManually: {},
+            onTryAnotherPhoto: {}
         )
         .navigationTitle("Identify Sleeve")
         .navigationBarTitleDisplayMode(.inline)

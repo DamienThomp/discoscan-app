@@ -125,27 +125,75 @@ struct GeminiSleeveIdentifierTests {
         try await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 429, data: Data())
         } performing: {
-            await #expect(throws: GeminiSleeveIdentifierError.rateLimited) {
+            await #expect(throws: SleeveIdentificationError.rateLimited) {
                 try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
             }
         }
     }
 
-    @Test func `Identify maps server error to HTTP status`() async throws {
+    @Test func `Identify maps 401 to not configured`() async throws {
         try await MockURLProtocol.withLockedHandler { request in
-            Self.response(for: request, statusCode: 500, data: Data())
+            Self.response(for: request, statusCode: 401, data: Data())
         } performing: {
-            await #expect(throws: GeminiSleeveIdentifierError.httpStatus(500)) {
+            await #expect(throws: SleeveIdentificationError.notConfigured) {
                 try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
             }
         }
     }
 
-    @Test func `Identify throws invalid response when candidates are empty`() async throws {
+    @Test func `Identify maps 503 to service unavailable`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 503, data: Data())
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.serviceUnavailable) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify maps transport error to offline`() async throws {
+        try await MockURLProtocol.withLockedHandler { _ in
+            throw URLError(.notConnectedToInternet)
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.offline) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify throws unreadable response when candidates are empty`() async throws {
         try await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 200, data: Data(#"{"candidates":[]}"#.utf8))
         } performing: {
-            await #expect(throws: GeminiSleeveIdentifierError.invalidResponse) {
+            await #expect(throws: SleeveIdentificationError.unreadableResponse) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify throws unreadable response for malformed model JSON`() async throws {
+        let malformedPayload = Data(
+            """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "{\\"artist\\":\\"Miles Davis\\",\\"title\\":\\"Kind of Blue\\",\\"catalogNumber\\":"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """.utf8
+        )
+
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: malformedPayload)
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.unreadableResponse) {
                 try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
             }
         }

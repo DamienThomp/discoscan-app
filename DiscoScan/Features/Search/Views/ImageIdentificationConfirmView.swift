@@ -11,12 +11,14 @@ struct ImageIdentificationConfirmView: View {
     let onSearch: (String) -> Void
     let onScanBarcode: () -> Void
     let onSearchManually: () -> Void
+    let onTryAnotherPhoto: () -> Void
 
     var body: some View {
         Form {
             if let imageData {
                 Section {
                     IdentificationImagePreview(imageData: imageData)
+                        .scaledToFit()
                         .frame(maxWidth: .infinity)
                         .transition(.opacity)
                 }
@@ -29,6 +31,18 @@ struct ImageIdentificationConfirmView: View {
                         systemImage: "questionmark.circle",
                         description: Text("Try the barcode on the back cover or search manually.")
                     )
+                }.transition(.opacity)
+
+                Section {
+                    Button("Try Another Photo", action: onTryAnotherPhoto)
+
+                    Button("Scan barcode instead") {
+                        onScanBarcode()
+                    }
+
+                    Button("Search manually") {
+                        onSearchManually()
+                    }
                 }.transition(.opacity)
             } else {
                 Section("Best guess") {
