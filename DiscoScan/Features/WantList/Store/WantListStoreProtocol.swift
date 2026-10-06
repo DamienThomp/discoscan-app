@@ -11,6 +11,7 @@ protocol WantListStoreProtocol: AnyObject, Observable {
     var wants: ResourceState<[WantListItem]> { get }
     var isMutating: Bool { get }
     var lastMutationError: String? { get }
+    var wantsNeedsReconcile: Bool { get }
 
     func sync(with state: AuthSession.State)
     func canLoadMore() -> Bool

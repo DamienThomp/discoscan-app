@@ -37,18 +37,18 @@ struct AuthSessionOfflineTests {
             fetchedAt: Date()
         )
 
-        MockURLProtocol.requestHandler = { _ in
+        try await MockURLProtocol.withLockedHandler { _ in
             throw URLError(.notConnectedToInternet)
-        }
+        } performing: {
+            let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
+            await session.bootstrap()
 
-        let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
-        await session.bootstrap()
-
-        guard case .authenticated(let identity) = session.state else {
-            Issue.record("Expected authenticated state, got \(session.state)")
-            return
+            guard case .authenticated(let identity) = session.state else {
+                Issue.record("Expected authenticated state, got \(session.state)")
+                return
+            }
+            #expect(identity.username == "tester")
         }
-        #expect(identity.username == "tester")
     }
 
     @Test func unauthorizedClearsTokensAndCache() async throws {
@@ -63,7 +63,7 @@ struct AuthSessionOfflineTests {
             fetchedAt: Date()
         )
 
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 401,
@@ -71,22 +71,22 @@ struct AuthSessionOfflineTests {
                 headerFields: ["Content-Type": "application/json"]
             )!
             return (response, Data())
+        } performing: {
+            let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
+            await session.bootstrap()
+
+            #expect(session.state == .unauthenticated)
+
+            do {
+                _ = try await tokenStore.load()
+                Issue.record("Expected token store to be cleared")
+            } catch TokenStoreError.notFound {
+                #expect(Bool(true))
+            }
+
+            let cachedEntry = try await storage.entry(for: AuthSession.identityCacheKey)
+            #expect(cachedEntry == nil)
         }
-
-        let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
-        await session.bootstrap()
-
-        #expect(session.state == .unauthenticated)
-
-        do {
-            _ = try await tokenStore.load()
-            Issue.record("Expected token store to be cleared")
-        } catch TokenStoreError.notFound {
-            #expect(Bool(true))
-        }
-
-        let cachedEntry = try await storage.entry(for: AuthSession.identityCacheKey)
-        #expect(cachedEntry == nil)
     }
 
     @Test func logoutClearsCache() async throws {

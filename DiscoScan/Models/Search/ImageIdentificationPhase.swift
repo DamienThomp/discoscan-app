@@ -8,8 +8,8 @@ import Foundation
 enum ImageIdentificationPhase: Equatable {
     case capturing
     case analyzing
-    case captureFailed(String)
-    case confirming(SleeveIdentificationDraft)
+    case captureFailed(ImageIdentificationFailure)
+    case confirming
 }
 
 enum ImageIdentificationFeedbackPhase: Equatable {
@@ -29,9 +29,9 @@ extension ImageIdentificationPhase {
         }
     }
 
-    var captureErrorMessage: String? {
-        if case .captureFailed(let message) = self {
-            message
+    var captureFailure: ImageIdentificationFailure? {
+        if case .captureFailed(let failure) = self {
+            failure
         } else {
             nil
         }

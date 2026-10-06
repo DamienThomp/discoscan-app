@@ -9,6 +9,8 @@ struct WantListView: View {
 
     @Environment(\.wantListStore) private var store
 
+    @State private var deleteErrorMessage: String?
+
     private var emptyState: AnimatedEmptyStateView.Configuration {
         .init(
             title: "Want List",
@@ -30,9 +32,20 @@ struct WantListView: View {
                 loadMore: { await store.loadMoreWants() },
                 delete: { item in
                     await store.deleteRelease(releaseId: item.releaseId)
+                    if let message = store.lastMutationError {
+                        deleteErrorMessage = message
+                    }
                 }
             )
         }
+        .mutationErrorAlert(
+            title: "Could Not Remove from Want List",
+            isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            ),
+            message: deleteErrorMessage
+        )
         .task {
             if store.wants == .idle {
                 await store.loadWants()

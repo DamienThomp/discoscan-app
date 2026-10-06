@@ -11,12 +11,14 @@ struct ImageIdentificationConfirmView: View {
     let onSearch: (String) -> Void
     let onScanBarcode: () -> Void
     let onSearchManually: () -> Void
+    let onTryAnotherPhoto: () -> Void
 
     var body: some View {
         Form {
             if let imageData {
                 Section {
-                    IdentificationImagePreview(imageData: imageData, maxHeight: 180)
+                    IdentificationImagePreview(imageData: imageData)
+                        .scaledToFit()
                         .frame(maxWidth: .infinity)
                         .transition(.opacity)
                 }
@@ -30,30 +32,40 @@ struct ImageIdentificationConfirmView: View {
                         description: Text("Try the barcode on the back cover or search manually.")
                     )
                 }.transition(.opacity)
+
+                Section {
+                    Button("Try Another Photo", action: onTryAnotherPhoto)
+
+                    Button("Scan barcode instead") {
+                        onScanBarcode()
+                    }
+
+                    Button("Search manually") {
+                        onSearchManually()
+                    }
+                }.transition(.opacity)
             } else {
                 Section("Best guess") {
                     TextField("Artist", text: $identification.artist)
                     TextField("Album title", text: $identification.title)
                     TextField("Catalog number", text: $identification.catalogNumber)
                 }.transition(.opacity)
-            }
 
-            Section {
-                if !identification.isEmpty {
+                Section {
                     Button("Search Discogs") {
                         onSearch(identification.searchQuery)
                     }
                     .disabled(identification.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
 
-                Button("Edit in search field") {
-                    onSearchManually()
-                }
+                    Button("Edit in search field") {
+                        onSearchManually()
+                    }
 
-                Button("Scan barcode instead") {
-                    onScanBarcode()
-                }
-            }.transition(.opacity)
+                    Button("Scan barcode instead") {
+                        onScanBarcode()
+                    }
+                }.transition(.opacity)
+            }
         }
     }
 }

@@ -13,16 +13,13 @@ struct CollectionListView: View {
     @Environment(\.collectionStore) private var store
 
     @State private var searchText = ""
+    @State private var deleteErrorMessage: String?
 
     private var isFolderZero: Bool { folderId == .zero }
 
-    private var releasesState: ResourceState<[CollectionReleaseItem]> {
-        isFolderZero ? store.folderZeroItems : (store.releasesByFolderID[folderId] ?? .idle)
-    }
-
     private var displayedItems: [CollectionReleaseItem] {
         guard isFolderZero else {
-            return releasesState.value ?? []
+            return store.releasesState(for: folderId).value ?? []
         }
         return store.searchFolderZero(query: searchText)
     }
@@ -47,25 +44,17 @@ struct CollectionListView: View {
     var body: some View {
         VStack(spacing: 0) {
             if isFolderZero {
-                CollectionSyncBanner(phase: store.folderZeroSync) {
-                    await store.syncFolderZeroIndex(forceRefresh: true)
-                }
+                CollectionSyncBanner(phase: store.folderZeroSync)
             }
 
             ResourceContainerView(
-                state: releasesState,
-                retry: {
-                    if isFolderZero {
-                        await store.syncFolderZeroIndex(forceRefresh: true)
-                    } else {
-                        await store.refreshReleases(folderId: folderId)
-                    }
-                }
+                state: store.releasesState(for: folderId),
+                retry: { await store.refreshReleases(folderId: folderId) }
             ) { _ in
                 PaginatedReleaseListView(
                     items: displayedItems,
                     emptyState: emptyState,
-                    canLoadMore: isFolderZero ? false : store.canLoadMore(folderId: folderId),
+                    canLoadMore: store.canLoadMore(folderId: folderId),
                     loadMore: { await store.loadMoreReleases(folderId: folderId) },
                     delete: { item in
                         await store.deleteRelease(
@@ -73,39 +62,27 @@ struct CollectionListView: View {
                             releaseId: item.releaseId,
                             instanceId: item.instanceId
                         )
+                        if let message = store.lastMutationError {
+                            deleteErrorMessage = message
+                        }
                     }
                 )
             }
         }
+        .mutationErrorAlert(
+            title: "Could Not Remove Release",
+            isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            ),
+            message: deleteErrorMessage
+        )
         .navigationTitle(folderName)
         .if(isFolderZero) { view in
             view.searchable(text: $searchText, prompt: "Search your collection…")
         }
-        .task {
-            if isFolderZero {
-                await store.ensureFolderZeroIndexReady()
-            } else if releasesState == .idle {
-                await store.loadReleases(folderId: folderId)
-            }
-        }
-        .refreshable {
-            if isFolderZero {
-                await store.syncFolderZeroIndex(forceRefresh: true)
-            } else {
-                await store.refreshReleases(folderId: folderId)
-            }
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
-        }
+        .task { await store.loadReleases(folderId: folderId) }
+        .refreshable { await store.refreshReleases(folderId: folderId) }
     }
 }
 
@@ -113,8 +90,8 @@ private extension View {
 #Preview("Loaded") {
     PreviewAppRouteStack {
         CollectionListView(folderId: 1, folderName: "Uncategorized")
+            .environment(\.collectionStore, previewCollectionStore(.releasesLoaded(folderId: 1)))
     }
-    .environment(\.collectionStore, previewCollectionStore(.releasesLoaded(folderId: 1)))
 }
 
 #Preview("Folder Zero Loaded") {

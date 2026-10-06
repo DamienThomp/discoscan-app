@@ -4,112 +4,85 @@
 //
 
 import Foundation
+import NetworkKit
 import UIKit
 
-enum GeminiSleeveIdentifierError: LocalizedError {
-    case invalidResponse
-    case rateLimited
-    case httpStatus(Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            "Could not read a response from the image service."
-        case .rateLimited:
-            "Too many requests. Try again in a moment."
-        case .httpStatus(let code):
-            "Image identification failed (HTTP \(code))."
-        }
-    }
-}
-
 struct GeminiSleeveIdentifier: SleeveIdentifierProtocol {
-    private static let prompt = """
+    static let prompt = """
     You identify vinyl record sleeves. Extract the artist name, album title, and catalog number \
-    if visible. Return strict JSON only with keys artist, title, catalogNumber. Use null for \
-    unknown fields.
+    if visible. Use null for unknown fields.
     """
 
     private let config: GeminiConfig
-    private let urlSession: URLSession
+    private let client: any NetworkManagerProtocol
 
-    init(config: GeminiConfig, urlSession: URLSession = .shared) {
+    init(config: GeminiConfig, client: any NetworkManagerProtocol) {
         self.config = config
-        self.urlSession = urlSession
+        self.client = client
     }
 
     func identify(jpegData: Data) async throws -> SleeveIdentification {
         let preparedData = Self.downscaledJPEGData(from: jpegData) ?? jpegData
-        let base64 = preparedData.base64EncodedString()
-
-        var request = URLRequest(
-            url: URL(
-                string: "https://generativelanguage.googleapis.com/v1beta/models/\(config.modelName):generateContent"
-            )!
+        let endpoint = GeminiGenerateContentEndpoint(
+            config: config,
+            requestBody: .sleeveIdentification(
+                prompt: Self.prompt,
+                base64JPEG: preparedData.base64EncodedString()
+            )
         )
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(config.apiKey, forHTTPHeaderField: "x-goog-api-key")
-        request.httpBody = try Self.makeRequestBody(base64Image: base64)
 
-        let (data, response) = try await urlSession.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GeminiSleeveIdentifierError.invalidResponse
+        let response: GeminiGenerateContentResponse
+        do {
+            response = try await client.request(for: endpoint)
+        } catch NetworkError.taskCancelled {
+            throw CancellationError()
+        } catch let error as NetworkError {
+            throw Self.mapNetworkError(error)
         }
 
-        switch httpResponse.statusCode {
-        case 200:
-            break
-        case 429:
-            throw GeminiSleeveIdentifierError.rateLimited
-        default:
-            throw GeminiSleeveIdentifierError.httpStatus(httpResponse.statusCode)
-        }
-
-        let text = try Self.extractResponseText(from: data)
-        guard let jsonData = text.data(using: .utf8) else {
-            throw GeminiSleeveIdentifierError.invalidResponse
-        }
-
-        return try JSONDecoder().decode(SleeveIdentification.self, from: jsonData)
+        return try Self.decodeIdentification(from: response)
     }
 
-    private static func makeRequestBody(base64Image: String) throws -> Data {
-        let body: [String: Any] = [
-            "contents": [
-                [
-                    "parts": [
-                        ["text": prompt],
-                        [
-                            "inline_data": [
-                                "mime_type": "image/jpeg",
-                                "data": base64Image
-                            ]
-                        ]
-                    ]
-                ]
-            ],
-            "generationConfig": [
-                "responseMimeType": "application/json"
-            ]
-        ]
-        return try JSONSerialization.data(withJSONObject: body)
+    private static func mapNetworkError(_ error: NetworkError) -> SleeveIdentificationError {
+        switch error {
+        case .taskCancelled:
+            .serviceUnavailable
+        case .serverError(let statusCode, _, _):
+            if statusCode == 429 {
+                .rateLimited
+            } else if [400, 401, 403, 404].contains(statusCode) {
+                .notConfigured
+            } else {
+                .serviceUnavailable
+            }
+        case .unauthorized:
+            .notConfigured
+        case .transportError:
+            .offline
+        case .decodingError, .emptyResponse, .invalidUrl, .encodingError:
+            .unreadableResponse
+        }
     }
 
-    private static func extractResponseText(from data: Data) throws -> String {
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let candidates = json?["candidates"] as? [[String: Any]]
-        let content = candidates?.first?["content"] as? [String: Any]
-        let parts = content?["parts"] as? [[String: Any]]
-        guard let text = parts?.first?["text"] as? String, !text.isEmpty else {
-            throw GeminiSleeveIdentifierError.invalidResponse
+    private static func decodeIdentification(
+        from response: GeminiGenerateContentResponse
+    ) throws -> SleeveIdentification {
+        guard let jsonData = response.identificationJSON?.data(using: .utf8) else {
+            throw SleeveIdentificationError.unreadableResponse
         }
-        return text
+
+        do {
+            return try JSONDecoder().decode(SleeveIdentification.self, from: jsonData)
+        } catch {
+            throw SleeveIdentificationError.unreadableResponse
+        }
     }
 
     private static func downscaledJPEGData(from data: Data, maxDimension: CGFloat = 1024) -> Data? {
         guard let image = UIImage(data: data) else { return nil }
+
         let size = image.size
+
         guard size.width > maxDimension || size.height > maxDimension else {
             return image.jpegData(compressionQuality: 0.85)
         }

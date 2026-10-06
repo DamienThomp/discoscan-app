@@ -16,9 +16,9 @@ struct DiscogsOAuthSignerTests {
 
         #expect(header.hasPrefix("OAuth "))
         #expect(header.contains("oauth_consumer_key=\"consumer-key\""))
-        #expect(header.contains("oauth_signature=\"consumer-secret&\""))
+        #expect(header.contains("oauth_signature=\"consumer-secret%26\""))
         #expect(header.contains("oauth_signature_method=\"PLAINTEXT\""))
-        #expect(header.contains("oauth_callback=\"discoscan://oauth/callback\""))
+        #expect(header.contains("oauth_callback=\"discoscan%3A%2F%2Foauth%2Fcallback\""))
     }
 
     @Test func accessTokenHeaderUsesRequestTokenSecret() {
@@ -32,7 +32,7 @@ struct DiscogsOAuthSignerTests {
 
         #expect(header.contains("oauth_token=\"request-token\""))
         #expect(header.contains("oauth_verifier=\"verifier-123\""))
-        #expect(header.contains("oauth_signature=\"consumer-secret&request-secret\""))
+        #expect(header.contains("oauth_signature=\"consumer-secret%26request-secret\""))
     }
 
     @Test func apiRequestHeaderUsesAccessTokenSecret() {
@@ -44,7 +44,7 @@ struct DiscogsOAuthSignerTests {
         )
 
         #expect(header.contains("oauth_token=\"access-token\""))
-        #expect(header.contains("oauth_signature=\"consumer-secret&access-secret\""))
+        #expect(header.contains("oauth_signature=\"consumer-secret%26access-secret\""))
         #expect(!header.contains("oauth_verifier"))
         #expect(!header.contains("oauth_callback"))
     }

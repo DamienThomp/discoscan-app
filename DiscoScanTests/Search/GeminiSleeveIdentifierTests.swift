@@ -4,12 +4,36 @@
 //
 
 import Foundation
+import NetworkKit
 import Testing
+import UIKit
 @testable import DiscoScan
 
+@Suite(.serialized)
 struct GeminiSleeveIdentifierTests {
+    private let config = GeminiConfig(apiKey: "test-api-key", modelName: "gemini-test")
 
-    @Test func sleeveIdentificationBuildsSearchQuery() {
+    private let successPayload = Data(
+        """
+        {
+          "candidates": [
+            {
+              "content": {
+                "parts": [
+                  {
+                    "text": "{\\"artist\\":\\"Miles Davis\\",\\"title\\":\\"Kind of Blue\\",\\"catalogNumber\\":null}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        """.utf8
+    )
+
+    // MARK: - SleeveIdentification
+
+    @Test func `Sleeve identification builds search query`() {
         let identification = SleeveIdentification(
             artist: "Miles Davis",
             title: "Kind of Blue",
@@ -20,12 +44,12 @@ struct GeminiSleeveIdentifierTests {
         #expect(identification.isEmpty == false)
     }
 
-    @Test func sleeveIdentificationIsEmptyWhenAllFieldsMissing() {
+    @Test func `Sleeve identification is empty when all fields missing`() {
         let identification = SleeveIdentification(artist: nil, title: nil, catalogNumber: nil)
         #expect(identification.isEmpty)
     }
 
-    @Test func sleeveIdentificationDecodesJSON() throws {
+    @Test func `Sleeve identification decodes JSON`() throws {
         let data = Data(
             """
             {"artist":"Miles Davis","title":"Kind of Blue","catalogNumber":null}
@@ -38,8 +62,117 @@ struct GeminiSleeveIdentifierTests {
         #expect(identification.catalogNumber == nil)
     }
 
-    @Test func extractResponseTextFromGeminiPayload() throws {
-        let data = Data(
+    // MARK: - Envelope and request models
+
+    @Test func `Response envelope exposes identification JSON`() throws {
+        let response = try JSONDecoder().decode(GeminiGenerateContentResponse.self, from: successPayload)
+        let json = try #require(response.identificationJSON)
+        let identification = try JSONDecoder().decode(SleeveIdentification.self, from: Data(json.utf8))
+
+        #expect(identification.artist == "Miles Davis")
+        #expect(identification.title == "Kind of Blue")
+    }
+
+    @Test func `Response envelope without candidates has no identification JSON`() throws {
+        let response = try JSONDecoder().decode(GeminiGenerateContentResponse.self, from: Data("{}".utf8))
+        #expect(response.identificationJSON == nil)
+    }
+
+    @Test func `Request encodes camelCase inline data and response schema`() throws {
+        let request = GeminiGenerateContentRequest.sleeveIdentification(prompt: "Identify", base64JPEG: "AAAA")
+        let data = try JSONEncoder().encode(request)
+        let json = try #require(String(data: data, encoding: .utf8))
+
+        #expect(!json.contains(":null"))
+
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let contents = try #require(object["contents"] as? [[String: Any]])
+        let parts = try #require(contents.first?["parts"] as? [[String: Any]])
+        #expect(parts.count == 2)
+        #expect(parts[0]["text"] as? String == "Identify")
+
+        let inlineData = try #require(parts[1]["inlineData"] as? [String: Any])
+        #expect(inlineData["mimeType"] as? String == "image/jpeg")
+        #expect(inlineData["data"] as? String == "AAAA")
+
+        let generationConfig = try #require(object["generationConfig"] as? [String: Any])
+        #expect(generationConfig["responseMimeType"] as? String == "application/json")
+
+        let schema = try #require(generationConfig["responseSchema"] as? [String: Any])
+        let properties = try #require(schema["properties"] as? [String: Any])
+        #expect(Set(properties.keys) == ["artist", "title", "catalogNumber"])
+    }
+
+    // MARK: - End to end
+
+    @Test func `Identify sends generate content request and decodes result`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.absoluteString.hasSuffix("/v1beta/models/gemini-test:generateContent") == true)
+            #expect(request.value(forHTTPHeaderField: "x-goog-api-key") == "test-api-key")
+            #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+            return Self.response(for: request, statusCode: 200, data: self.successPayload)
+        } performing: {
+            let result = try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+
+            #expect(result.artist == "Miles Davis")
+            #expect(result.title == "Kind of Blue")
+            #expect(result.catalogNumber == nil)
+        }
+    }
+
+    @Test func `Identify maps 429 to rate limited`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 429, data: Data())
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.rateLimited) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify maps 401 to not configured`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 401, data: Data())
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.notConfigured) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify maps 503 to service unavailable`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 503, data: Data())
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.serviceUnavailable) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify maps transport error to offline`() async throws {
+        try await MockURLProtocol.withLockedHandler { _ in
+            throw URLError(.notConnectedToInternet)
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.offline) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify throws unreadable response when candidates are empty`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: Data(#"{"candidates":[]}"#.utf8))
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.unreadableResponse) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
+    @Test func `Identify throws unreadable response for malformed model JSON`() async throws {
+        let malformedPayload = Data(
             """
             {
               "candidates": [
@@ -47,7 +180,7 @@ struct GeminiSleeveIdentifierTests {
                   "content": {
                     "parts": [
                       {
-                        "text": "{\\"artist\\":\\"Artist\\",\\"title\\":\\"Album\\",\\"catalogNumber\\":null}"
+                        "text": "{\\"artist\\":\\"Miles Davis\\",\\"title\\":\\"Kind of Blue\\",\\"catalogNumber\\":"
                       }
                     ]
                   }
@@ -57,22 +190,41 @@ struct GeminiSleeveIdentifierTests {
             """.utf8
         )
 
-        let text = try GeminiSleeveIdentifierTestSupport.extractResponseText(from: data)
-        let identification = try JSONDecoder().decode(SleeveIdentification.self, from: Data(text.utf8))
-        #expect(identification.artist == "Artist")
-        #expect(identification.title == "Album")
-    }
-}
-
-enum GeminiSleeveIdentifierTestSupport {
-    static func extractResponseText(from data: Data) throws -> String {
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let candidates = json?["candidates"] as? [[String: Any]]
-        let content = candidates?.first?["content"] as? [String: Any]
-        let parts = content?["parts"] as? [[String: Any]]
-        guard let text = parts?.first?["text"] as? String, !text.isEmpty else {
-            throw GeminiSleeveIdentifierError.invalidResponse
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: malformedPayload)
+        } performing: {
+            await #expect(throws: SleeveIdentificationError.unreadableResponse) {
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            }
         }
-        return text
+    }
+
+    // MARK: - Helpers
+
+    private func makeIdentifier() -> GeminiSleeveIdentifier {
+        let client = NetworkManagerFactory.makeDefaultClient(
+            hostResolver: { _ in URL(string: "https://generativelanguage.googleapis.com")! },
+            session: MockURLSessionFactory.make()
+        )
+        return GeminiSleeveIdentifier(config: config, client: client)
+    }
+
+    private static func response(for request: URLRequest, statusCode: Int, data: Data) -> (HTTPURLResponse, Data) {
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        return (response, data)
+    }
+
+    private static func sampleJPEG() -> Data {
+        let size = CGSize(width: 8, height: 8)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            UIColor.black.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+        return image.jpegData(compressionQuality: 0.85) ?? Data()
     }
 }

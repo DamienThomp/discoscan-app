@@ -6,8 +6,10 @@
 import SwiftUI
 
 struct CollectionSyncBanner: View {
+
+    @Environment(\.collectionStore) private var store
+
     let phase: CollectionSyncPhase
-    var onRetry: (() async -> Void)?
 
     var body: some View {
         switch phase {
@@ -31,16 +33,14 @@ struct CollectionSyncBanner: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Syncing collection, \(synced) of \(total)")
         case .failed(let message):
-            VStack(alignment: .leading, spacing: AppSpacing.compact) {
+            VStack(alignment: .center, spacing: AppSpacing.compact) {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if let onRetry {
-                    Button("Retry") {
-                        Task { await onRetry() }
-                    }
-                    .buttonStyle(.bordered)
+                Button("Retry") {
+                    Task {  await store.syncFolderZeroIndex(forceRefresh: true) }
                 }
+                .buttonStyle(.bordered)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, AppSpacing.row)
@@ -55,15 +55,18 @@ struct CollectionSyncBanner: View {
 #Preview("Syncing") {
     CollectionSyncBanner(phase: .syncing(synced: 450, total: 2100))
         .preferredColorScheme(.dark)
+        .environment(\.collectionStore, previewCollectionStore(.releasesLoading(folderId: 0)))
 }
 
 #Preview("Checking") {
     CollectionSyncBanner(phase: .checking)
         .preferredColorScheme(.dark)
+        .environment(\.collectionStore, previewCollectionStore(.releasesLoading(folderId: 0)))
 }
 
 #Preview("Failed") {
-    CollectionSyncBanner(phase: .failed("Couldn't sync your collection.")) {}
+    CollectionSyncBanner(phase: .failed("Couldn't sync your collection."))
         .preferredColorScheme(.dark)
+        .environment(\.collectionStore, previewCollectionStore(.releasesLoading(folderId: 0)))
 }
 #endif

@@ -6,7 +6,22 @@
 import Foundation
 
 final class MockURLProtocol: URLProtocol {
-    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) private static var _requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    private static let lock = NSLock()
+
+    /// Runs a test body with an exclusive mock handler so parallel suites do not clobber each other.
+    static func withLockedHandler<R>(
+        _ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data),
+        performing body: () async throws -> R
+    ) async rethrows -> R {
+        lock.lock()
+        _requestHandler = handler
+        defer {
+            _requestHandler = nil
+            lock.unlock()
+        }
+        return try await body()
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -17,7 +32,7 @@ final class MockURLProtocol: URLProtocol {
     }
 
     override func startLoading() {
-        guard let handler = Self.requestHandler else {
+        guard let handler = Self._requestHandler else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
         }

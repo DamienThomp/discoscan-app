@@ -1,0 +1,8 @@
+// Non-secret defaults. Secrets and local overrides go in Secrets.xcconfig.
+// `//` starts a comment in xcconfig files, so URLs use `/$()/` to keep both slashes.
+
+DISCOGS_API_BASE_URL = https:/$()/api.discogs.com
+DISCOGS_WEB_BASE_URL = https:/$()/www.discogs.com
+GEMINI_API_BASE_URL = https:/$()/generativelanguage.googleapis.com
+
+#include? "Secrets.xcconfig"

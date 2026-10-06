@@ -11,48 +11,132 @@ struct ImageIdentificationCaptureView: View {
     @Binding var selectedPhotoItem: PhotosPickerItem?
     @Binding var isShowingCamera: Bool
 
+    let phase: ImageIdentificationPhase
     let imageData: Data?
-    let isAnalyzing: Bool
-    let errorMessage: String?
+    let onRetry: () -> Void
+    let onSearchManually: () -> Void
+    let onScanBarcode: () -> Void
 
     var body: some View {
         VStack(spacing: AppSpacing.screen) {
+            switch phase {
+            case .capturing:
+                idleContent
+            case .analyzing:
+                analyzingContent
+            case .captureFailed(let failure):
+                failedContent(failure: failure)
+            case .confirming:
+                EmptyView()
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var idleContent: some View {
+        Group {
             if let imageData {
                 IdentificationImagePreview(imageData: imageData)
             }
 
-            if isAnalyzing {
-                ProgressView("Analyzing sleeve…")
-            } else {
-                VStack(spacing: AppSpacing.section) {
-                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        Label("Choose from Library", systemImage: "photo.on.rectangle")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button {
-                        isShowingCamera = true
-                    } label: {
-                        Label("Take Photo", systemImage: "camera")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .controlSize(.large)
-
-            }
-
-            if let errorMessage {
-                SecondaryFootnoteText(text: errorMessage)
-            }
+            imagePickerControls(libraryLabel: "Choose from Library", libraryIsPrimary: false)
 
             SecondaryFootnoteText(
                 text: "Include the spine or back cover when the front has no text."
             )
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var analyzingContent: some View {
+        Group {
+            if let imageData {
+                IdentificationImagePreview(imageData: imageData)
+            }
+
+            ProgressView("Analyzing sleeve…")
+        }
+    }
+
+    private func failedContent(failure: ImageIdentificationFailure) -> some View {
+        Group {
+            if let imageData {
+                IdentificationImagePreview(imageData: imageData)
+            }
+
+            ContentUnavailableView {
+                Text(failure.title)
+            } description: {
+                Text(failure.message)
+            }
+            .accessibilityElement(children: .combine)
+
+            failedActions(for: failure)
+        }
+    }
+
+    @ViewBuilder
+    private func failedActions(for failure: ImageIdentificationFailure) -> some View {
+        VStack(spacing: AppSpacing.section) {
+            if failure.isRetryable {
+                Button("Try Again", action: onRetry)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+            }
+
+            if failure.isNotConfigured {
+                Button("Search Manually", action: onSearchManually)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+
+                Button("Scan Barcode", action: onScanBarcode)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+            } else {
+                imagePickerControls(
+                    libraryLabel: "Choose Another Photo",
+                    libraryIsPrimary: failure == .photoUnavailable
+                )
+
+                Button("Search Manually", action: onSearchManually)
+                    .buttonStyle(.plain)
+                    .controlSize(.large)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func imagePickerControls(libraryLabel: String, libraryIsPrimary: Bool) -> some View {
+        VStack(spacing: AppSpacing.section) {
+            if libraryIsPrimary {
+                PhotosPicker(
+                    selection: $selectedPhotoItem,
+                    matching: .images
+                ) {
+                    Label(libraryLabel, systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            } else {
+                PhotosPicker(
+                    selection: $selectedPhotoItem,
+                    matching: .images
+                ) {
+                    Label(libraryLabel, systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+
+            Button {
+                isShowingCamera = true
+            } label: {
+                Label("Take Photo", systemImage: "camera")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .controlSize(.large)
     }
 }
 
@@ -61,9 +145,11 @@ struct ImageIdentificationCaptureView: View {
     ImageIdentificationCaptureView(
         selectedPhotoItem: .constant(nil),
         isShowingCamera: .constant(false),
+        phase: .capturing,
         imageData: nil,
-        isAnalyzing: false,
-        errorMessage: nil
+        onRetry: {},
+        onSearchManually: {},
+        onScanBarcode: {}
     )
 }
 
@@ -71,21 +157,59 @@ struct ImageIdentificationCaptureView: View {
     ImageIdentificationCaptureView(
         selectedPhotoItem: .constant(nil),
         isShowingCamera: .constant(false),
-        imageData: nil,
-        isAnalyzing: true,
-        errorMessage: nil
+        phase: .analyzing,
+        imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        onRetry: {},
+        onSearchManually: {},
+        onScanBarcode: {}
     )
 }
 
-#Preview("Failed") {
+#Preview("Failed Offline") {
     ImageIdentificationCaptureView(
         selectedPhotoItem: .constant(nil),
         isShowingCamera: .constant(false),
+        phase: .captureFailed(.identification(.offline)),
+        imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        onRetry: {},
+        onSearchManually: {},
+        onScanBarcode: {}
+    )
+}
+
+#Preview("Failed Rate Limited") {
+    ImageIdentificationCaptureView(
+        selectedPhotoItem: .constant(nil),
+        isShowingCamera: .constant(false),
+        phase: .captureFailed(.identification(.rateLimited)),
+        imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        onRetry: {},
+        onSearchManually: {},
+        onScanBarcode: {}
+    )
+}
+
+#Preview("Failed Photo Unavailable") {
+    ImageIdentificationCaptureView(
+        selectedPhotoItem: .constant(nil),
+        isShowingCamera: .constant(false),
+        phase: .captureFailed(.photoUnavailable),
         imageData: nil,
-        isAnalyzing: false,
-        errorMessage: "Could not load the selected photo."
+        onRetry: {},
+        onSearchManually: {},
+        onScanBarcode: {}
+    )
+}
+
+#Preview("Failed Not Configured") {
+    ImageIdentificationCaptureView(
+        selectedPhotoItem: .constant(nil),
+        isShowingCamera: .constant(false),
+        phase: .captureFailed(.identification(.notConfigured)),
+        imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        onRetry: {},
+        onSearchManually: {},
+        onScanBarcode: {}
     )
 }
 #endif
-
-

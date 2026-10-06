@@ -46,7 +46,7 @@ nonisolated struct SearchResult: Codable, Sendable, Equatable, Hashable, Identif
         case type
         case title
         case thumb
-        case resourceURL
+        case resourceURL = "resourceUrl"
         case format
         case catno
         case country
