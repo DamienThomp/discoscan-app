@@ -106,7 +106,23 @@ final class CollectionStore: CollectionStoreProtocol {
         }
     }
 
+    /// Loads the first page of a folder's releases, or ensures folder 0's local index is ready.
+    /// Idempotent for page 1 without `forceRefresh`: no-ops unless state is `.idle`.
+    /// Use `refreshReleases(folderId:)` to force a reload.
     func loadReleases(folderId: Int, page: Int = 1, forceRefresh: Bool = false) async {
+        if folderId == .zero {
+            if forceRefresh {
+                await syncFolderZeroIndex(forceRefresh: true)
+            } else {
+                await ensureFolderZeroIndexReady()
+            }
+            return
+        }
+
+        if page == 1, !forceRefresh, (releasesByFolderID[folderId] ?? .idle) != .idle {
+            return
+        }
+
         do {
             let username = try requireUsername()
 
@@ -137,6 +153,11 @@ final class CollectionStore: CollectionStoreProtocol {
     }
 
     func refreshReleases(folderId: Int) async {
+        if folderId == .zero {
+            await syncFolderZeroIndex(forceRefresh: true)
+            return
+        }
+
         await cachedFetcher.invalidateKeys(matchingPrefix: Self.releasesCachePrefix(folderId: folderId))
         isLoadingMoreByFolderID.removeValue(forKey: folderId)
         await loadReleases(folderId: folderId, page: 1, forceRefresh: true)

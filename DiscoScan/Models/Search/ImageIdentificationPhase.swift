@@ -9,7 +9,7 @@ enum ImageIdentificationPhase: Equatable {
     case capturing
     case analyzing
     case captureFailed(String)
-    case confirming(SleeveIdentificationDraft)
+    case confirming
 }
 
 enum ImageIdentificationFeedbackPhase: Equatable {

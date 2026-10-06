@@ -34,7 +34,7 @@ struct AuthSessionTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             #expect(request.url?.path == "/oauth/identity")
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -48,17 +48,17 @@ struct AuthSessionTests {
                 """.utf8
             )
             return (response, data)
+        } performing: {
+            let session = makeAuthSession(tokenStore: tokenStore)
+            await session.bootstrap()
+
+            guard case .authenticated(let identity) = session.state else {
+                Issue.record("Expected authenticated state, got \(session.state)")
+                return
+            }
+
+            #expect(identity.username == "tester")
         }
-
-        let session = makeAuthSession(tokenStore: tokenStore)
-        await session.bootstrap()
-
-        guard case .authenticated(let identity) = session.state else {
-            Issue.record("Expected authenticated state, got \(session.state)")
-            return
-        }
-
-        #expect(identity.username == "tester")
     }
 
     @Test func logoutClearsStoredTokens() async throws {

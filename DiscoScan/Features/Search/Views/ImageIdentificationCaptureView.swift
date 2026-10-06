@@ -24,35 +24,40 @@ struct ImageIdentificationCaptureView: View {
             if isAnalyzing {
                 ProgressView("Analyzing sleeve…")
             } else {
-                VStack(spacing: AppSpacing.section) {
-                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        Label("Choose from Library", systemImage: "photo.on.rectangle")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                imagePickerControls
 
-                    Button {
-                        isShowingCamera = true
-                    } label: {
-                        Label("Take Photo", systemImage: "camera")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .controlSize(.large)
-
+                SecondaryFootnoteText(
+                    text: "Include the spine or back cover when the front has no text."
+                )
             }
 
             if let errorMessage {
                 SecondaryFootnoteText(text: errorMessage)
             }
-
-            SecondaryFootnoteText(
-                text: "Include the spine or back cover when the front has no text."
-            )
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var imagePickerControls: some View {
+        VStack(spacing: AppSpacing.section) {
+            PhotosPicker(
+                selection: $selectedPhotoItem,
+                matching: .images
+            ) {
+                Label("Choose from Library", systemImage: "photo.on.rectangle")
+                    .frame(maxWidth: .infinity)
+            }
+
+            Button {
+                isShowingCamera = true
+            } label: {
+                Label("Take Photo", systemImage: "camera")
+                   .frame(maxWidth: .infinity)
+            }
+        }
+        .controlSize(.large)
+        .buttonStyle(.bordered)
     }
 }
 
@@ -71,7 +76,7 @@ struct ImageIdentificationCaptureView: View {
     ImageIdentificationCaptureView(
         selectedPhotoItem: .constant(nil),
         isShowingCamera: .constant(false),
-        imageData: nil,
+        imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
         isAnalyzing: true,
         errorMessage: nil
     )

@@ -193,6 +193,102 @@ struct CollectionStoreTests {
         #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
     }
 
+    @Test func `Load releases routes folder zero to index readiness`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.folderZeroRemoteCount = 0
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadFolders()
+        await store.loadReleases(folderId: .zero)
+
+        #expect(store.folderZeroItems == .loaded([]))
+        #expect(store.releasesByFolderID[.zero] == nil)
+        #expect(fetcher.lastFetch?.key != "collectionFolder-0-page-1")
+    }
+
+    @Test func `Load releases skips fetch when folder already loaded`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: 1)
+        let fetchCountAfterFirstLoad = fetcher.fetchCount
+
+        await store.loadReleases(folderId: 1)
+
+        #expect(fetcher.fetchCount == fetchCountAfterFirstLoad)
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+    }
+
+    @Test func `Load releases on a loading folder doesn't fetch`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.delayNanoseconds = 100_000_000
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        async let firstLoad: Void = store.loadReleases(folderId: 1)
+        try await Task.sleep(for: .milliseconds(10))
+        await store.loadReleases(folderId: 1)
+        await firstLoad
+
+        #expect(fetcher.fetchCount == 1)
+    }
+
+    @Test func `Load releases on a failed folder doesn't fetch, refreshReleases does`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.shouldFail = true
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: 1)
+        if case .failed = store.releasesByFolderID[1] {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected releases to fail")
+        }
+
+        let fetchCountAfterFailure = fetcher.fetchCount
+        await store.loadReleases(folderId: 1)
+        #expect(fetcher.fetchCount == fetchCountAfterFailure)
+
+        fetcher.shouldFail = false
+        await store.refreshReleases(folderId: 1)
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+    }
+
+    @Test func `Load releases with forceRefresh on a loaded folder still fetches`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: 1)
+        let fetchCountAfterFirstLoad = fetcher.fetchCount
+
+        await store.loadReleases(folderId: 1, forceRefresh: true)
+
+        #expect(fetcher.fetchCount > fetchCountAfterFirstLoad)
+        #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
+    }
+
+    @Test func `Refresh releases on folder zero doesn't invalidate folder endpoint cache`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.folderZeroRemoteCount = 0
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadFolders()
+        await store.refreshReleases(folderId: .zero)
+
+        #expect(fetcher.lastInvalidatedPrefix != "collectionFolder-0-page-")
+    }
+
     @Test func deleteReleaseRemovesItemLocallyAndRefreshesFoldersOnly() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()

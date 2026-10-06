@@ -103,6 +103,10 @@ extension CollectionStoreProtocol {
 }
 
 extension CollectionStoreProtocol {
+    func releasesState(for folderId: Int) -> ResourceState<[CollectionReleaseItem]> {
+        folderId == .zero ? folderZeroItems : (releasesByFolderID[folderId] ?? .idle)
+    }
+
     func loadFolders() async {
         await loadFolders(forceRefresh: false)
     }

@@ -16,7 +16,7 @@ struct ImageIdentificationConfirmView: View {
         Form {
             if let imageData {
                 Section {
-                    IdentificationImagePreview(imageData: imageData, maxHeight: 180)
+                    IdentificationImagePreview(imageData: imageData)
                         .frame(maxWidth: .infinity)
                         .transition(.opacity)
                 }
@@ -36,24 +36,22 @@ struct ImageIdentificationConfirmView: View {
                     TextField("Album title", text: $identification.title)
                     TextField("Catalog number", text: $identification.catalogNumber)
                 }.transition(.opacity)
-            }
 
-            Section {
-                if !identification.isEmpty {
+                Section {
                     Button("Search Discogs") {
                         onSearch(identification.searchQuery)
                     }
                     .disabled(identification.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
 
-                Button("Edit in search field") {
-                    onSearchManually()
-                }
+                    Button("Edit in search field") {
+                        onSearchManually()
+                    }
 
-                Button("Scan barcode instead") {
-                    onScanBarcode()
-                }
-            }.transition(.opacity)
+                    Button("Scan barcode instead") {
+                        onScanBarcode()
+                    }
+                }.transition(.opacity)
+            }
         }
     }
 }

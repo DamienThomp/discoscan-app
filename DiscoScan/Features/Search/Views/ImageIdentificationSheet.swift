@@ -16,6 +16,7 @@ struct ImageIdentificationSheet: View {
 
     @State private var phase: ImageIdentificationPhase = .capturing
     @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var draft = SleeveIdentificationDraft()
     @State private var imageData: Data?
     @State private var isShowingCamera = false
 
@@ -33,12 +34,12 @@ struct ImageIdentificationSheet: View {
                     ).transition(.opacity)
                 case .confirming:
                     ImageIdentificationConfirmView(
-                        identification: identificationBinding,
+                        identification: $draft,
                         imageData: imageData,
                         onSearch: onSearch,
                         onScanBarcode: { dismiss() },
                         onSearchManually: {
-                            searchText = identificationBinding.wrappedValue.searchQuery
+                            searchText = draft.searchQuery
                             dismiss()
                         }
                     ).transition(.opacity)
@@ -51,14 +52,16 @@ struct ImageIdentificationSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .onChange(of: selectedPhotoItem) { _, newItem in
-                Task { await loadPhoto(from: newItem) }
+            .task(id: selectedPhotoItem) {
+               await loadPhoto(from: selectedPhotoItem)
+            }
+            .task(id: imageData) {
+                await runAnalysis()
             }
             .fullScreenCover(isPresented: $isShowingCamera) {
                 ImagePickerCameraView { data in
                     isShowingCamera = false
                     beginAnalysis(with: data)
-                    Task { await runAnalysis() }
                 } onCancel: {
                     isShowingCamera = false
                 }.ignoresSafeArea()
@@ -80,19 +83,6 @@ struct ImageIdentificationSheet: View {
         phase.feedbackPhase
     }
 
-    private var identificationBinding: Binding<SleeveIdentificationDraft> {
-        Binding(
-            get: {
-                if case .confirming(let draft) = phase {
-                    draft
-                } else {
-                    SleeveIdentificationDraft()
-                }
-            },
-            set: { phase = .confirming($0) }
-        )
-    }
-
     private func beginAnalysis(with data: Data) {
         withAnimation {
             imageData = data
@@ -102,7 +92,8 @@ struct ImageIdentificationSheet: View {
 
     private func completeAnalysis(with result: SleeveIdentification) {
         withAnimation {
-            phase = .confirming(SleeveIdentificationDraft(from: result))
+            draft = SleeveIdentificationDraft(from: result)
+            phase = .confirming
         }
     }
 
@@ -121,7 +112,6 @@ struct ImageIdentificationSheet: View {
                 return
             }
             beginAnalysis(with: data)
-            await runAnalysis()
         } catch {
             failCapture(error.localizedDescription)
         }

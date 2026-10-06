@@ -10,6 +10,7 @@ import SwiftData
 struct AppDependencies {
     let config: DiscogsConfig
     let geminiConfig: GeminiConfig
+    let baseURLs: APIBaseURLs
     let tokenStore: TokenStoreProtocol
     let handshakeClient: NetworkManagerProtocol
     let apiClient: NetworkManagerProtocol
@@ -18,21 +19,22 @@ struct AppDependencies {
     let collectionLocalIndex: CollectionLocalIndex
     let collectionSyncService: CollectionSyncService
     let cachedFetcher: CachedFetcher
-    let sleeveIdentifier: GeminiSleeveIdentifier
+    let sleeveIdentifier: any SleeveIdentifierProtocol
     let appleMusicCatalog: AppleMusicCatalogService
 
     @MainActor
     static func make() -> AppDependencies {
         let config = DiscogsConfig.fromBundle()
         let geminiConfig = GeminiConfig.fromBundle()
+        let baseURLs = APIBaseURLs.fromBundle()
         let tokenStore = KeychainTokenStore()
 
         let hostResolver: @Sendable (APIHost) -> URL = { host in
             switch host {
             case .discogsWeb:
-                URL(string: "https://www.discogs.com")!
+                baseURLs.discogsWeb
             default:
-                URL(string: "https://api.discogs.com")!
+                baseURLs.discogsAPI
             }
         }
 
@@ -82,12 +84,16 @@ struct AppDependencies {
             cachedFetcher: cachedFetcher
         )
 
-        let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig)
+        let geminiClient = NetworkManagerFactory.makeDefaultClient(
+            hostResolver: { _ in baseURLs.gemini }
+        )
+        let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig, client: geminiClient)
         let appleMusicCatalog = AppleMusicCatalogService()
 
         return AppDependencies(
             config: config,
             geminiConfig: geminiConfig,
+            baseURLs: baseURLs,
             tokenStore: tokenStore,
             handshakeClient: handshakeClient,
             apiClient: apiClient,

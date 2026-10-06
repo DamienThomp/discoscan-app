@@ -29,40 +29,30 @@ struct CachedFetcherTests {
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
         var requestCount = 0
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             requestCount += 1
             #expect(request.url?.path == "/oauth/identity")
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+            return self.identityResponse(for: request)
+        } performing: {
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 1_000) })
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+
+            requestCount = 0
+            let cached = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+
+            #expect(cached.username == "tester")
+            #expect(requestCount == 0)
         }
-
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 1_000) })
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-
-        requestCount = 0
-        let cached = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-
-        #expect(cached.username == "tester")
-        #expect(requestCount == 0)
     }
 
     @Test func expiredCacheRefetches() async throws {
@@ -70,46 +60,36 @@ struct CachedFetcherTests {
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
         var requestCount = 0
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             requestCount += 1
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+            return self.identityResponse(for: request)
+        } performing: {
+            let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+            let baseDate = Date(timeIntervalSince1970: 1_000)
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage, now: { baseDate })
+
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+            #expect(requestCount == 1)
+
+            requestCount = 0
+            let expiredFetcher = try makeCachedFetcher(
+                tokenStore: tokenStore,
+                storage: storage,
+                now: { baseDate.addingTimeInterval(CacheScope.identity.ttl + 1) }
+            )
+            _ = try await expiredFetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+            #expect(requestCount == 1)
         }
-
-        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
-        let baseDate = Date(timeIntervalSince1970: 1_000)
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage, now: { baseDate })
-
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-        #expect(requestCount == 1)
-
-        requestCount = 0
-        let expiredFetcher = try makeCachedFetcher(
-            tokenStore: tokenStore,
-            storage: storage,
-            now: { baseDate.addingTimeInterval(CacheScope.identity.ttl + 1) }
-        )
-        _ = try await expiredFetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-        #expect(requestCount == 1)
     }
 
     @Test func forceRefreshBypassesFreshCache() async throws {
@@ -117,38 +97,28 @@ struct CachedFetcherTests {
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
         var requestCount = 0
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             requestCount += 1
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+            return self.identityResponse(for: request)
+        } performing: {
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 1_000) })
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+            #expect(requestCount == 1)
+
+            requestCount = 0
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: true
+            )
+            #expect(requestCount == 1)
         }
-
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 1_000) })
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-        #expect(requestCount == 1)
-
-        requestCount = 0
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: true
-        )
-        #expect(requestCount == 1)
     }
 
     @Test func concurrentRequestsAreDeduped() async throws {
@@ -156,78 +126,59 @@ struct CachedFetcherTests {
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
         var requestCount = 0
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             requestCount += 1
             Thread.sleep(forTimeInterval: 0.05)
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+            return self.identityResponse(for: request)
+        } performing: {
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 2_000) })
+
+            async let first = fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: true
+            )
+            async let second = fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: true
+            )
+
+            _ = try await (first, second)
+            #expect(requestCount == 1)
         }
-
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 2_000) })
-
-        async let first = fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: true
-        )
-        async let second = fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: true
-        )
-
-        _ = try await (first, second)
-        #expect(requestCount == 1)
     }
 
     @Test func offlineReturnsStaleCache() async throws {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        MockURLProtocol.requestHandler = { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+        let phase = MockRequestPhase()
+        try await MockURLProtocol.withLockedHandler { request in
+            if phase.isOffline {
+                throw URLError(.notConnectedToInternet)
+            }
+            return self.identityResponse(for: request)
+        } performing: {
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 3_000) })
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+
+            phase.isOffline = true
+            let identity = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: true
+            )
+            #expect(identity.username == "tester")
         }
-
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 3_000) })
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-
-        MockURLProtocol.requestHandler = { _ in
-            throw URLError(.notConnectedToInternet)
-        }
-
-        let identity = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: true
-        )
-        #expect(identity.username == "tester")
     }
 
     @Test func invalidateRemovesCachedEntry() async throws {
@@ -235,43 +186,33 @@ struct CachedFetcherTests {
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
         var requestCount = 0
-        MockURLProtocol.requestHandler = { request in
+        try await MockURLProtocol.withLockedHandler { request in
             requestCount += 1
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+            return self.identityResponse(for: request)
+        } performing: {
+            let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage, now: { Date(timeIntervalSince1970: 5_000) })
+
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+            #expect(requestCount == 1)
+
+            await fetcher.invalidate(key: "identity")
+            #expect(try await storage.entry(for: "identity") == nil)
+
+            requestCount = 0
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+            #expect(requestCount == 1)
         }
-
-        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage, now: { Date(timeIntervalSince1970: 5_000) })
-
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-        #expect(requestCount == 1)
-
-        await fetcher.invalidate(key: "identity")
-        #expect(try await storage.entry(for: "identity") == nil)
-
-        requestCount = 0
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-        #expect(requestCount == 1)
     }
 
     @Test func invalidateKeysMatchingPrefixRemovesOnlyMatchingEntries() async throws {
@@ -297,45 +238,50 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        MockURLProtocol.requestHandler = { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "application/json",
-                    "X-Discogs-Ratelimit-Remaining": "59",
-                    "X-Discogs-Ratelimit": "60"
-                ]
-            )!
-            return (response, self.identityJSON)
+        let phase = MockRequestPhase()
+        try await MockURLProtocol.withLockedHandler { request in
+            if phase.isOffline {
+                let response = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 429,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                )!
+                return (response, Data())
+            }
+            return self.identityResponse(for: request)
+        } performing: {
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 4_000) })
+            _ = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: false
+            )
+
+            phase.isOffline = true
+            let identity = try await fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: true
+            )
+            #expect(identity.username == "tester")
         }
+    }
 
-        let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 4_000) })
-        _ = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: false
-        )
-
-        MockURLProtocol.requestHandler = { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 429,
-                httpVersion: nil,
-                headerFields: ["Content-Type": "application/json"]
-            )!
-            return (response, Data())
-        }
-
-        let identity = try await fetcher.fetch(
-            IdentityEndpoint(),
-            key: "identity",
-            scope: .identity,
-            forceRefresh: true
-        )
-        #expect(identity.username == "tester")
+    private func identityResponse(for request: URLRequest) -> (HTTPURLResponse, Data) {
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: [
+                "Content-Type": "application/json",
+                "X-Discogs-Ratelimit-Remaining": "59",
+                "X-Discogs-Ratelimit": "60"
+            ]
+        )!
+        return (response, identityJSON)
     }
 
     private func makeCachedFetcher(
@@ -373,4 +319,8 @@ struct CachedFetcherTests {
             now: now
         )
     }
+}
+
+private final class MockRequestPhase: @unchecked Sendable {
+    var isOffline = false
 }

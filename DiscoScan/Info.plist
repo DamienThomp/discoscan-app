@@ -29,6 +29,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>DISCOGSAPIBaseURL</key>
+	<string>$(DISCOGS_API_BASE_URL)</string>
 	<key>DISCOGSCallbackURL</key>
 	<string>$(DISCOGS_CALLBACK_URL)</string>
 	<key>DISCOGSConsumerKey</key>
@@ -37,6 +39,10 @@
 	<string>$(DISCOGS_CONSUMER_SECRET)</string>
 	<key>DISCOGSUserAgent</key>
 	<string>$(DISCOGS_USER_AGENT)</string>
+	<key>DISCOGSWebBaseURL</key>
+	<string>$(DISCOGS_WEB_BASE_URL)</string>
+	<key>GEMINIAPIBaseURL</key>
+	<string>$(GEMINI_API_BASE_URL)</string>
 	<key>GEMINIApiKey</key>
 	<string>$(GEMINI_API_KEY)</string>
 	<key>GEMINIModel</key>
