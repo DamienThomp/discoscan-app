@@ -18,7 +18,7 @@ struct ImageIdentificationCaptureView: View {
     let onScanBarcode: () -> Void
 
     var body: some View {
-        VStack(spacing: AppSpacing.screen) {
+        VStack(alignment: .center, spacing: AppSpacing.screen) {
             switch phase {
             case .capturing:
                 idleContent
@@ -31,7 +31,29 @@ struct ImageIdentificationCaptureView: View {
             }
         }
         .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .center
+        )
+        .background {
+            if phase == .analyzing, let imageData {
+                Color.clear
+                    .overlay {
+                        IdentificationImagePreview(imageData: imageData)
+                            .scaledToFill()
+                    }
+                    .clipped()
+                    .ignoresSafeArea()
+            }
+        }
+        .overlay(alignment: .top) {
+            if phase == .analyzing {
+                LinearGradient(colors: [.black.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 120)
+                    .ignoresSafeArea()
+            }
+        }
     }
 
     private var idleContent: some View {
@@ -49,17 +71,14 @@ struct ImageIdentificationCaptureView: View {
     }
 
     private var analyzingContent: some View {
-        Group {
-            if let imageData {
-                IdentificationImagePreview(imageData: imageData)
-            }
-
-            ProgressView("Analyzing sleeve…")
-        }
+        ProgressView("Analyzing sleeve…")
+            .padding()
+            .glassEffect(.regular, in: .rect(cornerRadius: AppCornerRadius.standard))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func failedContent(failure: ImageIdentificationFailure) -> some View {
-        Group {
+        VStack {
             if let imageData {
                 IdentificationImagePreview(imageData: imageData)
             }
@@ -68,39 +87,58 @@ struct ImageIdentificationCaptureView: View {
                 Text(failure.title)
             } description: {
                 Text(failure.message)
+            } actions: {
+                failedActions(for: failure)
             }
             .accessibilityElement(children: .combine)
-
-            failedActions(for: failure)
-        }
+        }.frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
     private func failedActions(for failure: ImageIdentificationFailure) -> some View {
         VStack(spacing: AppSpacing.section) {
             if failure.isRetryable {
-                Button("Try Again", action: onRetry)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                Button {
+                    onRetry()
+                } label: {
+                    Text("Try Again")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
 
             if failure.isNotConfigured {
-                Button("Search Manually", action: onSearchManually)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                Button {
+                    onSearchManually()
+                } label: {
+                    Text("Search Manually")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
 
-                Button("Scan Barcode", action: onScanBarcode)
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                Button {
+                    onScanBarcode()
+                } label: {
+                    Text("Scan Barcode")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             } else {
                 imagePickerControls(
                     libraryLabel: "Choose Another Photo",
                     libraryIsPrimary: failure == .photoUnavailable
                 )
 
-                Button("Search Manually", action: onSearchManually)
-                    .buttonStyle(.plain)
-                    .controlSize(.large)
+                Button {
+                    onSearchManually()
+                } label: {
+                    Text("Search Manually")
+                }
+                .buttonStyle(.plain)
+                .controlSize(.large)
             }
         }
     }
@@ -116,7 +154,7 @@ struct ImageIdentificationCaptureView: View {
                     Label(libraryLabel, systemImage: "photo.on.rectangle")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle( .borderedProminent)
             } else {
                 PhotosPicker(
                     selection: $selectedPhotoItem,

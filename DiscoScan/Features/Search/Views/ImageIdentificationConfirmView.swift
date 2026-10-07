@@ -18,12 +18,13 @@ struct ImageIdentificationConfirmView: View {
             if let imageData {
                 Section {
                     IdentificationImagePreview(imageData: imageData)
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
+                        .scaledToFill()
+                        .frame(maxHeight: 240)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.standard))
                         .transition(.opacity)
                 }
             }
-
             if identification.isEmpty {
                 Section {
                     ContentUnavailableView(
