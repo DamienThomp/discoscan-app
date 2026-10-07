@@ -168,7 +168,7 @@ struct ImageIdentificationSheet: View {
     NavigationStack {
         ImageIdentificationConfirmView(
             identification: .constant(previewSleeveIdentificationDraft()),
-            imageData: nil,
+            imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
             onSearch: { _ in },
             onScanBarcode: {},
             onSearchManually: {},
