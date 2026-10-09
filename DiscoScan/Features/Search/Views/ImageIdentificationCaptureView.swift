@@ -72,6 +72,7 @@ struct ImageIdentificationCaptureView: View {
 
     private var analyzingContent: some View {
         ProgressView("Analyzing sleeve…")
+            .tint(.primary)
             .padding()
             .glassEffect(.regular, in: .rect(cornerRadius: AppCornerRadius.standard))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
