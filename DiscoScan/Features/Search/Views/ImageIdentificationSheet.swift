@@ -131,6 +131,12 @@ struct ImageIdentificationSheet: View {
 
         defer { selectedPhotoItem = nil }
 
+        withAnimation {
+            imageData = nil
+            phase = .analyzing
+        }
+
+
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
                 failCapture(.photoUnavailable)
