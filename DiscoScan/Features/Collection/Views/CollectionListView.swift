@@ -79,7 +79,7 @@ struct CollectionListView: View {
         )
         .navigationTitle(folderName)
         .if(isFolderZero) { view in
-            view.searchable(text: $searchText, prompt: "Search your collection…")
+            view.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search your collection…")
         }
         .task { await store.loadReleases(folderId: folderId) }
         .refreshable { await store.refreshReleases(folderId: folderId) }
