@@ -7,6 +7,8 @@ import SwiftUI
 
 struct ImageIdentificationConfirmView: View {
     @Binding var identification: SleeveIdentificationDraft
+
+    let maxHeight: CGFloat = 200
     let imageData: Data?
     let onSearch: (String) -> Void
     let onScanBarcode: () -> Void
@@ -19,7 +21,7 @@ struct ImageIdentificationConfirmView: View {
                 Section {
                     IdentificationImagePreview(imageData: imageData)
                         .scaledToFill()
-                        .frame(maxHeight: 240)
+                        .frame(maxHeight: maxHeight)
                         .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.standard))
                         .transition(.opacity)
