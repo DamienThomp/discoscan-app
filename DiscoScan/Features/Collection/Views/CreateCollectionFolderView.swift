@@ -31,14 +31,14 @@ struct CreateCollectionFolderView: View {
                 Button("Cancel") { dismiss() }
             }
         }
-        .alert("Couldn't Create Folder", isPresented: isShowingError) {
-            Button("OK") {
-                errorMessage = nil
-            }
-        } message: {
-            if let errorMessage {
-                Text(errorMessage)
-            }
+        .alert(
+            "Couldn't Create Folder",
+            isPresented: $errorMessage.isNonNil,
+            presenting: errorMessage
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { message in
+            Text(message)
         }
     }
 }
@@ -48,13 +48,6 @@ extension CreateCollectionFolderView {
     private var canSubmit: Bool {
         if case .success = FolderName.validated(from: name) { return true }
         return false
-    }
-
-    private var isShowingError: Binding<Bool> {
-        Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )
     }
 
     private func submitForm() async {

@@ -16,13 +16,13 @@ struct FolderNameTests {
 
     @Test func validatedTrimsWhitespace() throws {
         let result = FolderName.validated(from: "  Jazz  ")
-        let folderName = try #require(try result.get())
+        let folderName = try result.get()
         #expect(folderName.value == "Jazz")
     }
 
     @Test func validatedAcceptsNonEmptyName() throws {
         let result = FolderName.validated(from: "New Folder")
-        let folderName = try #require(try result.get())
+        let folderName = try result.get()
         #expect(folderName.value == "New Folder")
     }
 }

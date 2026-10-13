@@ -69,17 +69,16 @@ struct CollectionListView: View {
                 )
             }
         }
-        .mutationErrorAlert(
-            title: "Could Not Remove Release",
-            isPresented: Binding(
-                get: { deleteErrorMessage != nil },
-                set: { if !$0 { deleteErrorMessage = nil } }
-            ),
-            message: deleteErrorMessage
-        )
+        .mutationErrorAlert(title: "Could Not Remove Release", message: $deleteErrorMessage)
         .navigationTitle(folderName)
         .if(isFolderZero) { view in
-            view.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search your collection…")
+            view.searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(
+                    displayMode: .always
+                ),
+                prompt: "Search your collection…"
+            )
         }
         .task { await store.loadReleases(folderId: folderId) }
         .refreshable { await store.refreshReleases(folderId: folderId) }

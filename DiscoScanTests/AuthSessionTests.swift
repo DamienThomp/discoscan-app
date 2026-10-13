@@ -34,7 +34,7 @@ struct AuthSessionTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        try await MockURLProtocol.withLockedHandler { request in
+        await MockURLProtocol.withLockedHandler { request in
             #expect(request.url?.path == "/oauth/identity")
             let response = HTTPURLResponse(
                 url: request.url!,

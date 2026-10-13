@@ -1,6 +1,6 @@
 //
 //  MockURLProtocol.swift
-//  DiscoScanTests
+//  DiscoScan
 //
 
 import Foundation
@@ -10,6 +10,8 @@ final class MockURLProtocol: URLProtocol {
     private static let lock = NSLock()
 
     /// Runs a test body with an exclusive mock handler so parallel suites do not clobber each other.
+    ///
+    /// Holds the lock for the full async body so other suites block until this handler is cleared.
     static func withLockedHandler<R>(
         _ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data),
         performing body: () async throws -> R

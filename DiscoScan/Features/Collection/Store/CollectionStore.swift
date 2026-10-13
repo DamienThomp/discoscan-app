@@ -183,8 +183,13 @@ final class CollectionStore: CollectionStoreProtocol {
     }
 
     func deleteFolder(id folderId: Int) async {
-        guard folderId >= 2 else {
+        guard !CollectionFolderResponse.isSystemFolder(id: folderId) else {
             lastMutationError = CollectionStoreError.systemFolderNotDeletable.localizedDescription
+            return
+        }
+
+        guard folders.value?.first(where: { $0.id == folderId })?.count == 0 else {
+            lastMutationError = CollectionStoreError.folderNotEmpty.localizedDescription
             return
         }
 

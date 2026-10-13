@@ -97,7 +97,7 @@ struct CollectionStoreTests {
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
-        let folderName = try #require(try FolderName.validated(from: "New Folder").get())
+        let folderName = try FolderName.validated(from: "New Folder").get()
         try await store.createFolder(name: folderName)
 
         #expect(apiClient.lastRequestPath?.contains("/collection/folders") == true)
@@ -116,12 +116,26 @@ struct CollectionStoreTests {
         #expect(store.lastMutationError == CollectionStoreError.systemFolderNotDeletable.localizedDescription)
     }
 
+    @Test func deleteFolderRejectsNonEmptyFolder() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadFolders()
+        await store.deleteFolder(id: 3)
+
+        #expect(apiClient.requestCount == 0)
+        #expect(store.lastMutationError == CollectionStoreError.folderNotEmpty.localizedDescription)
+    }
+
     @Test func deleteFolderCallsEndpointAndRefreshes() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
+        await store.loadFolders()
         await store.loadReleases(folderId: 2)
         await store.deleteFolder(id: 2)
 

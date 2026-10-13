@@ -12,6 +12,7 @@ private enum TestSaveError: Error {
     case failed
 }
 
+@MainActor
 struct CollectionLocalIndexTests {
     private let username = "tester"
 

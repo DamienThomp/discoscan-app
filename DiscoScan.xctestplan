@@ -1,0 +1,39 @@
+{
+  "configurations" : [
+    {
+      "id" : "F0AB2664-CBA2-4F45-AD6A-548C46CD2BC5",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:DiscoScan.xcodeproj",
+      "identifier" : "38B041363053092F00AB3941",
+      "name" : "DiscoScan"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:DiscoScan.xcodeproj",
+        "identifier" : "38B041433053093100AB3941",
+        "name" : "DiscoScanTests"
+      }
+    },
+    {
+      "enabled" : false,
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:DiscoScan.xcodeproj",
+        "identifier" : "38B0414D3053093100AB3941",
+        "name" : "DiscoScanUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

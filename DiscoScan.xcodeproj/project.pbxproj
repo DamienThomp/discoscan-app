@@ -34,6 +34,7 @@
 		38B0414E3053093100AB3941 /* DiscoScanUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DiscoScanUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38B041643053100000AB3941 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Secrets.xcconfig; path = DiscoScan/Configuration/Secrets.xcconfig; sourceTree = "<group>"; };
 		38B041673053100000AB3941 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = App.xcconfig; path = DiscoScan/Configuration/App.xcconfig; sourceTree = "<group>"; };
+		38FC20A3307D8748007778D3 /* DiscoScan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = DiscoScan.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -100,6 +101,7 @@
 		38B0412E3053092F00AB3941 = {
 			isa = PBXGroup;
 			children = (
+				38FC20A3307D8748007778D3 /* DiscoScan.xctestplan */,
 				38B041393053092F00AB3941 /* DiscoScan */,
 				38B041473053093100AB3941 /* DiscoScanTests */,
 				38B041513053093100AB3941 /* DiscoScanUITests */,
