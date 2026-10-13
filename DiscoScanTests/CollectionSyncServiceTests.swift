@@ -7,6 +7,7 @@ import SwiftData
 import Testing
 @testable import DiscoScan
 
+@MainActor
 struct CollectionSyncServiceTests {
     private let username = "tester"
 
@@ -25,7 +26,7 @@ struct CollectionSyncServiceTests {
             }
         }
 
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
         progressTask.cancel()
 
         #expect(phases.contains(.checking))
@@ -45,7 +46,7 @@ struct CollectionSyncServiceTests {
         let index = CollectionLocalIndex(modelContainer: try TestModelContainer.make())
         let service = CollectionSyncService(index: index, cachedFetcher: fetcher)
 
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
 
         #expect(try await index.count(username: username) == 1)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
@@ -62,7 +63,7 @@ struct CollectionSyncServiceTests {
         #expect(try await index.count(username: username) == 1)
 
         let service = CollectionSyncService(index: index, cachedFetcher: fetcher)
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
 
         #expect(try await index.count(username: username) == 0)
     }
@@ -77,7 +78,7 @@ struct CollectionSyncServiceTests {
         _ = try await index.beginSyncGeneration(username: username)
 
         let service = CollectionSyncService(index: index, cachedFetcher: fetcher)
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
 
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
         #expect(fetcher.fetchCount >= 2)
@@ -92,11 +93,11 @@ struct CollectionSyncServiceTests {
         let index = CollectionLocalIndex(modelContainer: try TestModelContainer.make())
         let service = CollectionSyncService(index: index, cachedFetcher: fetcher)
 
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
         #expect(try await index.hasUnsealedGeneration(username: username))
 
         fetcher.failOnFolderZeroPage = nil
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
     }
 
@@ -114,7 +115,7 @@ struct CollectionSyncServiceTests {
             }
         }
 
-        await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
+        _ = await service.refreshIfNeeded(username: username, forceFoldersRefresh: true)
         progressTask.cancel()
 
         #expect(phases.contains(.checking))

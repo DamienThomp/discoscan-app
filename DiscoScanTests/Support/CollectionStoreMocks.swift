@@ -41,7 +41,7 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
             throw URLError(.notConnectedToInternet)
         }
 
-        if let foldersEndpoint = endpoint as? CollectionFoldersEndpoint {
+        if endpoint is CollectionFoldersEndpoint {
             let folders = CollectionFixtures.sampleFolders.compactMap { folder -> CollectionFolderResponse? in
                 guard folder.isAllFolder else { return folder }
                 guard !foldersMissingAllFolder else { return nil }

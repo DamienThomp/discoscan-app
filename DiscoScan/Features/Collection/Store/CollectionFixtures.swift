@@ -5,11 +5,12 @@
 
 import Foundation
 
-enum CollectionFixtures {
+nonisolated enum CollectionFixtures {
     static let sampleFolders: [CollectionFolderResponse] = [
         CollectionFolderResponse(id: .zero, count: 10, name: "All", resourceUrl: "https://example.com/0"),
         CollectionFolderResponse(id: 1, count: 5, name: "Uncategorized", resourceUrl: "https://example.com/1"),
-        CollectionFolderResponse(id: 2, count: 0, name: "Jazz", resourceUrl: "https://example.com/2")
+        CollectionFolderResponse(id: 2, count: 0, name: "Jazz", resourceUrl: "https://example.com/2"),
+        CollectionFolderResponse(id: 3, count: 3, name: "Rock", resourceUrl: "https://example.com/3")
     ]
 
     static let samplePagination = SearchPagination(page: 1, pages: 2, perPage: 50, items: 60)

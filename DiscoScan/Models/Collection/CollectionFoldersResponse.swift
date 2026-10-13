@@ -21,4 +21,10 @@ nonisolated struct CollectionFolderResponse: Codable, Sendable, Identifiable, Eq
     let resourceUrl: String
 
     var isAllFolder: Bool { id == .zero }
+    var isUncategorizedFolder: Bool { id == 1 }
+    var isSystemFolder: Bool { isAllFolder || isUncategorizedFolder }
+
+    static func isSystemFolder(id: Int) -> Bool {
+        id == .zero || id == 1
+    }
 }

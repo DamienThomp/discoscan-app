@@ -6,27 +6,24 @@
 import SwiftUI
 
 struct MutationErrorAlert: ViewModifier {
-    @Binding var isPresented: Bool
-    let title: String
-    let message: String?
+    @Binding var message: String?
+    let title: LocalizedStringKey
 
     func body(content: Content) -> some View {
-        content.alert(title, isPresented: $isPresented) {
+        content.alert(
+            title,
+            isPresented: $message.isNonNil,
+            presenting: message
+        ) { _ in
             Button("OK", role: .cancel) {}
-        } message: {
-            if let message {
-                Text(message)
-            }
+        } message: { text in
+            Text(text)
         }
     }
 }
 
 extension View {
-    func mutationErrorAlert(
-        title: String,
-        isPresented: Binding<Bool>,
-        message: String?
-    ) -> some View {
-        modifier(MutationErrorAlert(isPresented: isPresented, title: title, message: message))
+    func mutationErrorAlert(title: LocalizedStringKey, message: Binding<String?>) -> some View {
+        modifier(MutationErrorAlert(message: message, title: title))
     }
 }

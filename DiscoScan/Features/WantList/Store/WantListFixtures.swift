@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum WantListFixtures {
+nonisolated enum WantListFixtures {
     static let samplePagination = SearchPagination(page: 1, pages: 2, perPage: 50, items: 60)
 
     static let sampleWants: [WantListItem] = [

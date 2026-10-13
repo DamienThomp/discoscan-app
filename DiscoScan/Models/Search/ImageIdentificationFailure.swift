@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum ImageIdentificationFailure: Equatable {
+nonisolated enum ImageIdentificationFailure: Equatable {
     case photoUnavailable
     case identification(SleeveIdentificationError)
     case unknown

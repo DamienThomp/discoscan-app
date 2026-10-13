@@ -49,6 +49,7 @@ extension ResourceState {
 
 enum CollectionStoreError: LocalizedError, Equatable {
     case systemFolderNotDeletable
+    case folderNotEmpty
     case remoteAddSucceededLocalFailed
     case remoteDeleteSucceededLocalFailed
 
@@ -56,6 +57,8 @@ enum CollectionStoreError: LocalizedError, Equatable {
         switch self {
         case .systemFolderNotDeletable:
             "System folders cannot be deleted."
+        case .folderNotEmpty:
+            "Folders with releases can't be deleted. Removing the releases first will remove them from your collection entirely."
         case .remoteAddSucceededLocalFailed:
             "The change was saved on Discogs, but this device couldn't update its local copy. Pull to refresh."
         case .remoteDeleteSucceededLocalFailed:

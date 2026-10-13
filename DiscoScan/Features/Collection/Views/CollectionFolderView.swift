@@ -8,6 +8,7 @@ import SwiftUI
 struct CollectionFolderView: View {
 
     @Environment(\.collectionStore) private var store
+    @State private var deleteErrorMessage: String?
 
     var body: some View {
         ResourceContainerView(
@@ -16,13 +17,36 @@ struct CollectionFolderView: View {
         ) { folders in
             List {
                 ForEach(folders) { folder in
-                    NavigationLink(value: AppRoute.collectionFolder(id: folder.id, name: folder.name)) {
+                    NavigationLink(
+                        value: AppRoute.collectionFolder(
+                            id: folder.id,
+                            name: folder.name
+                        )
+                    ) {
                         Label {
                             Text(folder.name).font(.title2)
                         } icon: {
-                            Image(systemName: "folder").font(.system(size: AppIconSize.listAction))
+                            Image(
+                                systemName: "folder"
+                            )
+                            .font(
+                                .system(
+                                    size: AppIconSize.listAction
+                                )
+                            )
                         }
                         .badge(folder.count)
+                    }
+                    .swipeActions {
+                        if !folder.isSystemFolder {
+                            Button(role: .destructive) {
+                                Task {
+                                    await performDelete(for: folder)
+                                }
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
                     }
                     .accessibilityLabel("\(folder.name), \(folder.count) items")
                 }
@@ -36,6 +60,17 @@ struct CollectionFolderView: View {
         }
         .refreshable {
             await store.loadFolders(forceRefresh: true)
+        }
+        .mutationErrorAlert(
+            title: "Could Not Remove Folder",
+            message: $deleteErrorMessage
+        )
+    }
+
+    private func performDelete(for folder: CollectionFolderResponse) async {
+        await store.deleteFolder(id: folder.id)
+        if let message = store.lastMutationError {
+            deleteErrorMessage = message
         }
     }
 }

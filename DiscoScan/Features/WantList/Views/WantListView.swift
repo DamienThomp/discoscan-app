@@ -40,11 +40,7 @@ struct WantListView: View {
         }
         .mutationErrorAlert(
             title: "Could Not Remove from Want List",
-            isPresented: Binding(
-                get: { deleteErrorMessage != nil },
-                set: { if !$0 { deleteErrorMessage = nil } }
-            ),
-            message: deleteErrorMessage
+            message: $deleteErrorMessage
         )
         .task {
             if store.wants == .idle {
