@@ -63,8 +63,7 @@ struct DiscoScanApp: App {
                     guard newPhase == .active,
                           case .authenticated = authSession.state else { return }
                     Task {
-                        await collectionStore.repairFolderZeroIndexIfNeeded()
-                        await collectionStore.syncFolderZeroIndex(forceRefresh: false)
+                        await collectionStore.ensureFolderZeroIndexReady()
                     }
                 }
                 .preferredColorScheme(.dark)

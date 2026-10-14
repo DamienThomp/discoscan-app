@@ -79,22 +79,13 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
 
     func syncFolderZeroIndex(forceRefresh: Bool) async {}
 
-    func repairFolderZeroIndexIfNeeded() async {}
-
     func refreshCollectionIndex() async {}
 
     func searchFolderZero(query: String) -> [CollectionReleaseItem] {
         guard let items = folderZeroItems.value else { return [] }
         guard !query.isEmpty else { return items }
         return items.filter { item in
-            let searchable = LocalCollectionItem.makeSearchableText(
-                artist: item.basicInformation.primaryArtistName,
-                title: item.basicInformation.title,
-                label: item.basicInformation.labels.first?.name ?? "",
-                catno: item.basicInformation.labels.first?.catno ?? "",
-                year: item.basicInformation.year
-            )
-            return CollectionSearchMatching.matches(query: query, searchableText: searchable)
+            CollectionSearchMatching.matches(query: query, searchableText: item.searchableText)
         }
     }
 }

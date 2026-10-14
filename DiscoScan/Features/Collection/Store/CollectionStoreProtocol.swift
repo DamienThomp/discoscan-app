@@ -89,7 +89,6 @@ protocol CollectionStoreProtocol: AnyObject, Observable {
     func deleteRelease(from folderId: Int, releaseId: Int, instanceId: Int) async
     func ensureFolderZeroIndexReady() async
     func syncFolderZeroIndex(forceRefresh: Bool) async
-    func repairFolderZeroIndexIfNeeded() async
     func refreshCollectionIndex() async
     func searchFolderZero(query: String) -> [CollectionReleaseItem]
 }

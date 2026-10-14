@@ -326,9 +326,10 @@ struct CollectionStoreTests {
         #expect(store.lastMutationError == nil)
     }
 
-    @Test func refreshCollectionIndexSkipsSyncWhenCountsMatch() async throws {
+    @Test func `Pull to refresh syncs when counts match`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         fetcher.folderZeroRemoteCount = 1
+        fetcher.folderZeroPages = [CollectionFixtures.sampleReleases]
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
@@ -338,12 +339,12 @@ struct CollectionStoreTests {
             folderId: 1,
             snapshot: CollectionStoreTestSupport.sampleSnapshot
         )
-        let fetchCountBeforeRefresh = fetcher.fetchCount
+        let apiRequestsBeforeRefresh = apiClient.requestCount
 
         await store.refreshCollectionIndex()
 
         #expect(store.folderZeroSync == .idle)
-        #expect(fetcher.fetchCount == fetchCountBeforeRefresh + 1)
+        #expect(apiClient.requestCount > apiRequestsBeforeRefresh)
     }
 
     @Test func `Search folder zero matches tokens in either order`() async throws {
@@ -592,5 +593,81 @@ struct CollectionStoreTests {
 
         try await Task.sleep(for: .milliseconds(200))
         #expect(try await realIndex.contains(instanceId: 2000, username: identity.username))
+    }
+
+    @Test func `Folder zero sync shows progress after sign in`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.folderZeroRemoteCount = 1
+        fetcher.folderZeroPages = [CollectionFixtures.sampleReleases]
+        fetcher.delayNanoseconds = 200_000_000
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        let ensureTask = Task { await store.ensureFolderZeroIndexReady() }
+
+        var sawSyncing = false
+        for _ in 0..<100 {
+            if case .syncing = store.folderZeroSync {
+                sawSyncing = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        _ = await ensureTask.value
+
+        #expect(sawSyncing)
+    }
+
+    @Test func `User switch clears previous user index`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        let firstUser = DiscogsIdentity(
+            id: 1,
+            username: "first-user",
+            resourceURL: nil,
+            consumerName: nil
+        )
+        let secondUser = DiscogsIdentity(
+            id: 2,
+            username: "second-user",
+            resourceURL: nil,
+            consumerName: nil
+        )
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: firstUser.username)
+
+        store.sync(with: .authenticated(firstUser))
+        store.sync(with: .authenticated(secondUser))
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(try await realIndex.count(username: firstUser.username) == 0)
+    }
+
+    @Test func `Local items load when network is unavailable`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.shouldFail = true
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.shouldFail = true
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: identity.username)
+        store.sync(with: .authenticated(identity))
+        await store.ensureFolderZeroIndexReady()
+
+        #expect(store.folderZeroItems.value?.count == 1)
     }
 }

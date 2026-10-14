@@ -63,10 +63,6 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
         fatalError("collectionStore environment value was not injected.")
     }
 
-    func repairFolderZeroIndexIfNeeded() async {
-        fatalError("collectionStore environment value was not injected.")
-    }
-
     func refreshCollectionIndex() async {
         fatalError("collectionStore environment value was not injected.")
     }

@@ -8,12 +8,6 @@ import SwiftData
 
 enum TestModelContainer {
     static func make() throws -> ModelContainer {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        return try ModelContainer(
-            for: CachedRecord.self,
-            LocalCollectionItem.self,
-            CollectionSyncMetadata.self,
-            configurations: configuration
-        )
+        ModelContainerFactory.makeInMemoryContainer()
     }
 }

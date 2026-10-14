@@ -78,8 +78,8 @@ Keys are caller-defined strings. There is no central registry.
 | `"search-text-{query}"` | `.search` | `SearchContext` |
 | `"search-barcode-{code}"` | `.search` | `SearchContext` |
 | `"search-image-{query}"` | `.search` | `SearchContext` |
-| `"collectionFolders"` | `.collection` | `CollectionStore`, `CollectionSyncService` |
-| `"collectionFolder-{folderId}-page-{page}"` | `.collection` | `CollectionStore`, `CollectionSyncService` |
+| `"collectionFolders"` | `.collection` | `CollectionStore` |
+| `"collectionFolder-{folderId}-page-{page}"` | `.collection` | `CollectionStore` (folders 1+ only) |
 
 ### Invalidation
 
@@ -92,7 +92,7 @@ Stores call prefix invalidation on pull-to-refresh for paginated data, then refe
 
 ### Special cases
 
-- **Collection sync** always passes `forceRefresh: true` for folder-zero pages, bypassing TTL even within the 1-hour collection scope.
+- **Folder 0 sync** uses `NetworkManagerProtocol` directly and does not read or write `CachedRecord` entries (see [collection-sync.md](collection-sync.md)).
 - **`cachedValue`** reads cache ignoring TTL — used at auth bootstrap to show cached identity immediately.
 
 ## Rate limiting

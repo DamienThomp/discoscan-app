@@ -8,11 +8,19 @@ import SwiftData
 
 @Model
 nonisolated final class LocalCollectionItem {
+    #Unique<LocalCollectionItem>([\.username, \.instanceId])
+    #Index<LocalCollectionItem>(
+        [\.username, \.instanceId],
+        [\.username, \.dateAddedAt],
+        [\.username, \.syncGeneration]
+    )
+
     var username: String
     var instanceId: Int
     var releaseId: Int
     var folderId: Int
     var dateAdded: String
+    var dateAddedAt: Date
     var syncGeneration: Int
     var artistName: String
     var title: String
@@ -34,6 +42,7 @@ nonisolated final class LocalCollectionItem {
         self.releaseId = item.releaseId
         self.folderId = item.folderId
         self.dateAdded = item.dateAdded
+        self.dateAddedAt = CollectionDateParsing.dateAdded(from: item.dateAdded)
         self.syncGeneration = syncGeneration
         let info = item.basicInformation
         let artistName = info.primaryArtistName
@@ -46,7 +55,7 @@ nonisolated final class LocalCollectionItem {
         self.labelName = labelName
         self.catno = catno
         self.year = year
-        self.searchableText = Self.makeSearchableText(
+        self.searchableText = CollectionSearchText.make(
             artist: artistName,
             title: title,
             label: labelName,
@@ -62,6 +71,7 @@ nonisolated final class LocalCollectionItem {
         releaseId = item.releaseId
         folderId = item.folderId
         dateAdded = item.dateAdded
+        dateAddedAt = CollectionDateParsing.dateAdded(from: item.dateAdded)
         self.syncGeneration = syncGeneration
         let info = item.basicInformation
         artistName = info.primaryArtistName
@@ -69,7 +79,7 @@ nonisolated final class LocalCollectionItem {
         labelName = info.labels.first?.name ?? ""
         catno = info.labels.first?.catno ?? ""
         year = info.year
-        searchableText = Self.makeSearchableText(
+        searchableText = CollectionSearchText.make(
             artist: artistName,
             title: title,
             label: labelName,
@@ -102,28 +112,23 @@ nonisolated final class LocalCollectionItem {
             )
         )
     }
-
-    static func makeSearchableText(
-        artist: String,
-        title: String,
-        label: String,
-        catno: String,
-        year: Int?
-    ) -> String {
-        [artist, title, label, catno, year.map(String.init) ?? ""]
-            .joined(separator: " ")
-            .lowercased()
-    }
 }
 
-nonisolated enum CollectionSearchMatching {
-    static func matches(query: String, searchableText: String) -> Bool {
-        let tokens = query
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-            .split(whereSeparator: \.isWhitespace)
-            .map(String.init)
-        guard !tokens.isEmpty else { return true }
-        return tokens.allSatisfy { searchableText.contains($0) }
+nonisolated enum CollectionDateParsing {
+    private static let formatters: [ISO8601DateFormatter] = {
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return [withFraction, standard]
+    }()
+
+    static func dateAdded(from string: String) -> Date {
+        for formatter in formatters {
+            if let date = formatter.date(from: string) {
+                return date
+            }
+        }
+        return .distantPast
     }
 }

@@ -108,10 +108,71 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
 final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Sendable {
     private(set) var lastRequestPath: String?
     private(set) var requestCount = 0
+    var shouldFail = false
+    var delayNanoseconds: UInt64 = 0
+    var folderZeroRemoteCount = 10
+    var folderZeroPages: [[CollectionReleaseItem]] = [CollectionFixtures.sampleReleases]
+    var failOnFolderZeroPage: Int?
+    var foldersMissingAllFolder = false
+    var shortPaginationItems: Int?
 
     func request<E>(for endpoint: E) async throws -> E.Response where E: EndpointProtocol {
         requestCount += 1
         lastRequestPath = endpoint.path
+
+        if delayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: delayNanoseconds)
+        }
+
+        if shouldFail {
+            throw URLError(.notConnectedToInternet)
+        }
+
+        if endpoint is CollectionFoldersEndpoint {
+            let folders = CollectionFixtures.sampleFolders.compactMap { folder -> CollectionFolderResponse? in
+                guard folder.isAllFolder else { return folder }
+                guard !foldersMissingAllFolder else { return nil }
+                return CollectionFolderResponse(
+                    id: folder.id,
+                    count: folderZeroRemoteCount,
+                    name: folder.name,
+                    resourceUrl: folder.resourceUrl
+                )
+            }
+            guard let response = CollectionFoldersResponse(folders: folders) as? E.Response else {
+                throw URLError(.badURL)
+            }
+            return response
+        }
+
+        if let itemsEndpoint = endpoint as? CollectionItemsByFolderEndpoint {
+            if itemsEndpoint.folderId == .zero {
+                if let failOnFolderZeroPage, itemsEndpoint.page == failOnFolderZeroPage {
+                    throw URLError(.notConnectedToInternet)
+                }
+                let pageIndex = itemsEndpoint.page - 1
+                let releases = pageIndex < folderZeroPages.count ? folderZeroPages[pageIndex] : []
+                let totalItems = shortPaginationItems ?? folderZeroRemoteCount
+                let response = CollectionReleasesResponse(
+                    pagination: SearchPagination(
+                        page: itemsEndpoint.page,
+                        pages: max(1, folderZeroPages.count),
+                        perPage: 100,
+                        items: totalItems
+                    ),
+                    releases: releases
+                )
+                guard let typed = response as? E.Response else {
+                    throw URLError(.badURL)
+                }
+                return typed
+            }
+
+            guard let response = CollectionFixtures.sampleReleasesResponse as? E.Response else {
+                throw URLError(.badURL)
+            }
+            return response
+        }
 
         if E.Response.self == EmptyResponse.self {
             guard let response = EmptyResponse() as? E.Response else {
@@ -155,5 +216,14 @@ final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Send
 
     func responseData<E>(for endpoint: E) async throws -> NetworkResponse<Data> where E: EndpointProtocol {
         throw URLError(.unsupportedURL)
+    }
+
+    func mirrorSyncSettings(from fetcher: MockCollectionCachedFetcher) {
+        folderZeroRemoteCount = fetcher.folderZeroRemoteCount
+        folderZeroPages = fetcher.folderZeroPages
+        failOnFolderZeroPage = fetcher.failOnFolderZeroPage
+        foldersMissingAllFolder = fetcher.foldersMissingAllFolder
+        shouldFail = fetcher.shouldFail
+        delayNanoseconds = fetcher.delayNanoseconds
     }
 }
