@@ -19,10 +19,6 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
     private(set) var lastInvalidatedPrefix: String?
     var shouldFail = false
     var delayNanoseconds: UInt64 = 0
-    var folderZeroRemoteCount = 10
-    var folderZeroPages: [[CollectionReleaseItem]] = [CollectionFixtures.sampleReleases]
-    var failOnFolderZeroPage: Int?
-    var foldersMissingAllFolder = false
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -35,6 +31,67 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
 
         if delayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: delayNanoseconds)
+        }
+
+        if shouldFail {
+            throw URLError(.notConnectedToInternet)
+        }
+
+        if endpoint is CollectionFoldersEndpoint {
+            guard let response = CollectionFoldersResponse(folders: CollectionFixtures.sampleFolders) as? E.Response else {
+                throw URLError(.badURL)
+            }
+            return response
+        }
+
+        if endpoint is CollectionItemsByFolderEndpoint {
+            guard let response = CollectionFixtures.sampleReleasesResponse as? E.Response else {
+                throw URLError(.badURL)
+            }
+            return response
+        }
+
+        throw URLError(.unsupportedURL)
+    }
+
+    func cachedValue<E: EndpointProtocol>(
+        _ endpoint: E,
+        key: String
+    ) async throws -> E.Response? {
+        nil
+    }
+
+    func invalidate(key: String) async {
+        lastInvalidatedKey = key
+    }
+
+    func invalidateKeys(matchingPrefix prefix: String) async {
+        lastInvalidatedPrefix = prefix
+    }
+}
+
+final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Sendable {
+    private(set) var lastRequestPath: String?
+    private(set) var requestCount = 0
+    var shouldFail = false
+    var delayNanoseconds: UInt64 = 0
+    var folderZeroRemoteCount = 10
+    var folderZeroPages: [[CollectionReleaseItem]] = [CollectionFixtures.sampleReleases]
+    var failOnFolderZeroPage: Int?
+    var foldersMissingAllFolder = false
+    var shortPaginationItems: Int?
+    var reportsCancellationAsURLError = false
+
+    func request<E>(for endpoint: E) async throws -> E.Response where E: EndpointProtocol {
+        requestCount += 1
+        lastRequestPath = endpoint.path
+
+        if delayNanoseconds > 0 {
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch is CancellationError where reportsCancellationAsURLError {
+                throw URLError(.cancelled)
+            }
         }
 
         if shouldFail {
@@ -65,12 +122,13 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
                 }
                 let pageIndex = itemsEndpoint.page - 1
                 let releases = pageIndex < folderZeroPages.count ? folderZeroPages[pageIndex] : []
+                let totalItems = shortPaginationItems ?? folderZeroRemoteCount
                 let response = CollectionReleasesResponse(
                     pagination: SearchPagination(
                         page: itemsEndpoint.page,
                         pages: max(1, folderZeroPages.count),
                         perPage: 100,
-                        items: folderZeroRemoteCount
+                        items: totalItems
                     ),
                     releases: releases
                 )
@@ -85,33 +143,6 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
             }
             return response
         }
-
-        throw URLError(.unsupportedURL)
-    }
-
-    func cachedValue<E: EndpointProtocol>(
-        _ endpoint: E,
-        key: String
-    ) async throws -> E.Response? {
-        nil
-    }
-
-    func invalidate(key: String) async {
-        lastInvalidatedKey = key
-    }
-
-    func invalidateKeys(matchingPrefix prefix: String) async {
-        lastInvalidatedPrefix = prefix
-    }
-}
-
-final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Sendable {
-    private(set) var lastRequestPath: String?
-    private(set) var requestCount = 0
-
-    func request<E>(for endpoint: E) async throws -> E.Response where E: EndpointProtocol {
-        requestCount += 1
-        lastRequestPath = endpoint.path
 
         if E.Response.self == EmptyResponse.self {
             guard let response = EmptyResponse() as? E.Response else {

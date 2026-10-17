@@ -32,9 +32,11 @@ flowchart LR
 
 Primary files:
 
-- [`CollectionSyncService.swift`](../DiscoScan/Data/CollectionSyncService.swift)
-- [`CollectionLocalIndex.swift`](../DiscoScan/Data/CollectionLocalIndex.swift)
-- [`LocalCollectionItem.swift`](../DiscoScan/Data/LocalCollectionItem.swift)
+- [`CollectionSyncService.swift`](../DiscoScan/Data/CollectionSync/CollectionSyncService.swift)
+- [`CollectionLocalIndex.swift`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift)
+- [`LocalCollectionItem.swift`](../DiscoScan/Data/CollectionSync/LocalCollectionItem.swift)
+- [`CollectionSyncMetadata.swift`](../DiscoScan/Data/CollectionSync/CollectionSyncMetadata.swift)
+- [`CollectionSearchMatching.swift`](../DiscoScan/Data/CollectionSync/CollectionSearchMatching.swift)
 - [`CollectionStore.swift`](../DiscoScan/Features/Collection/Store/CollectionStore.swift)
 - [`CollectionListView.swift`](../DiscoScan/Features/Collection/Views/CollectionListView.swift)
 
@@ -42,29 +44,29 @@ Primary files:
 
 ```mermaid
 flowchart TD
-    trigger[Sync trigger]
-    ensure[ensureFolderZeroIndexReady or syncFolderZeroIndex]
-    folders[Fetch collection folders]
-    compare{localCount != remoteTotal or unsealed?}
-    skip[Reload from index skip sync]
+    triggers["Sign-in / open All / foreground / pull-to-refresh"]
+    store[CollectionStore]
+    loadLocal[Show local index items first]
+    service["CollectionSyncService.refresh(username, mode)"]
+    decide{"force or count mismatch or unsealed or stale?"}
     begin[beginSyncGeneration]
-    paginate[Paginate folder 0 100 per page]
-    upsert[upsertSynced each page]
-    sweep[sweep stale generation]
-    reload[reloadFolderZeroItems]
-    fail[Emit failed phase]
-
-    trigger --> ensure
-    ensure --> folders
-    folders --> compare
-    compare -->|no| skip
-    compare -->|yes| begin
-    begin --> paginate
-    paginate --> upsert
-    upsert --> paginate
-    paginate -->|done| sweep
-    sweep --> reload
-    paginate -->|error| fail
+    pages["Fetch pages via NetworkManagerProtocol"]
+    upsert["upsertSynced batched per page"]
+    verify{"synced == remoteTotal?"}
+    sweep[sweep and seal]
+    unsealed["incompleteSync leave unsealed"]
+    triggers --> store
+    store --> loadLocal
+    store --> service
+    service --> decide
+    decide -->|no| idleNode[Emit idle]
+    decide -->|yes| begin
+    begin --> pages
+    pages --> upsert
+    upsert --> pages
+    pages -->|last page| verify
+    verify -->|yes| sweep
+    verify -->|no| unsealed
 ```
 
 ### Sync triggers
@@ -73,14 +75,17 @@ flowchart TD
 | ------- | ----------- |
 | Sign-in | `DiscoScanApp` → `ensureFolderZeroIndexReady()` |
 | Open All folder | `CollectionListView.task` → `ensureFolderZeroIndexReady()` |
-| Pull-to-refresh | `syncFolderZeroIndex(forceRefresh: true)` |
-| App foreground | `repairFolderZeroIndexIfNeeded()` then `syncFolderZeroIndex(forceRefresh: false)` |
-| Count mismatch | Local count ≠ remote All-folder count from folders API |
+| Pull-to-refresh | `syncFolderZeroIndex(forceRefresh: true)` → `refresh(mode: .force)` |
+| App foreground | `ensureFolderZeroIndexReady()` |
+| Count mismatch | Local `fetchCount` ≠ remote All-folder count |
 | Unsealed generation | Previous sync interrupted before sweep |
+| Stale index | `lastSyncedAt` older than 24 hours (default) |
 
-### Coalescing
+### Coalescing and cancellation
 
-`CollectionSyncService` holds one `inFlightRefresh` task. Concurrent sync requests await the same task and receive the final `CollectionSyncPhase`.
+`CollectionSyncService` holds one in-flight task per username. Concurrent refreshes for the same user await the same task. `cancel(username:)` runs before the local index is cleared on logout or user switch.
+
+Sync pagination uses `NetworkManagerProtocol` directly (not `CachedFetcher`), so failed pages never fall back to stale cached data.
 
 ### Progress phases
 
@@ -93,7 +98,7 @@ enum CollectionSyncPhase {
 }
 ```
 
-`CollectionStore` maps these to UI via `CollectionSyncBanner`. On `.checking`, `folderZeroItems` enters refresh. Terminal `.idle` reloads items; `.failed` surfaces an error with Retry.
+`CollectionStore` subscribes once for the app lifetime. On `.checking`, `folderZeroItems` enters refresh. Terminal `.idle` reloads items; `.failed` surfaces an error with Retry. `.checking` is emitted only when a sync will run.
 
 ### Error cases
 
@@ -102,6 +107,7 @@ enum CollectionSyncPhase {
 | `allFolderNotFound` | Folders response missing id `0` |
 | `paginationFailed(page:message:)` | Network failure on a sync page |
 | `indexWriteFailed(message:)` | SwiftData write failure during upsert |
+| `incompleteSync(expected:received:)` | Pagination returned fewer items than the remote total; generation stays unsealed |
 
 ## Mark-and-sweep generations
 
@@ -113,7 +119,7 @@ beginSyncGeneration:
     activeGeneration += 1
 
 upsertSynced(items, generation):
-  upsert each item with syncGeneration = generation
+  batch upsert each item with syncGeneration = generation
 
 upsertLive(item) / delete(instanceId):
   upsert or remove using meta.activeGeneration
@@ -121,7 +127,7 @@ upsertLive(item) / delete(instanceId):
 sweep(keeping: generation):
   DELETE items WHERE syncGeneration < generation
   sealedGeneration = generation
-  update localCount and lastSyncedAt
+  lastSyncedAt = now
 ```
 
 **Why generations matter:**
@@ -129,23 +135,26 @@ sweep(keeping: generation):
 - An interrupted sync leaves `activeGeneration > sealedGeneration` (`hasUnsealedGeneration`), forcing a retry even if counts match.
 - Live mutations during sync tag rows with `activeGeneration`, so they survive the sweep.
 - Remote removals are handled by sweep: items not re-upserted in the new generation are deleted.
+- Before sweep, the service verifies the number of items received equals the `pagination.items` total reported by the first page.
+- Cancellation (including `URLError(.cancelled)` from a cancelled request) ends the sync as `.idle` and leaves the generation unsealed.
 
 ## LocalCollectionItem
 
-Each synced release becomes a denormalized SwiftData row keyed by `instanceId`:
+Each synced release becomes a denormalized SwiftData row keyed by `(username, instanceId)` with a uniqueness constraint. Duplicate pressings share a `releaseId` but have distinct `instanceId` values.
 
 | Field | Source |
 | ----- | ------ |
 | `instanceId`, `releaseId`, `folderId`, `dateAdded` | Discogs collection item |
+| `dateAddedAt` | Parsed `Date` for sort order |
 | `artistName`, `title`, `labelName`, `catno`, `year` | Release basic information |
 | `searchableText` | Lowercased join of artist, title, label, catno, year |
 | `syncGeneration` | Current sync generation tag |
 
-Upsert by `instanceId`: existing rows update in place; new instance ids insert.
+Indexes: `(username, instanceId)`, `(username, dateAddedAt)`, `(username, syncGeneration)`.
 
 ### Display order
 
-[`CollectionLocalIndex.fetchDescriptor`](../DiscoScan/Data/CollectionLocalIndex.swift) sorts by `dateAdded` descending (newest first). Sync fetches pages with default API sort (artist ascending), but display order comes from the local fetch descriptor.
+[`CollectionLocalIndex`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift) sorts by `dateAddedAt` descending (newest first). Sync fetches pages with default API sort (artist ascending), but display order comes from the local fetch descriptor.
 
 ## Local search
 
@@ -153,13 +162,15 @@ Search applies only to folder `.zero` in [`CollectionListView`](../DiscoScan/Fea
 
 ### Searchable text
 
-Built in `LocalCollectionItem.makeSearchableText`:
+`CollectionReleaseItem.searchableText` and `CollectionSearchText.make` build:
 
 ```
 [artist, title, label, catno, year?.description ?? ""]
   .joined(separator: " ")
   .lowercased()
 ```
+
+Stored rows keep a denormalized `searchableText` column for consistency with sync writes.
 
 ### Matching algorithm
 
@@ -172,14 +183,7 @@ Built in `LocalCollectionItem.makeSearchableText`:
 
 No fuzzy matching, stemming, or word boundaries.
 
-### Two code paths
-
-| Path | Location | Used by |
-| ---- | -------- | ------- |
-| `CollectionStore.searchFolderZero(query:)` | MainActor, in-memory filter on `folderZeroItems.value` | UI |
-| `CollectionLocalIndex.search(username:query:)` | Index actor, fetch all then filter | Available for async use |
-
-Both use the same text construction and matching logic. Search preserves the underlying sort order from the index.
+`CollectionStore.searchFolderZero(query:)` filters `folderZeroItems.value` in memory using the shared helpers above.
 
 ## Mutations
 
@@ -203,10 +207,16 @@ Add and delete keep the local index, in-memory folder lists, and folder counts i
 
 ## Loading semantics
 
-When local count is zero but remote All-folder count is greater than zero, `folderZeroItems` stays in `.loading` (not `.loaded([])`) until sync completes. This avoids showing an empty list while sync is pending.
+`ensureFolderZeroIndexReady()` loads local items before contacting the network, so offline users see the last synced index immediately.
+
+When local count is zero but a sync is pending, `folderZeroItems` stays in `.loading` (not `.loaded([])`) until sync completes or fails.
+
+## Storage and schema changes
+
+[`ModelContainerFactory`](../DiscoScan/Data/ModelContainerFactory.swift) bumps a `schemaVersion` in `UserDefaults`. When the version changes, the on-disk SwiftData store is deleted and recreated. The collection index, API cache, and sync metadata are all re-fetched on the next sync. Failed opens log to `os.Logger`, retry after delete, then fall back to an in-memory container as a last resort.
 
 ## Related docs
 
 - [stores-and-state.md](stores-and-state.md) — `ResourceState` and `CollectionSyncPhase`
-- [caching.md](caching.md) — API cache for folder 1+ and sync pagination
-- [auth.md](auth.md) — Index cleared on logout or user switch
+- [caching.md](caching.md) — API cache for folder 1+ (folder 0 sync bypasses `CachedFetcher`)
+- [auth.md](auth.md) — Sync cancelled and index cleared on logout or user switch

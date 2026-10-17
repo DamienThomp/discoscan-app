@@ -18,7 +18,7 @@ struct CollectionStoreTests {
         consumerName: "DiscoScan"
     )
 
-    @Test func syncResetsOnLogout() async throws {
+    @Test func `Sync resets on logout`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -33,7 +33,7 @@ struct CollectionStoreTests {
         #expect(store.folderZeroItems == .idle)
     }
 
-    @Test func syncResetsWhenUsernameChanges() async throws {
+    @Test func `Sync resets when username changes`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -51,7 +51,7 @@ struct CollectionStoreTests {
         #expect(store.folders == .idle)
     }
 
-    @Test func loadFoldersTransitionsToLoaded() async throws {
+    @Test func `Load folders transitions to loaded`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -64,7 +64,7 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.key == "collectionFolders")
     }
 
-    @Test func loadFoldersFailsWhenNotAuthenticated() async throws {
+    @Test func `Load folders fails when not authenticated`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -78,7 +78,7 @@ struct CollectionStoreTests {
         }
     }
 
-    @Test func loadReleasesStoresPaginationAndItems() async throws {
+    @Test func `Load releases stores pagination and items`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -91,7 +91,7 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.key == "collectionFolder-1-page-1")
     }
 
-    @Test func createFolderRefreshesWithForceRefresh() async throws {
+    @Test func `Create folder refreshes with forceRefresh`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -104,7 +104,7 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.forceRefresh == true)
     }
 
-    @Test func deleteFolderRejectsSystemFolders() async throws {
+    @Test func `Delete folder rejects system folders`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -116,7 +116,7 @@ struct CollectionStoreTests {
         #expect(store.lastMutationError == CollectionStoreError.systemFolderNotDeletable.localizedDescription)
     }
 
-    @Test func deleteFolderRejectsNonEmptyFolder() async throws {
+    @Test func `Delete folder rejects non-empty folder`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -129,7 +129,7 @@ struct CollectionStoreTests {
         #expect(store.lastMutationError == CollectionStoreError.folderNotEmpty.localizedDescription)
     }
 
-    @Test func deleteFolderCallsEndpointAndRefreshes() async throws {
+    @Test func `Delete folder calls endpoint and refreshes`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -164,7 +164,7 @@ struct CollectionStoreTests {
         #expect(store.lastMutationError == nil)
     }
 
-    @Test func loadReleasesRefreshPreservesStaleDataWhileFetching() async throws {
+    @Test func `Load releases refresh preserves stale data while fetching`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         fetcher.delayNanoseconds = 100_000_000
         let apiClient = MockCollectionNetworkClient()
@@ -181,7 +181,7 @@ struct CollectionStoreTests {
         #expect(store.releasesByFolderID[1] == .loaded(CollectionFixtures.sampleReleases))
     }
 
-    @Test func refreshReleasesInvalidatesCachedPagesBeforeFetchingPageOne() async throws {
+    @Test func `Refresh releases invalidates cached pages before fetching page one`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -194,7 +194,7 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.forceRefresh == true)
     }
 
-    @Test func loadReleasesRefreshFailurePreservesStaleData() async throws {
+    @Test func `Load releases refresh failure preserves stale data`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -209,8 +209,9 @@ struct CollectionStoreTests {
 
     @Test func `Load releases routes folder zero to index readiness`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 0
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 0
+        apiClient.folderZeroPages = [[]]
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -292,8 +293,9 @@ struct CollectionStoreTests {
 
     @Test func `Refresh releases on folder zero doesn't invalidate folder endpoint cache`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 0
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 0
+        apiClient.folderZeroPages = [[]]
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -303,7 +305,7 @@ struct CollectionStoreTests {
         #expect(fetcher.lastInvalidatedPrefix != "collectionFolder-0-page-")
     }
 
-    @Test func deleteReleaseRemovesItemLocallyAndRefreshesFoldersOnly() async throws {
+    @Test func `Delete release removes item locally and refreshes folders only`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
@@ -326,10 +328,11 @@ struct CollectionStoreTests {
         #expect(store.lastMutationError == nil)
     }
 
-    @Test func refreshCollectionIndexSkipsSyncWhenCountsMatch() async throws {
+    @Test func `Pull to refresh syncs when counts match`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 1
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -338,12 +341,12 @@ struct CollectionStoreTests {
             folderId: 1,
             snapshot: CollectionStoreTestSupport.sampleSnapshot
         )
-        let fetchCountBeforeRefresh = fetcher.fetchCount
+        let apiRequestsBeforeRefresh = apiClient.requestCount
 
         await store.refreshCollectionIndex()
 
         #expect(store.folderZeroSync == .idle)
-        #expect(fetcher.fetchCount == fetchCountBeforeRefresh + 1)
+        #expect(apiClient.requestCount > apiRequestsBeforeRefresh)
     }
 
     @Test func `Search folder zero matches tokens in either order`() async throws {
@@ -365,9 +368,9 @@ struct CollectionStoreTests {
 
     @Test func `Ensure folder zero index ready loads from empty local index`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 1
-        fetcher.folderZeroPages = [CollectionFixtures.sampleReleases]
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -382,8 +385,8 @@ struct CollectionStoreTests {
 
     @Test func `Sync folder zero index fails when all folder is missing`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.foldersMissingAllFolder = true
         let apiClient = MockCollectionNetworkClient()
+        apiClient.foldersMissingAllFolder = true
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -405,9 +408,9 @@ struct CollectionStoreTests {
 
     @Test func `Sync folder zero index failure keeps failed state when local index is empty`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 2
-        fetcher.failOnFolderZeroPage = 1
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 2
+        apiClient.failOnFolderZeroPage = 1
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -424,10 +427,10 @@ struct CollectionStoreTests {
 
     @Test func `Retry after sync failure succeeds`() async throws {
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 1
-        fetcher.folderZeroPages = [CollectionFixtures.sampleReleases]
-        fetcher.failOnFolderZeroPage = 1
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        apiClient.failOnFolderZeroPage = 1
         let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
 
         store.sync(with: .authenticated(identity))
@@ -440,7 +443,7 @@ struct CollectionStoreTests {
             Issue.record("Expected first sync attempt to fail")
         }
 
-        fetcher.failOnFolderZeroPage = nil
+        apiClient.failOnFolderZeroPage = nil
         await store.syncFolderZeroIndex(forceRefresh: true)
 
         #expect(store.folderZeroItems.value?.count == 1)
@@ -482,9 +485,9 @@ struct CollectionStoreTests {
             folderId: 1,
             dateAdded: "2024-01-01T12:00:00-00:00"
         )
-        fetcher.folderZeroRemoteCount = 1
-        fetcher.folderZeroPages = [[repairedItem]]
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [[repairedItem]]
         let store = try CollectionStoreTestSupport.makeStore(
             fetcher: fetcher,
             apiClient: apiClient,
@@ -508,8 +511,8 @@ struct CollectionStoreTests {
         let realIndex = CollectionLocalIndex(modelContainer: container)
         let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .alwaysFail)
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.shouldFail = true
         let apiClient = MockCollectionNetworkClient()
+        apiClient.foldersMissingAllFolder = true
         let store = try CollectionStoreTestSupport.makeStore(
             fetcher: fetcher,
             apiClient: apiClient,
@@ -531,9 +534,9 @@ struct CollectionStoreTests {
         let realIndex = CollectionLocalIndex(modelContainer: container)
         let failingIndex = FailingCollectionLocalIndex(delegate: realIndex, mode: .alwaysFail)
         let fetcher = MockCollectionCachedFetcher()
-        fetcher.folderZeroRemoteCount = 0
-        fetcher.folderZeroPages = [[]]
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 0
+        apiClient.folderZeroPages = [[]]
         let store = try CollectionStoreTestSupport.makeStore(
             fetcher: fetcher,
             apiClient: apiClient,
@@ -568,9 +571,9 @@ struct CollectionStoreTests {
             folderId: 1,
             dateAdded: "2024-01-01T12:00:00-00:00"
         )
-        fetcher.folderZeroRemoteCount = 1
-        fetcher.folderZeroPages = [[repairedItem]]
         let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [[repairedItem]]
         let store = try CollectionStoreTestSupport.makeStore(
             fetcher: fetcher,
             apiClient: apiClient,
@@ -592,5 +595,125 @@ struct CollectionStoreTests {
 
         try await Task.sleep(for: .milliseconds(200))
         #expect(try await realIndex.contains(instanceId: 2000, username: identity.username))
+    }
+
+    @Test func `Folder zero sync shows progress after sign in`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 2
+        apiClient.folderZeroPages = [3001, 3002].map { instanceId in
+            [CollectionStoreTestSupport.sampleSnapshot.asCollectionReleaseItem(
+                releaseId: instanceId,
+                instanceId: instanceId,
+                folderId: 1,
+                dateAdded: "2024-01-01T12:00:00-00:00"
+            )]
+        }
+        apiClient.delayNanoseconds = 200_000_000
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        let ensureTask = Task { await store.ensureFolderZeroIndexReady() }
+
+        var sawSyncing = false
+        for _ in 0..<100 {
+            if case .syncing = store.folderZeroSync {
+                sawSyncing = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        _ = await ensureTask.value
+
+        #expect(sawSyncing)
+    }
+
+    @Test func `User switch clears previous user index`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        let firstUser = DiscogsIdentity(
+            id: 1,
+            username: "first-user",
+            resourceURL: nil,
+            consumerName: nil
+        )
+        let secondUser = DiscogsIdentity(
+            id: 2,
+            username: "second-user",
+            resourceURL: nil,
+            consumerName: nil
+        )
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: firstUser.username)
+
+        store.sync(with: .authenticated(firstUser))
+        store.sync(with: .authenticated(secondUser))
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(try await realIndex.count(username: firstUser.username) == 0)
+    }
+
+    @Test func `User switch cancels running sync before clearing`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let pages = [3001, 3002].map { instanceId in
+            [CollectionStoreTestSupport.sampleSnapshot.asCollectionReleaseItem(
+                releaseId: instanceId,
+                instanceId: instanceId,
+                folderId: 1,
+                dateAdded: "2024-01-01T12:00:00-00:00"
+            )]
+        }
+        apiClient.folderZeroRemoteCount = 2
+        apiClient.folderZeroPages = pages
+        apiClient.delayNanoseconds = 100_000_000
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+        let firstUser = DiscogsIdentity(id: 1, username: "first-user", resourceURL: nil, consumerName: nil)
+        let secondUser = DiscogsIdentity(id: 2, username: "second-user", resourceURL: nil, consumerName: nil)
+
+        store.sync(with: .authenticated(firstUser))
+        let ensureTask = Task { await store.ensureFolderZeroIndexReady() }
+        for _ in 0..<100 where apiClient.requestCount == 0 {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        store.sync(with: .authenticated(secondUser))
+        await ensureTask.value
+        try await Task.sleep(for: .milliseconds(300))
+
+        #expect(try await realIndex.count(username: firstUser.username) == 0)
+        #expect(try await realIndex.hasUnsealedGeneration(username: firstUser.username) == false)
+    }
+
+    @Test func `Local items load when network is unavailable`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.shouldFail = true
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.shouldFail = true
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: identity.username)
+        store.sync(with: .authenticated(identity))
+        await store.ensureFolderZeroIndexReady()
+
+        #expect(store.folderZeroItems.value?.count == 1)
     }
 }

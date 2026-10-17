@@ -23,6 +23,8 @@ final class CollectionStore: CollectionStoreProtocol {
     private var paginationByFolderID: [Int: SearchPagination] = [:]
     private var isLoadingMoreByFolderID: [Int: Bool] = [:]
     private var progressTask: Task<Void, Never>?
+    private var authTransitionTask: Task<Void, Never>?
+    private var folderZeroRefreshesInFlight = 0
 
     private static let logger = Logger(subsystem: "com.discoscan", category: "CollectionStore")
 
@@ -57,19 +59,29 @@ final class CollectionStore: CollectionStoreProtocol {
         switch state {
         case .authenticated(let identity):
             if username != identity.username {
-                Task { await clearLocalIndex(for: username) }
+                let previousUsername = username
+                authTransitionTask = Task {
+                    if let previousUsername {
+                        await syncService.cancel(username: previousUsername)
+                        await clearLocalIndex(for: previousUsername)
+                    }
+                }
                 reset()
                 username = identity.username
             }
         default:
-            Task { await clearLocalIndex(for: username) }
+            let previousUsername = username
+            authTransitionTask = Task {
+                if let previousUsername {
+                    await syncService.cancel(username: previousUsername)
+                    await clearLocalIndex(for: previousUsername)
+                }
+            }
             reset()
         }
     }
 
     func reset() {
-        progressTask?.cancel()
-        progressTask = nil
         username = nil
         folders = .idle
         releasesByFolderID = [:]
@@ -275,36 +287,26 @@ final class CollectionStore: CollectionStoreProtocol {
 
     func ensureFolderZeroIndexReady() async {
         do {
+            await awaitAuthTransitionIfNeeded()
             let username = try requireUsername()
-            let localCount = try await localIndex.count(username: username)
-            let isUnsealed = try await localIndex.hasUnsealedGeneration(username: username)
-
-            if folders.value == nil {
-                await loadFolders(forceRefresh: false)
-            }
-
-            guard let remoteTotal = folders.value?.first(where: \.isAllFolder)?.count else {
-                let message = CollectionSyncError.allFolderNotFound.localizedDescription
-                folderZeroItems = .failed(message)
-                folderZeroSync = .failed(message)
-                return
-            }
-
-            if localCount == .zero && remoteTotal > .zero {
-                if folderZeroItems == .idle {
-                    folderZeroItems = .loading
-                }
-                await syncFolderZeroIndex(forceRefresh: false)
-                return
-            }
 
             if folderZeroItems == .idle {
                 await reloadFolderZeroItems()
             }
 
-            if localCount != remoteTotal || isUnsealed {
-                await syncFolderZeroIndex(forceRefresh: false)
+            let localCount = try await localIndex.count(username: username)
+            if localCount == .zero {
+                switch folderZeroItems {
+                case .idle, .loaded([]):
+                    folderZeroItems = .loading
+                default:
+                    break
+                }
             }
+
+            let finalPhase = await refreshFolderZero(username: username, mode: .ifNeeded)
+            await applyFolderZeroSyncResult(finalPhase)
+            await loadFolders(forceRefresh: false)
         } catch {
             folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)
         }
@@ -312,49 +314,15 @@ final class CollectionStore: CollectionStoreProtocol {
 
     func syncFolderZeroIndex(forceRefresh: Bool = false) async {
         do {
+            await awaitAuthTransitionIfNeeded()
             let username = try requireUsername()
 
-            if forceRefresh || folders.value == nil {
-                await loadFolders(forceRefresh: forceRefresh)
-            }
+            prepareFolderZeroItemsForSync(forceRefresh: forceRefresh)
 
-            guard let remoteTotal = folders.value?.first(where: \.isAllFolder)?.count else {
-                let message = CollectionSyncError.allFolderNotFound.localizedDescription
-                folderZeroItems = .failed(message)
-                folderZeroSync = .failed(message)
-                return
-            }
-
-            let localCount = try await localIndex.count(username: username)
-            let isUnsealed = try await localIndex.hasUnsealedGeneration(username: username)
-            let needsSync = localCount != remoteTotal || isUnsealed
-
-            if !needsSync {
-                await reloadFolderZeroItems()
-                return
-            }
-
-            prepareFolderZeroItemsForSync(localCount: localCount, remoteTotal: remoteTotal)
-
-            let finalPhase = await syncService.refreshIfNeeded(
-                username: username,
-                forceFoldersRefresh: forceRefresh
-            )
+            let mode: CollectionSyncMode = forceRefresh ? .force : .ifNeeded
+            let finalPhase = await refreshFolderZero(username: username, mode: mode)
             await applyFolderZeroSyncResult(finalPhase)
-        } catch {
-            folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)
-        }
-    }
-
-    func repairFolderZeroIndexIfNeeded() async {
-        do {
-            let username = try requireUsername()
-            guard try await localIndex.hasUnsealedGeneration(username: username) else { return }
-            let finalPhase = await syncService.refreshIfNeeded(
-                username: username,
-                forceFoldersRefresh: false
-            )
-            await applyFolderZeroSyncResult(finalPhase)
+            await loadFolders(forceRefresh: forceRefresh)
         } catch {
             folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)
         }
@@ -367,15 +335,14 @@ final class CollectionStore: CollectionStoreProtocol {
     func searchFolderZero(query: String) -> [CollectionReleaseItem] {
         guard let items = folderZeroItems.value else { return [] }
         return items.filter { item in
-            let searchable = LocalCollectionItem.makeSearchableText(
-                artist: item.basicInformation.primaryArtistName,
-                title: item.basicInformation.title,
-                label: item.basicInformation.labels.first?.name ?? "",
-                catno: item.basicInformation.labels.first?.catno ?? "",
-                year: item.basicInformation.year
-            )
-            return CollectionSearchMatching.matches(query: query, searchableText: searchable)
+            CollectionSearchMatching.matches(query: query, searchableText: item.searchableText)
         }
+    }
+
+    private func refreshFolderZero(username: String, mode: CollectionSyncMode) async -> CollectionSyncPhase {
+        folderZeroRefreshesInFlight += 1
+        defer { folderZeroRefreshesInFlight -= 1 }
+        return await syncService.refresh(username: username, mode: mode)
     }
 
     private func subscribeToSyncProgress() {
@@ -384,6 +351,8 @@ final class CollectionStore: CollectionStoreProtocol {
             let stream = await syncService.progressStream()
             for await phase in stream {
                 guard !Task.isCancelled else { return }
+                // Stream delivery lags the awaited result; phases arriving after it would overwrite the final state.
+                guard username != nil, folderZeroRefreshesInFlight > 0 else { continue }
                 folderZeroSync = phase
                 switch phase {
                 case .checking:
@@ -407,16 +376,17 @@ final class CollectionStore: CollectionStoreProtocol {
         }
     }
 
-    private func prepareFolderZeroItemsForSync(localCount: Int, remoteTotal: Int) {
-        if localCount == .zero && remoteTotal > .zero {
-            if case .idle = folderZeroItems {
-                folderZeroItems = .loading
-            }
-        } else if let existing = folderZeroItems.value {
-            folderZeroItems = .refreshing(existing)
+    private func prepareFolderZeroItemsForSync(forceRefresh: Bool) {
+        guard forceRefresh else { return }
+        if folderZeroItems.value != nil {
+            folderZeroItems = folderZeroItems.beginRefresh()
         } else if case .idle = folderZeroItems {
             folderZeroItems = .loading
         }
+    }
+
+    private func awaitAuthTransitionIfNeeded() async {
+        await authTransitionTask?.value
     }
 
     private func reloadFolderZeroItems() async {
@@ -470,15 +440,12 @@ final class CollectionStore: CollectionStoreProtocol {
         instanceId: Int,
         expectingPresent: Bool
     ) async -> Bool {
-        await Task.detached { @MainActor in
-            await self.syncFolderZeroIndex(forceRefresh: true)
-            if folderId != .zero {
-                await self.refreshReleases(folderId: folderId)
-            }
-            await self.loadFolders(forceRefresh: true)
-            return (try? await self.localIndex.contains(instanceId: instanceId, username: username))
-                == expectingPresent
-        }.value
+        await syncFolderZeroIndex(forceRefresh: true)
+        if folderId != .zero {
+            await refreshReleases(folderId: folderId)
+        }
+        await loadFolders(forceRefresh: true)
+        return (try? await localIndex.contains(instanceId: instanceId, username: username)) == expectingPresent
     }
 
     private func applyAddInMemoryUpdates(item: CollectionReleaseItem, folderId: Int) {

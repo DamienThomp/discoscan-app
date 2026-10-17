@@ -30,6 +30,10 @@ actor FailingCollectionLocalIndex: CollectionLocalIndexProtocol {
         try await delegate.hasUnsealedGeneration(username: username)
     }
 
+    func lastSyncedAt(username: String) async throws -> Date? {
+        try await delegate.lastSyncedAt(username: username)
+    }
+
     func allItems(username: String) async throws -> [CollectionReleaseItem] {
         try await delegate.allItems(username: username)
     }
@@ -52,10 +56,6 @@ actor FailingCollectionLocalIndex: CollectionLocalIndexProtocol {
             throw URLError(.cannotWriteToFile)
         }
         try await delegate.delete(instanceId: instanceId, username: username)
-    }
-
-    func search(username: String, query: String) async throws -> [CollectionReleaseItem] {
-        try await delegate.search(username: username, query: query)
     }
 
     func clear(username: String) async throws {

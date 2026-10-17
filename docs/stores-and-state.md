@@ -118,8 +118,7 @@ User-scoped stores implement `sync(with: AuthSession.State)`:
 On app foreground (authenticated):
 
 ```swift
-await collectionStore.repairFolderZeroIndexIfNeeded()
-await collectionStore.syncFolderZeroIndex(forceRefresh: false)
+await collectionStore.ensureFolderZeroIndexReady()
 ```
 
 See [auth.md](auth.md) for the full session lifecycle.

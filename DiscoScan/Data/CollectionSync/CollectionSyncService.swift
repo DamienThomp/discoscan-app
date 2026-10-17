@@ -13,10 +13,16 @@ enum CollectionSyncPhase: Equatable, Sendable {
     case failed(String)
 }
 
+nonisolated enum CollectionSyncMode: Sendable {
+    case ifNeeded
+    case force
+}
+
 enum CollectionSyncError: LocalizedError, Equatable {
     case allFolderNotFound
     case paginationFailed(page: Int, message: String)
     case indexWriteFailed(message: String)
+    case incompleteSync(expected: Int, received: Int)
 
     var errorDescription: String? {
         switch self {
@@ -26,6 +32,8 @@ enum CollectionSyncError: LocalizedError, Equatable {
             "Couldn't sync collection page \(page): \(message)"
         case .indexWriteFailed(let message):
             "Couldn't save collection index: \(message)"
+        case .incompleteSync(let expected, let received):
+            "Collection sync incomplete: expected \(expected) items, received \(received)."
         }
     }
 }
@@ -33,23 +41,29 @@ enum CollectionSyncError: LocalizedError, Equatable {
 protocol CollectionSyncServiceProtocol: Sendable {
     func progressStream() async -> AsyncStream<CollectionSyncPhase>
     @discardableResult
-    func refreshIfNeeded(username: String, forceFoldersRefresh: Bool) async -> CollectionSyncPhase
-    func repairIfUnsealed(username: String) async
+    func refresh(username: String, mode: CollectionSyncMode) async -> CollectionSyncPhase
+    func cancel(username: String) async
 }
 
 /// Syncs the Discogs folder id `.zero` ("All") into the local SwiftData collection index.
 actor CollectionSyncService: CollectionSyncServiceProtocol {
     private let index: any CollectionLocalIndexProtocol
-    private let cachedFetcher: any CachedFetcherProtocol
-    private var inFlightRefresh: Task<CollectionSyncPhase, Never>?
+    private let apiClient: NetworkManagerProtocol
+    private let staleAfter: TimeInterval
+    private let now: @Sendable () -> Date
+    private var inFlightRefreshByUsername: [String: Task<CollectionSyncPhase, Never>] = [:]
     private var progressContinuations: [UUID: AsyncStream<CollectionSyncPhase>.Continuation] = [:]
 
     init(
         index: any CollectionLocalIndexProtocol,
-        cachedFetcher: any CachedFetcherProtocol
+        apiClient: NetworkManagerProtocol,
+        staleAfter: TimeInterval = 24 * 60 * 60,
+        now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.index = index
-        self.cachedFetcher = cachedFetcher
+        self.apiClient = apiClient
+        self.staleAfter = staleAfter
+        self.now = now
     }
 
     func progressStream() -> AsyncStream<CollectionSyncPhase> {
@@ -62,37 +76,28 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
         }
     }
 
-    func refreshIfNeeded(username: String, forceFoldersRefresh: Bool) async -> CollectionSyncPhase {
-        if let inFlightRefresh {
+    func refresh(username: String, mode: CollectionSyncMode) async -> CollectionSyncPhase {
+        if let inFlightRefresh = inFlightRefreshByUsername[username] {
             return await inFlightRefresh.value
         }
 
-        let task = Task { await performRefresh(username: username, forceFoldersRefresh: forceFoldersRefresh) }
-        inFlightRefresh = task
+        let task = Task { await performRefresh(username: username, mode: mode) }
+        inFlightRefreshByUsername[username] = task
         let phase = await task.value
-        inFlightRefresh = nil
+        inFlightRefreshByUsername.removeValue(forKey: username)
         return phase
     }
 
-    func repairIfUnsealed(username: String) async {
-        do {
-            if try await index.hasUnsealedGeneration(username: username) {
-                let _ = await refreshIfNeeded(username: username, forceFoldersRefresh: false)
-            }
-        } catch {
-            emit(.failed(error.localizedDescription))
-        }
+    func cancel(username: String) async {
+        guard let task = inFlightRefreshByUsername[username] else { return }
+        task.cancel()
+        _ = await task.value
     }
 
-    private func performRefresh(username: String, forceFoldersRefresh: Bool) async -> CollectionSyncPhase {
+    private func performRefresh(username: String, mode: CollectionSyncMode) async -> CollectionSyncPhase {
         do {
-            emit(.checking)
-
-            let foldersResponse = try await cachedFetcher.fetch(
-                CollectionFoldersEndpoint(userName: username),
-                key: "collectionFolders",
-                scope: .collection,
-                forceRefresh: forceFoldersRefresh
+            let foldersResponse = try await apiClient.request(
+                for: CollectionFoldersEndpoint(userName: username)
             )
 
             guard let remoteTotal = foldersResponse.allFolder?.count else {
@@ -101,48 +106,79 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
 
             let localTotal = try await index.count(username: username)
             let isUnsealed = try await index.hasUnsealedGeneration(username: username)
-            guard localTotal != remoteTotal || isUnsealed else {
+            let lastSynced = try await index.lastSyncedAt(username: username)
+            let isStale = isIndexStale(lastSyncedAt: lastSynced)
+
+            let needsSync = mode == .force
+                || localTotal != remoteTotal
+                || isUnsealed
+                || isStale
+
+            guard needsSync else {
                 emit(.idle)
                 return .idle
             }
 
+            emit(.checking)
+
             let generation = try await index.beginSyncGeneration(username: username)
-            try await paginateAndUpsert(
+            let result = try await paginateAndUpsert(
                 username: username,
                 generation: generation,
                 remoteTotal: remoteTotal
             )
+
+            guard result.synced == result.expected else {
+                throw CollectionSyncError.incompleteSync(expected: result.expected, received: result.synced)
+            }
+
             _ = try await index.sweep(username: username, keeping: generation)
             emit(.idle)
             return .idle
+        } catch is CancellationError {
+            emit(.idle)
+            return .idle
         } catch {
+            if Task.isCancelled {
+                emit(.idle)
+                return .idle
+            }
             let phase = CollectionSyncPhase.failed(error.localizedDescription)
             emit(phase)
             return phase
         }
     }
 
+    private func isIndexStale(lastSyncedAt: Date?) -> Bool {
+        guard let lastSyncedAt else { return true }
+        return now().timeIntervalSince(lastSyncedAt) > staleAfter
+    }
+
     private func paginateAndUpsert(
         username: String,
         generation: Int,
         remoteTotal: Int
-    ) async throws {
+    ) async throws -> (synced: Int, expected: Int) {
         var page = 1
         var synced = 0
+        var expectedItems: Int?
 
         while true {
+            try Task.checkCancellation()
+
             do {
-                let response = try await cachedFetcher.fetch(
-                    CollectionItemsByFolderEndpoint(
+                let response = try await apiClient.request(
+                    for: CollectionItemsByFolderEndpoint(
                         username: username,
                         folderId: .zero,
                         page: page,
                         perPage: 100
-                    ),
-                    key: "collectionFolder-\(Int.zero)-page-\(page)",
-                    scope: .collection,
-                    forceRefresh: true
+                    )
                 )
+
+                if expectedItems == nil {
+                    expectedItems = response.pagination.items
+                }
 
                 do {
                     try await index.upsertSynced(response.releases, username: username, generation: generation)
@@ -157,10 +193,18 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
                 page += 1
             } catch let error as CollectionSyncError {
                 throw error
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
+                // URLSession reports task cancellation as URLError(.cancelled), not CancellationError.
+                if Task.isCancelled {
+                    throw CancellationError()
+                }
                 throw CollectionSyncError.paginationFailed(page: page, message: error.localizedDescription)
             }
         }
+
+        return (synced, expectedItems ?? remoteTotal)
     }
 
     private func emit(_ phase: CollectionSyncPhase) {

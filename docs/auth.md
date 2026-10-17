@@ -100,7 +100,7 @@ flowchart TD
 Downstream effects:
 
 - `DiscoScanApp.onChange(authSession.state)` calls `sync(with:)` on Collection, WantList, and Profile stores.
-- `CollectionStore.sync` clears the local collection index for the prior user and resets in-memory state.
+- `CollectionStore.sync` cancels any in-flight folder-0 sync for the prior user, clears that user's local collection index, and resets in-memory state.
 - `RootView.onChange` calls `router.reset()` — clears all tab navigation paths.
 
 SearchStore is not explicitly reset; its in-memory results become stale but the underlying cache is cleared.
@@ -130,8 +130,7 @@ SearchStore is not explicitly reset; its in-memory results become stale but the 
 On scene foreground (authenticated):
 
 ```swift
-await collectionStore.repairFolderZeroIndexIfNeeded()
-await collectionStore.syncFolderZeroIndex(forceRefresh: false)
+await collectionStore.ensureFolderZeroIndexReady()
 ```
 
 ## Token storage

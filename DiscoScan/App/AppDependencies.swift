@@ -70,7 +70,7 @@ struct AppDependencies {
             webAuthPresenter: webAuthPresenter
         )
 
-        let modelContainer = makeModelContainer()
+        let modelContainer = ModelContainerFactory.makePersistentContainer()
         let cacheStorage = SwiftDataCacheStorage(modelContainer: modelContainer)
         let collectionLocalIndex = CollectionLocalIndex(modelContainer: modelContainer)
         let cachedFetcher = CachedFetcher(
@@ -81,7 +81,7 @@ struct AppDependencies {
         )
         let collectionSyncService = CollectionSyncService(
             index: collectionLocalIndex,
-            cachedFetcher: cachedFetcher
+            apiClient: apiClient
         )
 
         let geminiClient = NetworkManagerFactory.makeDefaultClient(
@@ -107,25 +107,4 @@ struct AppDependencies {
         )
     }
 
-    private static func makeModelContainer() -> ModelContainer {
-        do {
-            return try ModelContainer(
-                for: CachedRecord.self,
-                LocalCollectionItem.self,
-                CollectionSyncMetadata.self
-            )
-        } catch {
-            do {
-                let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-                return try ModelContainer(
-                    for: CachedRecord.self,
-                    LocalCollectionItem.self,
-                    CollectionSyncMetadata.self,
-                    configurations: configuration
-                )
-            } catch {
-                fatalError("Failed to create in-memory ModelContainer: \(error)")
-            }
-        }
-    }
 }
