@@ -7,22 +7,28 @@ import Foundation
 
 final class MockURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var _requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-    private static let lock = NSLock()
+    private static let gate = HandlerGate()
 
     /// Runs a test body with an exclusive mock handler so parallel suites do not clobber each other.
     ///
-    /// Holds the lock for the full async body so other suites block until this handler is cleared.
+    /// Waiting suites suspend rather than block a thread; a blocking lock held across `await`
+    /// starves the main actor and cooperative pool and deadlocks parallel runs.
     static func withLockedHandler<R>(
         _ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data),
         performing body: () async throws -> R
     ) async rethrows -> R {
-        lock.lock()
+        await gate.acquire()
         _requestHandler = handler
-        defer {
+        do {
+            let result = try await body()
             _requestHandler = nil
-            lock.unlock()
+            await gate.release()
+            return result
+        } catch {
+            _requestHandler = nil
+            await gate.release()
+            throw error
         }
-        return try await body()
     }
 
     override class func canInit(with request: URLRequest) -> Bool {
@@ -50,6 +56,27 @@ final class MockURLProtocol: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+private actor HandlerGate {
+    private var isHeld = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func acquire() async {
+        guard isHeld else {
+            isHeld = true
+            return
+        }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            isHeld = false
+        } else {
+            waiters.removeFirst().resume()
+        }
+    }
 }
 
 enum MockURLSessionFactory {

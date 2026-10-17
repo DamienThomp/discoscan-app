@@ -33,6 +33,33 @@ struct CollectionSyncServiceTests {
         return (service, resolvedIndex)
     }
 
+    private func collectPhasesUntilTerminal(
+        from stream: AsyncStream<CollectionSyncPhase>
+    ) -> Task<[CollectionSyncPhase], Never> {
+        Task {
+            var phases: [CollectionSyncPhase] = []
+            for await phase in stream {
+                phases.append(phase)
+                switch phase {
+                case .idle, .failed:
+                    return phases
+                case .checking, .syncing:
+                    continue
+                }
+            }
+            return phases
+        }
+    }
+
+    private func makeItem(instanceId: Int) -> CollectionReleaseItem {
+        CollectionStoreTestSupport.sampleSnapshot.asCollectionReleaseItem(
+            releaseId: instanceId,
+            instanceId: instanceId,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00-00:00"
+        )
+    }
+
     @Test func `Count match skips pagination`() async throws {
         let apiClient = MockCollectionNetworkClient()
         apiClient.folderZeroRemoteCount = 1
@@ -48,16 +75,9 @@ struct CollectionSyncServiceTests {
         try await index.upsertSynced([CollectionFixtures.sampleReleases[0]], username: username, generation: generation)
         _ = try await index.sweep(username: username, keeping: generation)
 
-        let stream = await service.progressStream()
-        var phases: [CollectionSyncPhase] = []
-        let progressTask = Task {
-            for await phase in stream {
-                phases.append(phase)
-            }
-        }
-
+        let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
         _ = await service.refresh(username: username, mode: .ifNeeded)
-        progressTask.cancel()
+        let phases = await progressTask.value
 
         #expect(!phases.contains(.checking))
         #expect(phases.contains(.idle))
@@ -139,7 +159,7 @@ struct CollectionSyncServiceTests {
         #expect(apiClient.requestCount - requestsBeforeFreshCheck == 1)
     }
 
-    @Test func `Remote removal is swept on repair`() async throws {
+    @Test func `Remote removal is swept on sync`() async throws {
         let apiClient = MockCollectionNetworkClient()
         apiClient.folderZeroRemoteCount = 0
         apiClient.folderZeroPages = [[]]
@@ -168,7 +188,7 @@ struct CollectionSyncServiceTests {
 
     @Test func `Failure leaves generation unsealed for retry`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 2
+        apiClient.folderZeroRemoteCount = 1
         apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
         apiClient.failOnFolderZeroPage = 1
         let (service, index) = try makeService(apiClient: apiClient)
@@ -181,21 +201,56 @@ struct CollectionSyncServiceTests {
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
     }
 
+    @Test func `Pagination failure keeps existing rows`() async throws {
+        let existing = makeItem(instanceId: 3000)
+        let firstPage = makeItem(instanceId: 3001)
+        let secondPage = makeItem(instanceId: 3002)
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 2
+        apiClient.folderZeroPages = [[firstPage], [secondPage]]
+        apiClient.failOnFolderZeroPage = 2
+        let (service, index) = try makeService(apiClient: apiClient)
+        let generation = try await index.beginSyncGeneration(username: username)
+        try await index.upsertSynced([existing], username: username, generation: generation)
+        _ = try await index.sweep(username: username, keeping: generation)
+
+        let phase = await service.refresh(username: username, mode: .force)
+
+        if case .failed = phase {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected failed phase after page 2 failure")
+        }
+        #expect(try await index.contains(instanceId: existing.instanceId, username: username))
+        #expect(try await index.count(username: username) == 2)
+        #expect(try await index.hasUnsealedGeneration(username: username))
+    }
+
+    @Test func `Cancelled network request is reported as idle, not failed`() async throws {
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        apiClient.delayNanoseconds = 500_000_000
+        apiClient.reportsCancellationAsURLError = true
+        let (service, _) = try makeService(apiClient: apiClient)
+
+        let syncTask = Task {
+            await service.refresh(username: username, mode: .force)
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        await service.cancel(username: username)
+
+        #expect(await syncTask.value == .idle)
+    }
+
     @Test func `Missing all folder emits failed`() async throws {
         let apiClient = MockCollectionNetworkClient()
         apiClient.foldersMissingAllFolder = true
         let (service, _) = try makeService(apiClient: apiClient)
 
-        let stream = await service.progressStream()
-        var phases: [CollectionSyncPhase] = []
-        let progressTask = Task {
-            for await phase in stream {
-                phases.append(phase)
-            }
-        }
-
+        let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
         _ = await service.refresh(username: username, mode: .ifNeeded)
-        progressTask.cancel()
+        let phases = await progressTask.value
 
         #expect(phases.contains(where: {
             if case .failed = $0 { return true }
@@ -244,10 +299,13 @@ struct CollectionSyncServiceTests {
         let syncTask = Task {
             await service.refresh(username: username, mode: .force)
         }
-        try await Task.sleep(nanoseconds: 50_000_000)
+        for _ in 0..<200 where apiClient.requestCount < 2 {
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
         await service.cancel(username: username)
         _ = await syncTask.value
 
+        #expect(apiClient.requestCount == 2)
         let isUnsealed = try await index.hasUnsealedGeneration(username: username)
         #expect(isUnsealed)
     }

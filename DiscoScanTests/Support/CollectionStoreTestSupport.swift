@@ -16,7 +16,6 @@ enum CollectionStoreTestSupport {
     ) throws -> CollectionStore {
         let container = try modelContainer ?? TestModelContainer.make()
         let index = localIndex ?? CollectionLocalIndex(modelContainer: container)
-        apiClient.mirrorSyncSettings(from: fetcher)
         let syncService = CollectionSyncService(index: index, apiClient: apiClient)
         return CollectionStore(
             cachedFetcher: fetcher,

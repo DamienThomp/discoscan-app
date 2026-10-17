@@ -135,7 +135,8 @@ sweep(keeping: generation):
 - An interrupted sync leaves `activeGeneration > sealedGeneration` (`hasUnsealedGeneration`), forcing a retry even if counts match.
 - Live mutations during sync tag rows with `activeGeneration`, so they survive the sweep.
 - Remote removals are handled by sweep: items not re-upserted in the new generation are deleted.
-- Before sweep, the service verifies the number of items received from pagination equals the remote All-folder count.
+- Before sweep, the service verifies the number of items received equals the `pagination.items` total reported by the first page.
+- Cancellation (including `URLError(.cancelled)` from a cancelled request) ends the sync as `.idle` and leaves the generation unsealed.
 
 ## LocalCollectionItem
 

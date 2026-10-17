@@ -24,6 +24,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private var isLoadingMoreByFolderID: [Int: Bool] = [:]
     private var progressTask: Task<Void, Never>?
     private var authTransitionTask: Task<Void, Never>?
+    private var folderZeroRefreshesInFlight = 0
 
     private static let logger = Logger(subsystem: "com.discoscan", category: "CollectionStore")
 
@@ -303,7 +304,7 @@ final class CollectionStore: CollectionStoreProtocol {
                 }
             }
 
-            let finalPhase = await syncService.refresh(username: username, mode: .ifNeeded)
+            let finalPhase = await refreshFolderZero(username: username, mode: .ifNeeded)
             await applyFolderZeroSyncResult(finalPhase)
             await loadFolders(forceRefresh: false)
         } catch {
@@ -319,7 +320,7 @@ final class CollectionStore: CollectionStoreProtocol {
             prepareFolderZeroItemsForSync(forceRefresh: forceRefresh)
 
             let mode: CollectionSyncMode = forceRefresh ? .force : .ifNeeded
-            let finalPhase = await syncService.refresh(username: username, mode: mode)
+            let finalPhase = await refreshFolderZero(username: username, mode: mode)
             await applyFolderZeroSyncResult(finalPhase)
             await loadFolders(forceRefresh: forceRefresh)
         } catch {
@@ -338,13 +339,20 @@ final class CollectionStore: CollectionStoreProtocol {
         }
     }
 
+    private func refreshFolderZero(username: String, mode: CollectionSyncMode) async -> CollectionSyncPhase {
+        folderZeroRefreshesInFlight += 1
+        defer { folderZeroRefreshesInFlight -= 1 }
+        return await syncService.refresh(username: username, mode: mode)
+    }
+
     private func subscribeToSyncProgress() {
         progressTask = Task { [weak self] in
             guard let self else { return }
             let stream = await syncService.progressStream()
             for await phase in stream {
                 guard !Task.isCancelled else { return }
-                guard username != nil else { continue }
+                // Stream delivery lags the awaited result; phases arriving after it would overwrite the final state.
+                guard username != nil, folderZeroRefreshesInFlight > 0 else { continue }
                 folderZeroSync = phase
                 switch phase {
                 case .checking:

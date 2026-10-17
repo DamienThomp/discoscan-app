@@ -13,7 +13,7 @@ enum CollectionSyncPhase: Equatable, Sendable {
     case failed(String)
 }
 
-enum CollectionSyncMode: Sendable {
+nonisolated enum CollectionSyncMode: Sendable {
     case ifNeeded
     case force
 }
@@ -122,14 +122,14 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
             emit(.checking)
 
             let generation = try await index.beginSyncGeneration(username: username)
-            let syncedTotal = try await paginateAndUpsert(
+            let result = try await paginateAndUpsert(
                 username: username,
                 generation: generation,
                 remoteTotal: remoteTotal
             )
 
-            guard syncedTotal == remoteTotal else {
-                throw CollectionSyncError.incompleteSync(expected: remoteTotal, received: syncedTotal)
+            guard result.synced == result.expected else {
+                throw CollectionSyncError.incompleteSync(expected: result.expected, received: result.synced)
             }
 
             _ = try await index.sweep(username: username, keeping: generation)
@@ -139,6 +139,10 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
             emit(.idle)
             return .idle
         } catch {
+            if Task.isCancelled {
+                emit(.idle)
+                return .idle
+            }
             let phase = CollectionSyncPhase.failed(error.localizedDescription)
             emit(phase)
             return phase
@@ -154,7 +158,7 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
         username: String,
         generation: Int,
         remoteTotal: Int
-    ) async throws -> Int {
+    ) async throws -> (synced: Int, expected: Int) {
         var page = 1
         var synced = 0
         var expectedItems: Int?
@@ -192,11 +196,15 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                // URLSession reports task cancellation as URLError(.cancelled), not CancellationError.
+                if Task.isCancelled {
+                    throw CancellationError()
+                }
                 throw CollectionSyncError.paginationFailed(page: page, message: error.localizedDescription)
             }
         }
 
-        return synced
+        return (synced, expectedItems ?? remoteTotal)
     }
 
     private func emit(_ phase: CollectionSyncPhase) {
