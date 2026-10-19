@@ -16,6 +16,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
     private(set) var folderZeroSync: CollectionSyncPhase = .idle
     private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
+    private(set) var folderZeroSortOrder: CollectionSortOrder = .desc
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -86,6 +87,7 @@ final class CollectionStore: CollectionStoreProtocol {
         folders = .idle
         releasesByFolderID = [:]
         folderZeroItems = .idle
+        folderZeroSortOrder = .desc
         folderZeroSync = .idle
         paginationByFolderID = [:]
         isLoadingMoreByFolderID = [:]
@@ -339,6 +341,19 @@ final class CollectionStore: CollectionStoreProtocol {
         }
     }
 
+    func setFolderZeroSortOrder(_ order: CollectionSortOrder) {
+        guard order != folderZeroSortOrder else { return }
+        folderZeroSortOrder = order
+        switch folderZeroItems {
+        case .loaded(let items):
+            folderZeroItems = .loaded(items.reversed())
+        case .refreshing(let items):
+            folderZeroItems = .refreshing(items.reversed())
+        case .idle, .loading, .failed:
+            break
+        }
+    }
+
     private func refreshFolderZero(username: String, mode: CollectionSyncMode) async -> CollectionSyncPhase {
         folderZeroRefreshesInFlight += 1
         defer { folderZeroRefreshesInFlight -= 1 }
@@ -392,7 +407,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private func reloadFolderZeroItems() async {
         do {
             let username = try requireUsername()
-            let items = try await localIndex.allItems(username: username)
+            let items = try await localIndex.allItems(username: username, sortOrder: folderZeroSortOrder)
             folderZeroItems = .loaded(items)
         } catch {
             folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)

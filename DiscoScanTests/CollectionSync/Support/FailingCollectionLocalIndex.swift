@@ -34,8 +34,8 @@ actor FailingCollectionLocalIndex: CollectionLocalIndexProtocol {
         try await delegate.lastSyncedAt(username: username)
     }
 
-    func allItems(username: String) async throws -> [CollectionReleaseItem] {
-        try await delegate.allItems(username: username)
+    func allItems(username: String, sortOrder: CollectionSortOrder) async throws -> [CollectionReleaseItem] {
+        try await delegate.allItems(username: username, sortOrder: sortOrder)
     }
 
     func contains(instanceId: Int, username: String) async throws -> Bool {

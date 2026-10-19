@@ -150,6 +150,30 @@ struct CollectionLocalIndexTests {
         #expect(instanceIds.first == offsetItem.instanceId)
     }
 
+    @Test func `Items sort ascending by dateAddedAt with mixed offsets`() async throws {
+        let index = try makeIndex()
+        let utcItem = CollectionReleaseItem(
+            releaseId: 1,
+            instanceId: 7001,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00Z",
+            basicInformation: CollectionFixtures.sampleReleases[0].basicInformation
+        )
+        let offsetItem = CollectionReleaseItem(
+            releaseId: 2,
+            instanceId: 7002,
+            folderId: 1,
+            dateAdded: "2024-06-01T12:00:00-07:00",
+            basicInformation: CollectionFixtures.sampleReleases[0].basicInformation
+        )
+
+        try await index.upsertLive(utcItem, username: username)
+        try await index.upsertLive(offsetItem, username: username)
+
+        let instanceIds = try await index.allItems(username: username, sortOrder: .asc).map(\.instanceId)
+        #expect(instanceIds.first == utcItem.instanceId)
+    }
+
     @Test func `Read-only metadata queries do not create rows`() async throws {
         let index = try makeIndex()
 
