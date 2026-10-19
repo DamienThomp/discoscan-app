@@ -12,6 +12,7 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
     private(set) var folderZeroSync: CollectionSyncPhase = .idle
     private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
+    private(set) var folderZeroSortOrder: CollectionSortOrder = .desc
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -68,6 +69,10 @@ private final class UnimplementedCollectionStore: CollectionStoreProtocol {
     }
 
     func searchFolderZero(query: String) -> [CollectionReleaseItem] {
+        fatalError("collectionStore environment value was not injected.")
+    }
+
+    func setFolderZeroSortOrder(_ order: CollectionSortOrder) {
         fatalError("collectionStore environment value was not injected.")
     }
 }

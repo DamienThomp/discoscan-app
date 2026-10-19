@@ -14,6 +14,7 @@ struct CollectionListView: View {
 
     @State private var searchText = ""
     @State private var deleteErrorMessage: String?
+    @State private var folderZeroSortPickerSelection = CollectionSortOrder.desc
 
     private var isFolderZero: Bool { folderId == .zero }
 
@@ -79,6 +80,28 @@ struct CollectionListView: View {
                 ),
                 prompt: "Search your collection…"
             )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Date added", selection: $folderZeroSortPickerSelection) {
+                            Text("Newest first").tag(CollectionSortOrder.desc)
+                            Text("Oldest first").tag(CollectionSortOrder.asc)
+                        }
+                        .pickerStyle(.inline)
+                    } label: {
+                        Text("Sort")
+                    }
+                }
+            }
+            .onAppear {
+                folderZeroSortPickerSelection = store.folderZeroSortOrder
+            }
+            .onChange(of: folderZeroSortPickerSelection) { _, newOrder in
+                store.setFolderZeroSortOrder(newOrder)
+            }
+            .onChange(of: store.folderZeroSortOrder) { _, newOrder in
+                folderZeroSortPickerSelection = newOrder
+            }
         }
         .task { await store.loadReleases(folderId: folderId) }
         .refreshable { await store.refreshReleases(folderId: folderId) }

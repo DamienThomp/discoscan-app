@@ -73,6 +73,7 @@ protocol CollectionStoreProtocol: AnyObject, Observable {
     var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] { get }
     var folderZeroSync: CollectionSyncPhase { get }
     var folderZeroItems: ResourceState<[CollectionReleaseItem]> { get }
+    var folderZeroSortOrder: CollectionSortOrder { get }
     var isFolderZeroSyncActive: Bool { get }
     var isMutating: Bool { get }
     var lastMutationError: String? { get }
@@ -91,6 +92,7 @@ protocol CollectionStoreProtocol: AnyObject, Observable {
     func syncFolderZeroIndex(forceRefresh: Bool) async
     func refreshCollectionIndex() async
     func searchFolderZero(query: String) -> [CollectionReleaseItem]
+    func setFolderZeroSortOrder(_ order: CollectionSortOrder)
 }
 
 extension CollectionStoreProtocol {

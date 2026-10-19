@@ -43,7 +43,7 @@ nonisolated enum CollectionSortField: String, Sendable {
     case year
 }
 
-nonisolated enum CollectionSortOrder: String, Sendable {
+nonisolated enum CollectionSortOrder: String, Hashable, Sendable {
     case asc
     case desc
 }

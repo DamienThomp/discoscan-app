@@ -154,7 +154,7 @@ Indexes: `(username, instanceId)`, `(username, dateAddedAt)`, `(username, syncGe
 
 ### Display order
 
-[`CollectionLocalIndex`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift) sorts by `dateAddedAt` descending (newest first). Sync fetches pages with default API sort (artist ascending), but display order comes from the local fetch descriptor.
+[`CollectionLocalIndex`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift) sorts by `dateAddedAt` (default descending, newest first). The All folder **Sort** menu in [`CollectionListView`](../DiscoScan/Features/Collection/Views/CollectionListView.swift) toggles `CollectionStore.folderZeroSortOrder` for the session; changing sort reorders the in-memory list immediately, while reload paths (sync, add, delete, pull-to-refresh) fetch with the current `sortOrder` from the local index. Sync fetches pages with default API sort (artist ascending), but display order comes from the local fetch descriptor.
 
 ## Local search
 

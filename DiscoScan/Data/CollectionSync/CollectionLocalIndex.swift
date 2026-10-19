@@ -10,7 +10,7 @@ protocol CollectionLocalIndexProtocol: Sendable {
     func count(username: String) async throws -> Int
     func hasUnsealedGeneration(username: String) async throws -> Bool
     func lastSyncedAt(username: String) async throws -> Date?
-    func allItems(username: String) async throws -> [CollectionReleaseItem]
+    func allItems(username: String, sortOrder: CollectionSortOrder) async throws -> [CollectionReleaseItem]
     func contains(instanceId: Int, username: String) async throws -> Bool
     func upsertLive(_ item: CollectionReleaseItem, username: String) async throws
     func delete(instanceId: Int, username: String) async throws
@@ -19,6 +19,12 @@ protocol CollectionLocalIndexProtocol: Sendable {
     func beginSyncGeneration(username: String) async throws -> Int
     func upsertSynced(_ items: [CollectionReleaseItem], username: String, generation: Int) async throws
     func sweep(username: String, keeping generation: Int) async throws -> Int
+}
+
+extension CollectionLocalIndexProtocol {
+    func allItems(username: String) async throws -> [CollectionReleaseItem] {
+        try await allItems(username: username, sortOrder: .desc)
+    }
 }
 
 @ModelActor
@@ -33,7 +39,8 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
     #endif
 
     func count(username: String) throws -> Int {
-        try modelContext.fetchCount(fetchDescriptor(username: username))
+        let predicate = #Predicate<LocalCollectionItem> { $0.username == username }
+        return try modelContext.fetchCount(FetchDescriptor(predicate: predicate))
     }
 
     func hasUnsealedGeneration(username: String) throws -> Bool {
@@ -44,8 +51,8 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
         try fetchMetadata(username: username)?.lastSyncedAt
     }
 
-    func allItems(username: String) throws -> [CollectionReleaseItem] {
-        let records = try modelContext.fetch(fetchDescriptor(username: username))
+    func allItems(username: String, sortOrder: CollectionSortOrder) throws -> [CollectionReleaseItem] {
+        let records = try modelContext.fetch(fetchDescriptor(username: username, sortOrder: sortOrder))
         return records.map { $0.toCollectionReleaseItem() }
     }
 
@@ -153,10 +160,14 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
         try modelContext.save()
     }
 
-    private func fetchDescriptor(username: String) -> FetchDescriptor<LocalCollectionItem> {
-        FetchDescriptor<LocalCollectionItem>(
+    private func fetchDescriptor(
+        username: String,
+        sortOrder: CollectionSortOrder
+    ) -> FetchDescriptor<LocalCollectionItem> {
+        let order: SortOrder = sortOrder == .desc ? .reverse : .forward
+        return FetchDescriptor<LocalCollectionItem>(
             predicate: #Predicate { $0.username == username },
-            sortBy: [SortDescriptor(\.dateAddedAt, order: .reverse)]
+            sortBy: [SortDescriptor(\.dateAddedAt, order: order)]
         )
     }
 

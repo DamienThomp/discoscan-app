@@ -349,6 +349,48 @@ struct CollectionStoreTests {
         #expect(apiClient.requestCount > apiRequestsBeforeRefresh)
     }
 
+    @Test func `Set folder zero sort order reorders items`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 2
+        let container = try TestModelContainer.make()
+        let index = CollectionLocalIndex(modelContainer: container)
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            modelContainer: container,
+            localIndex: index
+        )
+
+        let older = CollectionReleaseItem(
+            releaseId: 1,
+            instanceId: 8001,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00Z",
+            basicInformation: CollectionFixtures.sampleReleases[0].basicInformation
+        )
+        let newer = CollectionReleaseItem(
+            releaseId: 2,
+            instanceId: 8002,
+            folderId: 1,
+            dateAdded: "2024-06-01T12:00:00-07:00",
+            basicInformation: CollectionFixtures.sampleReleases[0].basicInformation
+        )
+
+        store.sync(with: .authenticated(identity))
+        try await index.upsertLive(older, username: identity.username)
+        try await index.upsertLive(newer, username: identity.username)
+        await store.loadReleases(folderId: .zero)
+
+        #expect(store.folderZeroSortOrder == .desc)
+        #expect(store.folderZeroItems.value?.first?.instanceId == newer.instanceId)
+
+        store.setFolderZeroSortOrder(.asc)
+
+        #expect(store.folderZeroSortOrder == .asc)
+        #expect(store.folderZeroItems.value?.first?.instanceId == older.instanceId)
+    }
+
     @Test func `Search folder zero matches tokens in either order`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()

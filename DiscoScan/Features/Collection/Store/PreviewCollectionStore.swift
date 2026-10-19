@@ -26,6 +26,7 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
     private(set) var folderZeroSync: CollectionSyncPhase = .idle
     private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
+    private(set) var folderZeroSortOrder: CollectionSortOrder = .desc
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -87,6 +88,13 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
         return items.filter { item in
             CollectionSearchMatching.matches(query: query, searchableText: item.searchableText)
         }
+    }
+
+    func setFolderZeroSortOrder(_ order: CollectionSortOrder) {
+        guard order != folderZeroSortOrder else { return }
+        folderZeroSortOrder = order
+        guard case .loaded(let items) = folderZeroItems else { return }
+        folderZeroItems = .loaded(items.reversed())
     }
 }
 
