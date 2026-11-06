@@ -7,14 +7,12 @@ import SwiftUI
 
 struct SearchView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(\.searchStore) private var searchStore
 
     @Binding var searchText: String
 
-    @State private var recentSearches: [String] = []
     @State private var isShowingBarcodeScanner = false
     @State private var isShowingImageIdentification = false
-
-    private let recentSearchStore = RecentSearchStore()
 
     var body: some View {
         List {
@@ -44,28 +42,24 @@ struct SearchView: View {
                 )
             }
 
-            if !recentSearches.isEmpty {
+            if !searchStore.recentQueries.isEmpty {
                 Section("Recent") {
-                    ForEach(recentSearches, id: \.self) { query in
+                    ForEach(searchStore.recentQueries, id: \.self) { query in
                         Button(query) {
                             router.submitSearch(.text(query: query))
                         }
                     }
                     .onDelete(perform: deleteRecentSearches)
 
-                    Button("Clear Recent Searches") {
+                    Button("Clear Recent Searches", role: .destructive) {
                         clearRecentSearches()
                     }
-                    .tint(.secondary)
                     .multilineTextAlignment(.center)
                     .accessibilityLabel("Clear recent searches")
                 }
             }
         }
         .navigationTitle("Search")
-        .onAppear {
-            recentSearches = recentSearchStore.load()
-        }
         .fullScreenCover(isPresented: $isShowingBarcodeScanner) {
             BarcodeScannerView { code in
                 isShowingBarcodeScanner = false
@@ -83,16 +77,13 @@ struct SearchView: View {
     }
 
     private func deleteRecentSearches(at offsets: IndexSet) {
-        for index in offsets {
-            recentSearchStore.remove(recentSearches[index])
-        }
-        recentSearches = recentSearchStore.load()
+        let queriesToRemove = offsets.map { searchStore.recentQueries[$0] }
+        searchStore.removeRecentQueries(queriesToRemove)
     }
 
     private func clearRecentSearches() {
         withAnimation {
-            recentSearchStore.clearAll()
-            recentSearches = recentSearchStore.load()
+            searchStore.clearRecentQueries()
         }
     }
 }
@@ -102,6 +93,7 @@ struct SearchView: View {
     NavigationStack {
         SearchView(searchText: .constant(""))
             .environment(AppRouter())
+            .environment(\.searchStore, previewSearchStore(.loaded(context: .text(query: "Kind of Blue"))))
             .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
     }
 }

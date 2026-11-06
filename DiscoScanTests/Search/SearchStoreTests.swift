@@ -12,8 +12,7 @@ import Testing
 struct SearchStoreTests {
 
     @Test func searchTransitionsToLoaded() async {
-        let fetcher = MockSearchCachedFetcher()
-        let store = SearchStore(cachedFetcher: fetcher)
+        let (store, fetcher, _) = makeSearchStore()
         let context = SearchContext.text(query: "Nirvana")
 
         await store.search(context)
@@ -23,8 +22,7 @@ struct SearchStoreTests {
     }
 
     @Test func searchUsesCorrectCacheKeyAndScope() async {
-        let fetcher = MockSearchCachedFetcher()
-        let store = SearchStore(cachedFetcher: fetcher)
+        let (store, fetcher, _) = makeSearchStore()
         let context = SearchContext.barcode(code: "042283923518")
 
         await store.search(context)
@@ -37,7 +35,7 @@ struct SearchStoreTests {
     @Test func searchFailsSetsFailedState() async {
         let fetcher = MockSearchCachedFetcher()
         fetcher.shouldFail = true
-        let store = SearchStore(cachedFetcher: fetcher)
+        let (store, _) = makeSearchStore(fetcher: fetcher)
 
         await store.search(.text(query: "test"))
 
@@ -50,7 +48,7 @@ struct SearchStoreTests {
 
     @Test func searchRefreshFailurePreservesStaleResults() async {
         let fetcher = MockSearchCachedFetcher()
-        let store = SearchStore(cachedFetcher: fetcher)
+        let (store, _) = makeSearchStore(fetcher: fetcher)
         let context = SearchContext.text(query: "Nirvana")
 
         await store.search(context)
@@ -61,8 +59,7 @@ struct SearchStoreTests {
     }
 
     @Test func searchForceRefreshRefetches() async {
-        let fetcher = MockSearchCachedFetcher()
-        let store = SearchStore(cachedFetcher: fetcher)
+        let (store, fetcher, _) = makeSearchStore()
         let context = SearchContext.text(query: "Nirvana")
 
         await store.search(context)
@@ -70,6 +67,96 @@ struct SearchStoreTests {
 
         #expect(fetcher.fetchCount == 2)
         #expect(fetcher.lastFetch?.forceRefresh == true)
+    }
+
+    @Test func `recordRecentQuery prepends and dedupes case insensitively`() {
+        let (store, persistence) = makeSearchStore()
+        store.recordRecentQuery("Kind of Blue")
+        store.recordRecentQuery("Bitches Brew")
+        store.recordRecentQuery("kind of blue")
+
+        #expect(store.recentQueries == ["kind of blue", "Bitches Brew"])
+        #expect(persistence.savedQueries == store.recentQueries)
+    }
+
+    @Test func `recordRecentQuery ignores empty query`() {
+        let (store, _) = makeSearchStore()
+        store.recordRecentQuery("   ")
+        #expect(store.recentQueries.isEmpty)
+    }
+
+    @Test func `removeRecentQuery deletes case insensitively`() {
+        let (store, persistence) = makeSearchStore()
+        store.recordRecentQuery("Kind of Blue")
+        store.recordRecentQuery("Bitches Brew")
+        store.removeRecentQuery("kind of blue")
+
+        #expect(store.recentQueries == ["Bitches Brew"])
+        #expect(persistence.savedQueries == ["Bitches Brew"])
+    }
+
+    @Test func `clearRecentQueries removes all`() {
+        let (store, persistence) = makeSearchStore()
+        store.recordRecentQuery("Kind of Blue")
+        store.clearRecentQueries()
+
+        #expect(store.recentQueries.isEmpty)
+        #expect(persistence.savedQueries.isEmpty)
+    }
+
+    @Test func `recordRecentQuery truncates at ten`() {
+        let (store, persistence) = makeSearchStore()
+        for index in 0..<12 {
+            store.recordRecentQuery("Query \(index)")
+        }
+        #expect(store.recentQueries.count == 10)
+        #expect(store.recentQueries.first == "Query 11")
+        #expect(store.recentQueries.last == "Query 2")
+        #expect(persistence.savedQueries.count == 10)
+    }
+
+    @Test func `init loads recentQueries from persistence`() {
+        let persistence = InMemoryRecentSearchPersistence()
+        persistence.seedForLoad(["Kind of Blue", "Bitches Brew"])
+        let store = SearchStore(cachedFetcher: MockSearchCachedFetcher(), recentSearchPersistence: persistence)
+        #expect(store.recentQueries == ["Kind of Blue", "Bitches Brew"])
+    }
+
+    @Test func `removeRecentQueries batch deletes multiple with one save`() {
+        let (store, persistence) = makeSearchStore()
+        store.recordRecentQuery("A")
+        store.recordRecentQuery("B")
+        store.recordRecentQuery("C")
+        let savesBeforeBatch = persistence.saveCallCount
+        store.removeRecentQueries(["A", "C"])
+        #expect(store.recentQueries == ["B"])
+        #expect(persistence.savedQueries == ["B"])
+        #expect(persistence.saveCallCount == savesBeforeBatch + 1)
+    }
+}
+
+@MainActor
+private func makeSearchStore(
+    fetcher: MockSearchCachedFetcher = MockSearchCachedFetcher(),
+    persistence: InMemoryRecentSearchPersistence = InMemoryRecentSearchPersistence()
+) -> (SearchStore, MockSearchCachedFetcher, InMemoryRecentSearchPersistence) {
+    let store = SearchStore(cachedFetcher: fetcher, recentSearchPersistence: persistence)
+    return (store, fetcher, persistence)
+}
+
+final class InMemoryRecentSearchPersistence: RecentSearchPersistence, @unchecked Sendable {
+    private(set) var savedQueries: [String] = []
+    private(set) var saveCallCount = 0
+
+    func load() -> [String] { savedQueries }
+
+    func save(_ queries: [String]) {
+        savedQueries = queries
+        saveCallCount += 1
+    }
+
+    func seedForLoad(_ queries: [String]) {
+        savedQueries = queries
     }
 }
 

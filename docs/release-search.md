@@ -9,7 +9,7 @@ flowchart TB
     subgraph textPath [Text search]
         tabField[MainTabView searchable]
         submit[onSubmit]
-        recents[RecentSearchStore.add]
+        recents[SearchStore.recordRecentQuery]
         tabField --> submit --> recents
     end
 
@@ -71,7 +71,7 @@ Each case maps to an endpoint, cache key, and navigation title:
 1. User types in the system search field on [`MainTabView`](../DiscoScan/Features/Root/Views/MainTabView.swift).
 2. Search fires **on submit only** — `.onSubmit(of: .search)` calls `submitTextSearch()`.
 3. Empty queries are ignored.
-4. `RecentSearchStore.add(query)` persists to UserDefaults (max 10, case-insensitive dedup).
+4. `SearchStore.recordRecentQuery(query)` persists via `UserDefaultsRecentSearchPersistence` (key `recentSearchQueries`, max 10, case-insensitive dedup).
 5. `AppRouter.submitSearch(.text(query:))` switches to the search tab and pushes `AppRoute.searchResults(context:)`.
 6. [`SearchResultsView`](../DiscoScan/Features/Search/Views/SearchResultsView.swift) runs `.task { await searchStore.search(context) }`.
 
@@ -163,15 +163,16 @@ See [caching.md](caching.md) for fetch decision tree and offline fallback.
 
 The endpoint supports pagination parameters but the UI only requests page 1.
 
-## RecentSearchStore
+## Recent queries on SearchStore
 
-[`RecentSearchStore.swift`](../DiscoScan/Data/RecentSearchStore.swift):
+[`SearchStore.swift`](../DiscoScan/Features/Search/Store/SearchStore.swift) owns `recentQueries` and delegates persistence to [`RecentSearchPersistence.swift`](../DiscoScan/Data/RecentSearchPersistence.swift):
 
-- UserDefaults key: `"recentSearches"`
+- UserDefaults key: `"recentSearchQueries"` (JSON-encoded `[String]`)
 - Limit: 10 entries
-- `add`: trim, dedupe case-insensitively, prepend
-- `remove`, `clearAll`
+- `recordRecentQuery`: trim, dedupe case-insensitively, prepend
+- `removeRecentQuery`, `removeRecentQueries`, `clearRecentQueries`
 - Only text submit (`MainTabView.submitTextSearch`) writes recents
+- Single instance injected via `@Environment(\.searchStore)` (no per-view store)
 
 ## Error and empty states
 
