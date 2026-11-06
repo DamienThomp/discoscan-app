@@ -114,7 +114,7 @@ DiscoScan/
 ├── App/              # AppDependencies, AppRouter
 ├── Auth/             # OAuth, Keychain token storage
 ├── Configuration/    # DiscogsConfig, GeminiConfig, Secrets.xcconfig
-├── Data/             # CachedFetcher, collection local index & sync, RecentSearchStore
+├── Data/             # CachedFetcher, collection local index & sync, recent search persistence
 ├── Design/           # Spacing, typography, and icon size tokens
 ├── Environment/      # Store and service environment keys
 ├── Features/

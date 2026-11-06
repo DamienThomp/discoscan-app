@@ -16,7 +16,10 @@ enum PreviewSearchStoreScenario {
 @MainActor
 @Observable
 final class PreviewSearchStore: SearchStoreProtocol {
+    private static let recentQueryLimit = 10
+
     private(set) var resultsByContext: [SearchContext: ResourceState<SearchResponse>] = [:]
+    private(set) var recentQueries: [String] = ["Kind of Blue", "Bitches Brew"]
 
     init(scenario: PreviewSearchStoreScenario) {
         switch scenario {
@@ -34,6 +37,37 @@ final class PreviewSearchStore: SearchStoreProtocol {
     }
 
     func search(_ context: SearchContext, forceRefresh: Bool) async {}
+
+    func recordRecentQuery(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var updated = recentQueries.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
+        updated.insert(trimmed, at: 0)
+        if updated.count > Self.recentQueryLimit {
+            updated = Array(updated.prefix(Self.recentQueryLimit))
+        }
+        recentQueries = updated
+    }
+
+    func removeRecentQuery(_ query: String) {
+        removeRecentQueries([query])
+    }
+
+    func removeRecentQueries(_ queries: [String]) {
+        let trimmedTargets = Set(
+            queries
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+        guard !trimmedTargets.isEmpty else { return }
+        recentQueries = recentQueries.filter { stored in
+            !trimmedTargets.contains { stored.caseInsensitiveCompare($0) == .orderedSame }
+        }
+    }
+
+    func clearRecentQueries() {
+        recentQueries = []
+    }
 }
 
 enum SearchFixtures {

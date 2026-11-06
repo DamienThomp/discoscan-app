@@ -7,10 +7,9 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(\.searchStore) private var searchStore
 
     @State private var searchText = ""
-
-    private let recentSearchStore = RecentSearchStore()
 
     var body: some View {
         @Bindable var router = router
@@ -37,18 +36,18 @@ struct MainTabView: View {
                     submitTextSearch()
                 }
                 .searchSuggestions {
-                    ForEach(recentSearchStore.load(), id: \.self) { query in
+                    ForEach(searchStore.recentQueries, id: \.self) { query in
                         Text(query).searchCompletion(query)
                     }
                 }
             }
-        }
+        }.tabViewSearchActivation(.searchTabSelection)
     }
 
     private func submitTextSearch() {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
-        recentSearchStore.add(query)
+        searchStore.recordRecentQuery(query)
         router.submitSearch(.text(query: query))
     }
 }

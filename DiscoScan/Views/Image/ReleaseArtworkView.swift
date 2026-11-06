@@ -49,25 +49,14 @@ enum ReleaseArtworkSize {
 }
 
 struct ReleaseArtworkView: View {
+
     let url: URL?
     let size: ReleaseArtworkSize
-    var accessibilityLabel: String?
-    var hidesFromAccessibility: Bool?
+    var accessibilityLabel: String? = nil
+    var hidesFromAccessibility: Bool? = nil
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ScaledMetric(relativeTo: .body) private var dynamicTypeScale: CGFloat = ReleaseArtworkSize.thumb.baseDimension
-
-    init(
-        url: URL?,
-        size: ReleaseArtworkSize,
-        accessibilityLabel: String? = nil,
-        hidesFromAccessibility: Bool? = nil
-    ) {
-        self.url = url
-        self.size = size
-        self.accessibilityLabel = accessibilityLabel
-        self.hidesFromAccessibility = hidesFromAccessibility
-    }
 
     private var shouldHideFromAccessibility: Bool {
         hidesFromAccessibility ?? size.hidesFromAccessibilityByDefault
@@ -99,6 +88,7 @@ struct ReleaseArtworkView: View {
             }
         }
         .modifier(ArtworkFrameModifier(size: size, dimension: dimension))
+        .modifier(ArtworkURLSessionModifier())
     }
 
     private func placeholder(showProgress: Bool) -> some View {
@@ -145,6 +135,27 @@ private struct ReleaseArtworkPlaceholder: View {
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)
             }
+        }
+    }
+}
+
+private struct ArtworkURLSessionModifier: ViewModifier {
+
+    static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        config.urlCache = URLCache(
+            memoryCapacity: 50 * 1024 * 1024,
+            diskCapacity: 200 * 1024 * 1024
+        )
+        return URLSession(configuration: config)
+    }()
+
+    func body(content: Content) -> some View {
+        if #available(iOS 27, *) {
+            content.asyncImageURLSession(Self.session)
+        } else {
+            content
         }
     }
 }

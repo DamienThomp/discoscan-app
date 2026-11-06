@@ -30,7 +30,7 @@ struct DiscoScanApp: App {
         _collectionStore = State(initialValue: CollectionStore(dependencies: dependencies))
         _wantListStore = State(initialValue: WantListStore(dependencies: dependencies))
         _releaseStore = State(initialValue: ReleaseStore(cachedFetcher: dependencies.cachedFetcher))
-        _searchStore = State(initialValue: SearchStore(cachedFetcher: dependencies.cachedFetcher))
+        _searchStore = State(initialValue: SearchStore(dependencies: dependencies))
         _profileStore = State(initialValue: ProfileStore(dependencies: dependencies))
     }
 

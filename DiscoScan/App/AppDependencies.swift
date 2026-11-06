@@ -21,6 +21,7 @@ struct AppDependencies {
     let cachedFetcher: CachedFetcher
     let sleeveIdentifier: any SleeveIdentifierProtocol
     let appleMusicCatalog: AppleMusicCatalogService
+    let recentSearchPersistence: any RecentSearchPersistence
 
     @MainActor
     static func make() -> AppDependencies {
@@ -89,6 +90,7 @@ struct AppDependencies {
         )
         let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig, client: geminiClient)
         let appleMusicCatalog = AppleMusicCatalogService()
+        let recentSearchPersistence = UserDefaultsRecentSearchPersistence()
 
         return AppDependencies(
             config: config,
@@ -103,7 +105,8 @@ struct AppDependencies {
             collectionSyncService: collectionSyncService,
             cachedFetcher: cachedFetcher,
             sleeveIdentifier: sleeveIdentifier,
-            appleMusicCatalog: appleMusicCatalog
+            appleMusicCatalog: appleMusicCatalog,
+            recentSearchPersistence: recentSearchPersistence
         )
     }
 
