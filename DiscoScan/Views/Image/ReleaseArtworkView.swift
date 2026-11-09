@@ -106,6 +106,7 @@ private struct ArtworkFrameModifier: ViewModifier {
     func body(content: Content) -> some View {
         if size.usesHeroLayout {
             content
+                .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: dimension, maxHeight: dimension)
                 .clipShape(RoundedRectangle(cornerRadius: size.cornerRadius))
                 .frame(maxWidth: .infinity)
