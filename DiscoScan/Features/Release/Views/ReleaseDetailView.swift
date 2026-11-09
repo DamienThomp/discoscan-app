@@ -11,6 +11,7 @@ struct ReleaseDetailView: View {
 
     @Environment(\.releaseStore) private var releaseStore
     @Environment(\.wantListStore) private var wantListStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var showFolderPicker = false
 
@@ -33,7 +34,7 @@ struct ReleaseDetailView: View {
             ReleaseDetailContent(release: release)
                 .transition(.opacity)
         }
-        .navigationTitle(navigationTitle)
+        .navigationTitle(horizontalSizeClass == .regular ? "" : navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {

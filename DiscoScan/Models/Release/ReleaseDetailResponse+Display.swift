@@ -42,4 +42,24 @@ extension ReleaseDetailResponse {
         guard !tags.isEmpty else { return nil }
         return tags.joined(separator: ", ")
     }
+
+    var displayReleased: String? {
+        releasedFormatted ?? released
+    }
+}
+
+extension ReleaseDetailCommunity {
+    var summary: String {
+        "\(have) have · \(want) want · \(rating.ratingSummary)"
+    }
+}
+
+extension ReleaseDetailRating {
+    var ratingSummary: String {
+        guard let average else {
+            return "\(count) ratings"
+        }
+        let formattedAverage = average.formatted(.number.precision(.fractionLength(1)))
+        return "\(formattedAverage) avg (\(count) ratings)"
+    }
 }
