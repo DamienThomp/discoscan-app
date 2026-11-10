@@ -12,10 +12,15 @@ struct ReleaseDetailContent: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
-        if horizontalSizeClass == .regular {
-            ReleaseDetailColumnLayout(release: release)
-        } else {
-            ReleaseDetailStackedLayout(release: release)
+        GeometryReader { proxy in
+            let useColumnLayout = horizontalSizeClass == .regular
+                && proxy.size.width > proxy.size.height
+
+            if useColumnLayout {
+                ReleaseDetailColumnLayout(release: release)
+            } else {
+                ReleaseDetailStackedLayout(release: release)
+            }
         }
     }
 }

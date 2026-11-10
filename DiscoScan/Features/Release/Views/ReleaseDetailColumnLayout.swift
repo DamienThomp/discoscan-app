@@ -13,7 +13,7 @@ struct ReleaseDetailColumnLayout: View {
         HStack(spacing: 0) {
             ReleaseDetailHeader(release: release)
                 .padding(.vertical, AppSpacing.content)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             ScrollView {
                 ReleaseDetailSections(release: release)
