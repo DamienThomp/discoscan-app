@@ -31,7 +31,13 @@ struct MainTabView: View {
                 AppRouteNavigationStack(path: $router.searchPath) {
                     SearchView(searchText: $searchText)
                 }
-                .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artists, albums, labels…")
+                .searchable(
+                    text: $searchText,
+                    placement: .navigationBarDrawer(
+                        displayMode: .always
+                    ),
+                    prompt: "Artists, albums, labels…"
+                )
                 .onSubmit(of: .search) {
                     submitTextSearch()
                 }

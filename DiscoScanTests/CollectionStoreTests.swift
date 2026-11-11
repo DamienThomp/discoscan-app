@@ -739,6 +739,68 @@ struct CollectionStoreTests {
         #expect(try await realIndex.hasUnsealedGeneration(username: firstUser.username) == false)
     }
 
+    @Test func `Ensure returns before background sync when locally loaded`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        apiClient.delayNanoseconds = 500_000_000
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: identity.username)
+        let generation = try await realIndex.beginSyncGeneration(username: identity.username)
+        try await realIndex.upsertSynced(
+            [CollectionFixtures.sampleReleases[0]],
+            username: identity.username,
+            generation: generation
+        )
+        _ = try await realIndex.sweep(username: identity.username, keeping: generation)
+
+        store.sync(with: .authenticated(identity))
+        await store.loadReleases(folderId: .zero)
+
+        let started = ContinuousClock.now
+        await store.ensureFolderZeroIndexReady()
+        let elapsed = started.duration(to: .now)
+
+        #expect(elapsed < .milliseconds(200))
+        #expect(store.folderZeroItems.value?.count == 1)
+    }
+
+    @Test func `Automatic sync stays idle in UI when counts match`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: identity.username)
+        let generation = try await realIndex.beginSyncGeneration(username: identity.username)
+        try await realIndex.upsertSynced(
+            [CollectionFixtures.sampleReleases[0]],
+            username: identity.username,
+            generation: generation
+        )
+        _ = try await realIndex.sweep(username: identity.username, keeping: generation)
+
+        store.sync(with: .authenticated(identity))
+        await store.ensureFolderZeroIndexReady()
+        try await Task.sleep(for: .milliseconds(300))
+
+        #expect(store.folderZeroSync == .idle)
+    }
+
     @Test func `Local items load when network is unavailable`() async throws {
         let container = try TestModelContainer.make()
         let realIndex = CollectionLocalIndex(modelContainer: container)

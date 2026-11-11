@@ -76,7 +76,7 @@ struct CollectionSyncServiceTests {
         _ = try await index.sweep(username: username, keeping: generation)
 
         let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
         let phases = await progressTask.value
 
         #expect(!phases.contains(.checking))
@@ -94,7 +94,7 @@ struct CollectionSyncServiceTests {
         apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
         let (service, index) = try makeService(apiClient: apiClient)
 
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
 
         #expect(try await index.count(username: username) == 1)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
@@ -108,7 +108,7 @@ struct CollectionSyncServiceTests {
         let (service, index) = try makeService(apiClient: apiClient)
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
 
-        _ = await service.refresh(username: username, mode: .force)
+        _ = await service.refresh(username: username, intent: .userInitiated)
 
         #expect(apiClient.requestCount >= 2)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
@@ -135,7 +135,7 @@ struct CollectionSyncServiceTests {
 
         clock.value = clock.value.addingTimeInterval(120)
         let requestsBeforeStaleRefresh = apiClient.requestCount
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
         #expect(apiClient.requestCount - requestsBeforeStaleRefresh >= 2)
     }
 
@@ -155,7 +155,7 @@ struct CollectionSyncServiceTests {
         _ = try await index.sweep(username: username, keeping: generation)
 
         let requestsBeforeFreshCheck = apiClient.requestCount
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
         #expect(apiClient.requestCount - requestsBeforeFreshCheck == 1)
     }
 
@@ -167,7 +167,7 @@ struct CollectionSyncServiceTests {
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
         #expect(try await index.count(username: username) == 1)
 
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
 
         #expect(try await index.count(username: username) == 0)
     }
@@ -180,7 +180,7 @@ struct CollectionSyncServiceTests {
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
         _ = try await index.beginSyncGeneration(username: username)
 
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
 
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
         #expect(apiClient.requestCount >= 2)
@@ -193,11 +193,11 @@ struct CollectionSyncServiceTests {
         apiClient.failOnFolderZeroPage = 1
         let (service, index) = try makeService(apiClient: apiClient)
 
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
         #expect(try await index.hasUnsealedGeneration(username: username) == true)
 
         apiClient.failOnFolderZeroPage = nil
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
     }
 
@@ -214,7 +214,7 @@ struct CollectionSyncServiceTests {
         try await index.upsertSynced([existing], username: username, generation: generation)
         _ = try await index.sweep(username: username, keeping: generation)
 
-        let phase = await service.refresh(username: username, mode: .force)
+        let phase = await service.refresh(username: username, intent: .userInitiated)
 
         if case .failed = phase {
             #expect(Bool(true))
@@ -235,7 +235,7 @@ struct CollectionSyncServiceTests {
         let (service, _) = try makeService(apiClient: apiClient)
 
         let syncTask = Task {
-            await service.refresh(username: username, mode: .force)
+            await service.refresh(username: username, intent: .userInitiated)
         }
         try await Task.sleep(nanoseconds: 50_000_000)
         await service.cancel(username: username)
@@ -249,7 +249,7 @@ struct CollectionSyncServiceTests {
         let (service, _) = try makeService(apiClient: apiClient)
 
         let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
-        _ = await service.refresh(username: username, mode: .ifNeeded)
+        _ = await service.refresh(username: username, intent: .automatic)
         let phases = await progressTask.value
 
         #expect(phases.contains(where: {
@@ -266,7 +266,7 @@ struct CollectionSyncServiceTests {
         apiClient.folderZeroPages = [Array(CollectionFixtures.sampleReleases.prefix(1))]
         let (service, index) = try makeService(apiClient: apiClient)
 
-        let phase = await service.refresh(username: username, mode: .force)
+        let phase = await service.refresh(username: username, intent: .userInitiated)
         if case .failed = phase {
             #expect(Bool(true))
         } else {
@@ -282,8 +282,8 @@ struct CollectionSyncServiceTests {
         apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
         let (service, _) = try makeService(apiClient: apiClient)
 
-        async let first = service.refresh(username: "user-a", mode: .force)
-        async let second = service.refresh(username: "user-b", mode: .force)
+        async let first = service.refresh(username: "user-a", intent: .userInitiated)
+        async let second = service.refresh(username: "user-b", intent: .userInitiated)
         _ = await (first, second)
 
         #expect(apiClient.requestCount >= 4)
@@ -297,7 +297,7 @@ struct CollectionSyncServiceTests {
         let (service, index) = try makeService(apiClient: apiClient)
 
         let syncTask = Task {
-            await service.refresh(username: username, mode: .force)
+            await service.refresh(username: username, intent: .userInitiated)
         }
         for _ in 0..<200 where apiClient.requestCount < 2 {
             try await Task.sleep(nanoseconds: 5_000_000)
@@ -308,5 +308,64 @@ struct CollectionSyncServiceTests {
         #expect(apiClient.requestCount == 2)
         let isUnsealed = try await index.hasUnsealedGeneration(username: username)
         #expect(isUnsealed)
+    }
+
+    @Test func `Sealed stale automatic sync omits progress phases`() async throws {
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        final class MutableDate: @unchecked Sendable {
+            var value: Date
+            init(_ value: Date) { self.value = value }
+        }
+        let clock = MutableDate(Date())
+        let (service, index) = try makeService(
+            apiClient: apiClient,
+            staleAfter: 60,
+            now: { clock.value }
+        )
+        try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
+        let generation = try await index.beginSyncGeneration(username: username)
+        try await index.upsertSynced([CollectionFixtures.sampleReleases[0]], username: username, generation: generation)
+        _ = try await index.sweep(username: username, keeping: generation)
+
+        clock.value = clock.value.addingTimeInterval(120)
+
+        let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
+        _ = await service.refresh(username: username, intent: .automatic)
+        let phases = await progressTask.value
+
+        #expect(!phases.contains(.checking))
+        #expect(!phases.contains(where: {
+            if case .syncing = $0 { return true }
+            return false
+        }))
+        #expect(phases.contains(.idle))
+    }
+
+    @Test func `User initiated matching counts includes progress phases`() async throws {
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        let currentTime = Date()
+        let (service, index) = try makeService(
+            apiClient: apiClient,
+            staleAfter: 60 * 60,
+            now: { currentTime }
+        )
+        try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
+        let generation = try await index.beginSyncGeneration(username: username)
+        try await index.upsertSynced([CollectionFixtures.sampleReleases[0]], username: username, generation: generation)
+        _ = try await index.sweep(username: username, keeping: generation)
+
+        let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
+        _ = await service.refresh(username: username, intent: .userInitiated)
+        let phases = await progressTask.value
+
+        #expect(phases.contains(.checking))
+        #expect(phases.contains(where: {
+            if case .syncing = $0 { return true }
+            return false
+        }))
     }
 }

@@ -13,7 +13,7 @@ struct ReleaseAppleMusicLink: View {
     @State private var url: URL?
 
     var body: some View {
-        Group {
+        VStack {
             if let url {
                 Link(destination: url) {
                     Label("Apple Music", systemImage: "apple.logo")

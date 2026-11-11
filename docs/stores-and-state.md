@@ -62,7 +62,7 @@ enum CollectionSyncPhase: Equatable, Sendable {
 }
 ```
 
-`CollectionStore` subscribes to `CollectionSyncService.progressStream()` and maps `.checking` to `folderZeroItems.beginRefresh()`. The sync banner reads `folderZeroSync` directly. See [collection-sync.md](collection-sync.md).
+`CollectionStore` subscribes to `CollectionSyncService.progressStream()` and maps `.checking` to `folderZeroItems.beginRefresh()` only for user-visible syncs. Silent automatic or repair syncs omit intermediate phases; `folderZeroSync` stays `.idle` unless progress is shown or a user-visible sync fails. See [collection-sync.md](collection-sync.md).
 
 ## Canonical view pattern
 

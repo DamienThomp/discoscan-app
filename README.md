@@ -15,7 +15,7 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 ### Library
 
 - **Collection folders** — Browse Discogs collection folders with item counts. Pull to refresh the folder list.
-- **All folder** — The Discogs “All” folder (folder id `0`) is backed by a local SwiftData index synced from Discogs. The full collection loads offline after sync. A sync banner shows checking/syncing progress; failures surface a message with a Retry action. Sync runs after sign-in, when opening All, on pull-to-refresh, and when the app returns to the foreground if the index is stale or incomplete.
+- **All folder** — The Discogs “All” folder (folder id `0`) is backed by a local SwiftData index synced from Discogs. The full collection loads offline after sync. Automatic checks (sign-in, foreground, reopening All) keep the list visible and hide the sync banner when counts already match; stale or repair syncs can run silently in the background. Pull-to-refresh shows checking/syncing progress; failures surface a Retry action when sync is user-visible.
 - **Other folders** — Custom and system folders load releases from the Discogs API with pagination (50 per page). Pull to refresh and infinite scroll load additional pages.
 - **Folder contents** — View releases in any folder and swipe to remove items from your collection. Add/delete updates the local All-folder index and folder counts.
 - **Create folders** — Add custom collection folders from the Library tab.

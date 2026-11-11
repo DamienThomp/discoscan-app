@@ -33,6 +33,7 @@ flowchart LR
 Primary files:
 
 - [`CollectionSyncService.swift`](../DiscoScan/Data/CollectionSync/CollectionSyncService.swift)
+- [`CollectionSyncDecision.swift`](../DiscoScan/Data/CollectionSync/CollectionSyncDecision.swift)
 - [`CollectionLocalIndex.swift`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift)
 - [`LocalCollectionItem.swift`](../DiscoScan/Data/CollectionSync/LocalCollectionItem.swift)
 - [`CollectionSyncMetadata.swift`](../DiscoScan/Data/CollectionSync/CollectionSyncMetadata.swift)
@@ -47,8 +48,8 @@ flowchart TD
     triggers["Sign-in / open All / foreground / pull-to-refresh"]
     store[CollectionStore]
     loadLocal[Show local index items first]
-    service["CollectionSyncService.refresh(username, mode)"]
-    decide{"force or count mismatch or unsealed or stale?"}
+    service["CollectionSyncService.refresh(username, intent)"]
+    decide{"CollectionSyncDecision health + intent"}
     begin[beginSyncGeneration]
     pages["Fetch pages via NetworkManagerProtocol"]
     upsert["upsertSynced batched per page"]
@@ -75,15 +76,29 @@ flowchart TD
 | ------- | ----------- |
 | Sign-in | `DiscoScanApp` → `ensureFolderZeroIndexReady()` |
 | Open All folder | `CollectionListView.task` → `ensureFolderZeroIndexReady()` |
-| Pull-to-refresh | `syncFolderZeroIndex(forceRefresh: true)` → `refresh(mode: .force)` |
+| Pull-to-refresh | `syncFolderZeroIndex(forceRefresh: true)` → `refresh(intent: .userInitiated)` |
 | App foreground | `ensureFolderZeroIndexReady()` |
 | Count mismatch | Local `fetchCount` ≠ remote All-folder count |
 | Unsealed generation | Previous sync interrupted before sweep |
 | Stale index | `lastSyncedAt` older than 24 hours (default) |
 
+Automatic triggers (sign-in, foreground, reopening a warm All list) load local items first, then run `refresh(intent: .automatic)` on a background task when the local index is non-empty. Pull-to-refresh uses `userInitiated`, which always allows full pagination with visible progress.
+
+### Sync decision (`CollectionSyncDecision`)
+
+After the folders API returns, the service derives `CollectionIndexHealth` (unsealed, count drift, sealed stale/fresh, etc.) and chooses a `CollectionSyncAction` from health + `CollectionSyncIntent`:
+
+| Typical health | `automatic` | `userInitiated` |
+| -------------- | ------------- | --------------- |
+| Sealed fresh, counts match | Skip pagination | Full sync, show progress |
+| Sealed stale, counts match | Full sync, silent | Full sync, show progress |
+| Count mismatch | Full sync, show progress | Full sync, show progress |
+
+Silent sync still paginates and sweeps when required; progress stream events `.checking` / `.syncing` are omitted. Repair after a partial local write uses `intent: .repair` (silent).
+
 ### Coalescing and cancellation
 
-`CollectionSyncService` holds one in-flight task per username. Concurrent refreshes for the same user await the same task. `cancel(username:)` runs before the local index is cleared on logout or user switch.
+`CollectionSyncService` holds one in-flight task per username. Concurrent refreshes for the same user await the same task. A `userInitiated` refresh that coalesced with an automatic run starts a fresh refresh afterward so pull-to-refresh is not treated as a no-op. `cancel(username:)` runs before the local index is cleared on logout or user switch.
 
 Sync pagination uses `NetworkManagerProtocol` directly (not `CachedFetcher`), so failed pages never fall back to stale cached data.
 
@@ -98,7 +113,7 @@ enum CollectionSyncPhase {
 }
 ```
 
-`CollectionStore` subscribes once for the app lifetime. On `.checking`, `folderZeroItems` enters refresh. Terminal `.idle` reloads items; `.failed` surfaces an error with Retry. `.checking` is emitted only when a sync will run.
+`CollectionStore` subscribes once for the app lifetime. Progress updates apply only while a user-visible sync is in flight (`folderZeroRefreshesInFlight > 0`). On `.checking`, `folderZeroItems` enters refresh. Terminal `.idle` reloads items; `.failed` surfaces an error with Retry for user-visible syncs. Silent automatic failures keep showing cached local items without the banner.
 
 ### Error cases
 
@@ -207,7 +222,7 @@ Add and delete keep the local index, in-memory folder lists, and folder counts i
 
 ## Loading semantics
 
-`ensureFolderZeroIndexReady()` loads local items before contacting the network, so offline users see the last synced index immediately.
+`ensureFolderZeroIndexReady()` loads local items before contacting the network, so offline users see the last synced index immediately. When the local count is non-zero, the network refresh is scheduled in the background and the call returns without waiting for pagination.
 
 When local count is zero but a sync is pending, `folderZeroItems` stays in `.loading` (not `.loaded([])`) until sync completes or fails.
 
