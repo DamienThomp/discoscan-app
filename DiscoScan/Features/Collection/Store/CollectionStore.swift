@@ -378,7 +378,11 @@ final class CollectionStore: CollectionStoreProtocol {
     ) async {
         if showsProgressInUI {
             folderZeroRefreshesInFlight += 1
-            defer { folderZeroRefreshesInFlight -= 1 }
+        }
+        defer {
+            if showsProgressInUI {
+                folderZeroRefreshesInFlight -= 1
+            }
         }
         let finalPhase = await syncService.refresh(username: username, intent: intent)
         await applyFolderZeroSyncResult(

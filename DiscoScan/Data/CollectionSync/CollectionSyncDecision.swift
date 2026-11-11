@@ -6,7 +6,7 @@
 import Foundation
 
 /// Persisted index shape plus remote folder count after the folders API call.
-enum CollectionIndexHealth: Equatable, Sendable {
+nonisolated enum CollectionIndexHealth: Equatable, Sendable {
     case emptyLocal(remoteTotal: Int)
     case countDrift(local: Int, remote: Int)
     case unsealed(local: Int, remote: Int)
@@ -23,17 +23,17 @@ nonisolated enum CollectionSyncIntent: Sendable {
     case repair
 }
 
-enum SyncProgressVisibility: Equatable, Sendable {
+nonisolated enum SyncProgressVisibility: Equatable, Sendable {
     case silent
     case showProgress
 }
 
-enum CollectionSyncAction: Equatable, Sendable {
+nonisolated enum CollectionSyncAction: Equatable, Sendable {
     case skip
     case fullSync(visibility: SyncProgressVisibility)
 }
 
-enum CollectionSyncDecision {
+nonisolated enum CollectionSyncDecision {
     static func deriveIndexHealth(
         localTotal: Int,
         remoteTotal: Int,
