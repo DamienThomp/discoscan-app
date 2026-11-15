@@ -382,13 +382,71 @@ struct CollectionStoreTests {
         try await index.upsertLive(newer, username: identity.username)
         await store.loadReleases(folderId: .zero)
 
-        #expect(store.folderZeroSortOrder == .desc)
+        #expect(store.folderZeroSort == .newestFirst)
         #expect(store.folderZeroItems.value?.first?.instanceId == newer.instanceId)
 
-        store.setFolderZeroSortOrder(.asc)
+        await store.setFolderZeroSort(.oldestFirst)
 
-        #expect(store.folderZeroSortOrder == .asc)
+        #expect(store.folderZeroSort == .oldestFirst)
         #expect(store.folderZeroItems.value?.first?.instanceId == older.instanceId)
+    }
+
+    @Test func `Set folder zero sort by artist reloads from index`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        let container = try TestModelContainer.make()
+        let index = CollectionLocalIndex(modelContainer: container)
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            modelContainer: container,
+            localIndex: index
+        )
+
+        let zzTop = CollectionReleaseItem(
+            releaseId: 1,
+            instanceId: 8101,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00Z",
+            basicInformation: ReleaseBasicInformation(
+                id: 1,
+                title: "Eliminator",
+                year: nil,
+                thumb: nil,
+                coverImage: nil,
+                resourceURL: nil,
+                artists: [DiscogsArtist(id: 1, name: "ZZ Top")],
+                labels: [],
+                formats: []
+            )
+        )
+        let abba = CollectionReleaseItem(
+            releaseId: 2,
+            instanceId: 8102,
+            folderId: 1,
+            dateAdded: "2024-02-01T12:00:00Z",
+            basicInformation: ReleaseBasicInformation(
+                id: 2,
+                title: "Arrival",
+                year: nil,
+                thumb: nil,
+                coverImage: nil,
+                resourceURL: nil,
+                artists: [DiscogsArtist(id: 2, name: "abba")],
+                labels: [],
+                formats: []
+            )
+        )
+
+        store.sync(with: .authenticated(identity))
+        try await index.upsertLive(zzTop, username: identity.username)
+        try await index.upsertLive(abba, username: identity.username)
+        await store.loadReleases(folderId: .zero)
+
+        await store.setFolderZeroSort(.artistAZ)
+
+        #expect(store.folderZeroSort == .artistAZ)
+        #expect(store.folderZeroItems.value?.map(\.instanceId) == [abba.instanceId, zzTop.instanceId])
     }
 
     @Test func `Search folder zero matches tokens in either order`() async throws {

@@ -14,7 +14,7 @@ struct CollectionListView: View {
 
     @State private var searchText = ""
     @State private var deleteErrorMessage: String?
-    @State private var folderZeroSortPickerSelection = CollectionSortOrder.desc
+    @State private var folderZeroSortSelection = CollectionSortOption.newestFirst
 
     private var isFolderZero: Bool { folderId == .zero }
 
@@ -83,9 +83,13 @@ struct CollectionListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Date added", selection: $folderZeroSortPickerSelection) {
-                            Text("Newest first").tag(CollectionSortOrder.desc)
-                            Text("Oldest first").tag(CollectionSortOrder.asc)
+                        Picker("Sort by", selection: $folderZeroSortSelection) {
+                            Text("Newest first").tag(CollectionSortOption.newestFirst)
+                            Text("Oldest first").tag(CollectionSortOption.oldestFirst)
+                            Text("Artist A–Z").tag(CollectionSortOption.artistAZ)
+                            Text("Artist Z–A").tag(CollectionSortOption.artistZA)
+                            Text("Title A–Z").tag(CollectionSortOption.titleAZ)
+                            Text("Title Z–A").tag(CollectionSortOption.titleZA)
                         }
                         .pickerStyle(.inline)
                     } label: {
@@ -94,13 +98,13 @@ struct CollectionListView: View {
                 }
             }
             .onAppear {
-                folderZeroSortPickerSelection = store.folderZeroSortOrder
+                folderZeroSortSelection = store.folderZeroSort
             }
-            .onChange(of: folderZeroSortPickerSelection) { _, newOrder in
-                store.setFolderZeroSortOrder(newOrder)
+            .onChange(of: folderZeroSortSelection) { _, newOption in
+                Task { await store.setFolderZeroSort(newOption) }
             }
-            .onChange(of: store.folderZeroSortOrder) { _, newOrder in
-                folderZeroSortPickerSelection = newOrder
+            .onChange(of: store.folderZeroSort) { _, newOption in
+                folderZeroSortSelection = newOption
             }
         }
         .task { await store.loadReleases(folderId: folderId) }
