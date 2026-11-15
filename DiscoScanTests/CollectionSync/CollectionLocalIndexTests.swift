@@ -170,8 +170,67 @@ struct CollectionLocalIndexTests {
         try await index.upsertLive(utcItem, username: username)
         try await index.upsertLive(offsetItem, username: username)
 
-        let instanceIds = try await index.allItems(username: username, sortOrder: .asc).map(\.instanceId)
+        let instanceIds = try await index.allItems(username: username, sort: .oldestFirst).map(\.instanceId)
         #expect(instanceIds.first == utcItem.instanceId)
+    }
+
+    @Test func `Items sort by artist using normalized keys`() async throws {
+        let index = try makeIndex()
+        let zzTop = indexedItem(instanceId: 7101, artist: "ZZ Top", title: "A")
+        let abba = indexedItem(instanceId: 7102, artist: "abba", title: "B")
+
+        try await index.upsertLive(zzTop, username: username)
+        try await index.upsertLive(abba, username: username)
+
+        let artists = try await index.allItems(username: username, sort: .artistAZ)
+            .map(\.basicInformation.primaryArtistName)
+        #expect(artists == ["abba", "ZZ Top"])
+    }
+
+    @Test func `Items sort by title using normalized keys`() async throws {
+        let index = try makeIndex()
+        let zebra = indexedItem(instanceId: 7201, artist: "Shared", title: "Zebra")
+        let alpha = indexedItem(instanceId: 7202, artist: "Shared", title: "alpha")
+
+        try await index.upsertLive(zebra, username: username)
+        try await index.upsertLive(alpha, username: username)
+
+        let titles = try await index.allItems(username: username, sort: .titleAZ)
+            .map(\.basicInformation.title)
+        #expect(titles == ["alpha", "Zebra"])
+    }
+
+    @Test func `Artist sort key folds diacritics`() async throws {
+        let index = try makeIndex()
+        let bjorkAccent = indexedItem(instanceId: 7301, artist: "Björk", title: "First")
+        let bjorkPlain = indexedItem(instanceId: 7302, artist: "Bjork", title: "Second")
+
+        try await index.upsertLive(bjorkAccent, username: username)
+        try await index.upsertLive(bjorkPlain, username: username)
+
+        let titles = try await index.allItems(username: username, sort: .artistAZ)
+            .map(\.basicInformation.title)
+        #expect(titles == ["First", "Second"])
+    }
+
+    private func indexedItem(instanceId: Int, artist: String, title: String) -> CollectionReleaseItem {
+        CollectionReleaseItem(
+            releaseId: instanceId,
+            instanceId: instanceId,
+            folderId: 1,
+            dateAdded: "2024-01-01T12:00:00Z",
+            basicInformation: ReleaseBasicInformation(
+                id: instanceId,
+                title: title,
+                year: nil,
+                thumb: nil,
+                coverImage: nil,
+                resourceURL: nil,
+                artists: [DiscogsArtist(id: 1, name: artist)],
+                labels: [],
+                formats: []
+            )
+        )
     }
 
     @Test func `Read-only metadata queries do not create rows`() async throws {

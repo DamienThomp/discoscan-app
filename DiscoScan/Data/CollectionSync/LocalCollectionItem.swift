@@ -12,7 +12,9 @@ nonisolated final class LocalCollectionItem {
     #Index<LocalCollectionItem>(
         [\.username, \.instanceId],
         [\.username, \.dateAddedAt],
-        [\.username, \.syncGeneration]
+        [\.username, \.syncGeneration],
+        [\.username, \.artistSortKey],
+        [\.username, \.titleSortKey]
     )
 
     var username: String
@@ -23,7 +25,9 @@ nonisolated final class LocalCollectionItem {
     var dateAddedAt: Date
     var syncGeneration: Int
     var artistName: String
+    var artistSortKey: String
     var title: String
+    var titleSortKey: String
     var labelName: String
     var catno: String
     var year: Int?
@@ -51,7 +55,9 @@ nonisolated final class LocalCollectionItem {
         let catno = info.labels.first?.catno ?? ""
         let year = info.year
         self.artistName = artistName
+        self.artistSortKey = CollectionSortKey.normalize(artistName)
         self.title = title
+        self.titleSortKey = CollectionSortKey.normalize(title)
         self.labelName = labelName
         self.catno = catno
         self.year = year
@@ -75,7 +81,9 @@ nonisolated final class LocalCollectionItem {
         self.syncGeneration = syncGeneration
         let info = item.basicInformation
         artistName = info.primaryArtistName
+        artistSortKey = CollectionSortKey.normalize(artistName)
         title = info.title
+        titleSortKey = CollectionSortKey.normalize(title)
         labelName = info.labels.first?.name ?? ""
         catno = info.labels.first?.catno ?? ""
         year = info.year
@@ -111,6 +119,14 @@ nonisolated final class LocalCollectionItem {
                 formats: []
             )
         )
+    }
+}
+
+nonisolated enum CollectionSortKey {
+    static func normalize(_ value: String) -> String {
+        value
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

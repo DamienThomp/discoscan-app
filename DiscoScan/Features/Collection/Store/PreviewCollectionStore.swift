@@ -4,6 +4,7 @@
 //
 
 #if DEBUG
+import Foundation
 import Observation
 
 enum PreviewCollectionStoreScenario {
@@ -26,7 +27,7 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
     private(set) var folderZeroSync: CollectionSyncPhase = .idle
     private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
-    private(set) var folderZeroSortOrder: CollectionSortOrder = .desc
+    private(set) var folderZeroSort: CollectionSortOption = .newestFirst
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -90,11 +91,57 @@ final class PreviewCollectionStore: CollectionStoreProtocol {
         }
     }
 
-    func setFolderZeroSortOrder(_ order: CollectionSortOrder) {
-        guard order != folderZeroSortOrder else { return }
-        folderZeroSortOrder = order
-        guard case .loaded(let items) = folderZeroItems else { return }
-        folderZeroItems = .loaded(items.reversed())
+    func setFolderZeroSort(_ option: CollectionSortOption) async {
+        guard option != folderZeroSort else { return }
+        folderZeroSort = option
+        guard let items = folderZeroItems.value else { return }
+        let sorted = Self.sortedFolderZeroItems(items, by: option)
+        switch folderZeroItems {
+        case .loaded:
+            folderZeroItems = .loaded(sorted)
+        case .refreshing:
+            folderZeroItems = .refreshing(sorted)
+        case .idle, .loading, .failed:
+            break
+        }
+    }
+
+    private static func sortedFolderZeroItems(
+        _ items: [CollectionReleaseItem],
+        by option: CollectionSortOption
+    ) -> [CollectionReleaseItem] {
+        let ascending = option.direction == .asc
+        return items.sorted { lhs, rhs in
+            let primaryComparison = primarySortComparison(lhs: lhs, rhs: rhs, field: option.field)
+            if primaryComparison != .orderedSame {
+                return ascending ? primaryComparison == .orderedAscending : primaryComparison == .orderedDescending
+            }
+            let titleComparison = CollectionSortKey.normalize(lhs.basicInformation.title)
+                .compare(CollectionSortKey.normalize(rhs.basicInformation.title))
+            if titleComparison != .orderedSame {
+                return titleComparison == .orderedAscending
+            }
+            return lhs.instanceId < rhs.instanceId
+        }
+    }
+
+    private static func primarySortComparison(
+        lhs: CollectionReleaseItem,
+        rhs: CollectionReleaseItem,
+        field: FolderZeroSortField
+    ) -> ComparisonResult {
+        switch field {
+        case .dateAdded:
+            let left = CollectionDateParsing.dateAdded(from: lhs.dateAdded)
+            let right = CollectionDateParsing.dateAdded(from: rhs.dateAdded)
+            return left.compare(right)
+        case .artist:
+            return CollectionSortKey.normalize(lhs.basicInformation.primaryArtistName)
+                .compare(CollectionSortKey.normalize(rhs.basicInformation.primaryArtistName))
+        case .title:
+            return CollectionSortKey.normalize(lhs.basicInformation.title)
+                .compare(CollectionSortKey.normalize(rhs.basicInformation.title))
+        }
     }
 }
 

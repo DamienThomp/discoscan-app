@@ -9,56 +9,56 @@ import SwiftData
 
 enum ModelContainerFactory {
     /// Bump when SwiftData models change; mismatched stores are wiped and rebuilt on next launch.
-    static let schemaVersion = 1
+    static let schemaVersion = 2
 
     private static let schemaVersionKey = "DiscoScan.SwiftData.schemaVersion"
     private static let logger = Logger(subsystem: "com.discoscan", category: "ModelContainer")
 
-    static func makePersistentContainer() -> ModelContainer {
-        wipeStoreIfSchemaVersionChanged()
-
-        let schema = Schema([
+    private static var schema: Schema {
+        Schema([
             CachedRecord.self,
             LocalCollectionItem.self,
             CollectionSyncMetadata.self
         ])
+    }
 
+    static func makePersistentContainer() -> ModelContainer {
+        wipeStoreIfSchemaVersionChanged()
+
+        // On-disk store can fail to open (corruption, migration mismatch). One retry after deleting
+        // default.store (+ WAL/SHM) often fixes it without nuking unrelated app data.
         do {
-            let container = try ModelContainer(for: schema)
-            UserDefaults.standard.set(schemaVersion, forKey: schemaVersionKey)
-            return container
+            return try openPersistentContainer()
         } catch {
             logger.error("Failed to open ModelContainer: \(error.localizedDescription, privacy: .public)")
             deleteDefaultStoreFiles()
-            do {
-                let container = try ModelContainer(for: schema)
-                UserDefaults.standard.set(schemaVersion, forKey: schemaVersionKey)
-                return container
-            } catch {
-                logger.fault(
-                    "ModelContainer failed after store wipe; using in-memory store: \(error.localizedDescription, privacy: .public)"
-                )
-                return makeInMemoryContainer(schema: schema)
-            }
+        }
+
+        // If opening still fails, keep the app launchable with an in-memory container; cache and
+        // collection index re-populate from network on the next sync.
+        do {
+            return try openPersistentContainer()
+        } catch {
+            logger.fault(
+                "ModelContainer failed after store wipe; using in-memory store: \(error.localizedDescription, privacy: .public)"
+            )
+            return makeInMemoryContainer()
         }
     }
 
     static func makeInMemoryContainer() -> ModelContainer {
-        let schema = Schema([
-            CachedRecord.self,
-            LocalCollectionItem.self,
-            CollectionSyncMetadata.self
-        ])
-        return makeInMemoryContainer(schema: schema)
-    }
-
-    private static func makeInMemoryContainer(schema: Schema) -> ModelContainer {
         do {
             let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
             return try ModelContainer(for: schema, configurations: configuration)
         } catch {
             fatalError("Failed to create in-memory ModelContainer: \(error)")
         }
+    }
+
+    private static func openPersistentContainer() throws -> ModelContainer {
+        let container = try ModelContainer(for: schema)
+        UserDefaults.standard.set(schemaVersion, forKey: schemaVersionKey)
+        return container
     }
 
     private static func wipeStoreIfSchemaVersionChanged() {

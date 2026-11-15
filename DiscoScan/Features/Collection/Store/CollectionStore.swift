@@ -16,7 +16,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private(set) var releasesByFolderID: [Int: ResourceState<[CollectionReleaseItem]>] = [:]
     private(set) var folderZeroSync: CollectionSyncPhase = .idle
     private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
-    private(set) var folderZeroSortOrder: CollectionSortOrder = .desc
+    private(set) var folderZeroSort: CollectionSortOption = .newestFirst
     private(set) var isMutating = false
     private(set) var lastMutationError: String?
 
@@ -90,7 +90,7 @@ final class CollectionStore: CollectionStoreProtocol {
         folders = .idle
         releasesByFolderID = [:]
         folderZeroItems = .idle
-        folderZeroSortOrder = .desc
+        folderZeroSort = .newestFirst
         folderZeroSync = .idle
         paginationByFolderID = [:]
         isLoadingMoreByFolderID = [:]
@@ -358,17 +358,10 @@ final class CollectionStore: CollectionStoreProtocol {
         }
     }
 
-    func setFolderZeroSortOrder(_ order: CollectionSortOrder) {
-        guard order != folderZeroSortOrder else { return }
-        folderZeroSortOrder = order
-        switch folderZeroItems {
-        case .loaded(let items):
-            folderZeroItems = .loaded(items.reversed())
-        case .refreshing(let items):
-            folderZeroItems = .refreshing(items.reversed())
-        case .idle, .loading, .failed:
-            break
-        }
+    func setFolderZeroSort(_ option: CollectionSortOption) async {
+        guard option != folderZeroSort else { return }
+        folderZeroSort = option
+        await reloadFolderZeroItems()
     }
 
     private func runFolderZeroSync(
@@ -474,7 +467,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private func reloadFolderZeroItems() async {
         do {
             let username = try requireUsername()
-            let items = try await localIndex.allItems(username: username, sortOrder: folderZeroSortOrder)
+            let items = try await localIndex.allItems(username: username, sort: folderZeroSort)
             folderZeroItems = .loaded(items)
         } catch {
             folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)

@@ -10,7 +10,7 @@ protocol CollectionLocalIndexProtocol: Sendable {
     func count(username: String) async throws -> Int
     func hasUnsealedGeneration(username: String) async throws -> Bool
     func lastSyncedAt(username: String) async throws -> Date?
-    func allItems(username: String, sortOrder: CollectionSortOrder) async throws -> [CollectionReleaseItem]
+    func allItems(username: String, sort: CollectionSortOption) async throws -> [CollectionReleaseItem]
     func contains(instanceId: Int, username: String) async throws -> Bool
     func upsertLive(_ item: CollectionReleaseItem, username: String) async throws
     func delete(instanceId: Int, username: String) async throws
@@ -23,7 +23,7 @@ protocol CollectionLocalIndexProtocol: Sendable {
 
 extension CollectionLocalIndexProtocol {
     func allItems(username: String) async throws -> [CollectionReleaseItem] {
-        try await allItems(username: username, sortOrder: .desc)
+        try await allItems(username: username, sort: .newestFirst)
     }
 }
 
@@ -51,8 +51,8 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
         try fetchMetadata(username: username)?.lastSyncedAt
     }
 
-    func allItems(username: String, sortOrder: CollectionSortOrder) throws -> [CollectionReleaseItem] {
-        let records = try modelContext.fetch(fetchDescriptor(username: username, sortOrder: sortOrder))
+    func allItems(username: String, sort: CollectionSortOption) throws -> [CollectionReleaseItem] {
+        let records = try modelContext.fetch(fetchDescriptor(username: username, sort: sort))
         return records.map { $0.toCollectionReleaseItem() }
     }
 
@@ -162,12 +162,21 @@ actor CollectionLocalIndex: CollectionLocalIndexProtocol {
 
     private func fetchDescriptor(
         username: String,
-        sortOrder: CollectionSortOrder
+        sort: CollectionSortOption
     ) -> FetchDescriptor<LocalCollectionItem> {
-        let order: SortOrder = sortOrder == .desc ? .reverse : .forward
+        let order: SortOrder = sort.direction == .desc ? .reverse : .forward
+        let primary: SortDescriptor<LocalCollectionItem> = switch sort.field {
+        case .dateAdded: SortDescriptor(\.dateAddedAt, order: order)
+        case .artist: SortDescriptor(\.artistSortKey, order: order)
+        case .title: SortDescriptor(\.titleSortKey, order: order)
+        }
         return FetchDescriptor<LocalCollectionItem>(
             predicate: #Predicate { $0.username == username },
-            sortBy: [SortDescriptor(\.dateAddedAt, order: order)]
+            sortBy: [
+                primary,
+                SortDescriptor(\.titleSortKey, order: .forward),
+                SortDescriptor(\.instanceId, order: .forward)
+            ]
         )
     }
 

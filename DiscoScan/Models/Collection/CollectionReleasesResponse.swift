@@ -47,3 +47,21 @@ nonisolated enum CollectionSortOrder: String, Hashable, Sendable {
     case asc
     case desc
 }
+
+nonisolated enum FolderZeroSortField: String, Hashable, Sendable, CaseIterable {
+    case dateAdded
+    case artist
+    case title
+}
+
+nonisolated struct CollectionSortOption: Hashable, Sendable {
+    var field: FolderZeroSortField
+    var direction: CollectionSortOrder
+
+    static let newestFirst = CollectionSortOption(field: .dateAdded, direction: .desc)
+    static let oldestFirst = CollectionSortOption(field: .dateAdded, direction: .asc)
+    static let artistAZ = CollectionSortOption(field: .artist, direction: .asc)
+    static let artistZA = CollectionSortOption(field: .artist, direction: .desc)
+    static let titleAZ = CollectionSortOption(field: .title, direction: .asc)
+    static let titleZA = CollectionSortOption(field: .title, direction: .desc)
+}

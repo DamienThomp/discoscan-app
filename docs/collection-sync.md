@@ -162,14 +162,17 @@ Each synced release becomes a denormalized SwiftData row keyed by `(username, in
 | `instanceId`, `releaseId`, `folderId`, `dateAdded` | Discogs collection item |
 | `dateAddedAt` | Parsed `Date` for sort order |
 | `artistName`, `title`, `labelName`, `catno`, `year` | Release basic information |
+| `artistSortKey`, `titleSortKey` | Case- and diacritic-insensitive fold of artist/title for SQLite sort |
 | `searchableText` | Lowercased join of artist, title, label, catno, year |
 | `syncGeneration` | Current sync generation tag |
 
-Indexes: `(username, instanceId)`, `(username, dateAddedAt)`, `(username, syncGeneration)`.
+Indexes: `(username, instanceId)`, `(username, dateAddedAt)`, `(username, syncGeneration)`, `(username, artistSortKey)`, `(username, titleSortKey)`.
 
 ### Display order
 
-[`CollectionLocalIndex`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift) sorts by `dateAddedAt` (default descending, newest first). The All folder **Sort** menu in [`CollectionListView`](../DiscoScan/Features/Collection/Views/CollectionListView.swift) toggles `CollectionStore.folderZeroSortOrder` for the session; changing sort reorders the in-memory list immediately, while reload paths (sync, add, delete, pull-to-refresh) fetch with the current `sortOrder` from the local index. Sync fetches pages with default API sort (artist ascending), but display order comes from the local fetch descriptor.
+[`CollectionLocalIndex`](../DiscoScan/Data/CollectionSync/CollectionLocalIndex.swift) loads folder 0 via a `FetchDescriptor` keyed by `CollectionSortOption` (`field` + `direction`): date added (`dateAddedAt`), artist (`artistSortKey`), or title (`titleSortKey`). Tie-breakers are title ascending, then `instanceId` ascending.
+
+Default is newest first (`.newestFirst`). The All folder **Sort** menu in [`CollectionListView`](../DiscoScan/Features/Collection/Views/CollectionListView.swift) sets `CollectionStore.folderZeroSort` and re-fetches from the local index (`setFolderZeroSort`). Reload paths (sync, add, delete, pull-to-refresh) use the same `folderZeroSort` when calling `allItems`. Sync fetches pages with default API sort (artist ascending), but display order comes from the local fetch descriptor.
 
 ## Local search
 
