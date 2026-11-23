@@ -372,12 +372,11 @@ final class CollectionStore: CollectionStoreProtocol {
         if showsProgressInUI {
             folderZeroRefreshesInFlight += 1
         }
-        defer {
-            if showsProgressInUI {
-                folderZeroRefreshesInFlight -= 1
-            }
-        }
         let finalPhase = await syncService.refresh(username: username, intent: intent)
+        if showsProgressInUI {
+            // Stop applying stream phases before the awaited result; late yields can reorder after `.idle`.
+            folderZeroRefreshesInFlight -= 1
+        }
         await applyFolderZeroSyncResult(
             finalPhase,
             suppressFailureBanner: !showsProgressInUI && folderZeroItems.value != nil

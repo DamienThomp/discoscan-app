@@ -6,7 +6,7 @@
 import Foundation
 import SwiftData
 
-protocol CollectionLocalIndexProtocol: Sendable {
+nonisolated protocol CollectionLocalIndexProtocol: Sendable {
     func count(username: String) async throws -> Int
     func hasUnsealedGeneration(username: String) async throws -> Bool
     func lastSyncedAt(username: String) async throws -> Date?

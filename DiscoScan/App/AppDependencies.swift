@@ -88,7 +88,11 @@ struct AppDependencies {
         let geminiClient = NetworkManagerFactory.makeDefaultClient(
             hostResolver: { _ in baseURLs.gemini }
         )
-        let sleeveIdentifier = GeminiSleeveIdentifier(config: geminiConfig, client: geminiClient)
+        let sleeveIdentifier = SleeveIdentifier(
+            geminiConfig: geminiConfig,
+            geminiClient: geminiClient,
+            onDeviceGenerator: FoundationModelsSleeveGenerator()
+        )
         let appleMusicCatalog = AppleMusicCatalogService()
         let recentSearchPersistence = UserDefaultsRecentSearchPersistence()
 

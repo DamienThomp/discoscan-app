@@ -22,12 +22,12 @@ flowchart TB
     subgraph photoPath [Sleeve photo]
         photoBtn[SearchView Identify from photo]
         sheet[ImageIdentificationSheet]
-        gemini[GeminiSleeveIdentifier via NetworkKit]
+        identify[SleeveIdentifier on-device then Gemini fallback]
         confirm[User confirms fields]
         failed[Capture failed with recovery actions]
-        photoBtn --> sheet --> gemini
-        gemini --> confirm
-        gemini --> failed
+        photoBtn --> sheet --> identify
+        identify --> confirm
+        identify --> failed
         failed --> sheet
     end
 
@@ -97,7 +97,7 @@ Barcode scans do **not** add to recent searches.
 | Phase | UI | Next step |
 | ----- | -- | --------- |
 | `capturing` | Picker controls + tip | User picks library photo or takes camera photo |
-| `analyzing` | Image preview + progress | Gemini identification runs |
+| `analyzing` | Image preview + progress | Identification runs (on-device when available, else Gemini) |
 | `captureFailed` | Image preview (if available) + error + recovery actions | Retry, pick another photo, search manually, or scan barcode |
 | `confirming` | Editable fields or empty-state guidance | User searches Discogs or exits |
 
@@ -106,9 +106,9 @@ Analysis is triggered by an `analysisAttempt` counter (not `imageData` identity)
 ### Identification request
 
 1. Photo from library (`PhotosPicker`) or camera.
-2. [`GeminiSleeveIdentifier`](../DiscoScan/Networking/Gemini/GeminiSleeveIdentifier.swift) (via [`SleeveIdentifierProtocol`](../DiscoScan/Networking/Gemini/SleeveIdentifierProtocol.swift)) downscales the JPEG and sends it through [`GeminiGenerateContentEndpoint`](../DiscoScan/Networking/Endpoints/Gemini/GeminiGenerateContentEndpoint.swift) (NetworkKit).
-3. The response envelope is parsed; inner JSON `{ artist, title, catalogNumber }` becomes `SleeveIdentification`.
-4. Network and parse failures map to provider-neutral [`SleeveIdentificationError`](../DiscoScan/Networking/Gemini/SleeveIdentifierProtocol.swift), then to UI-facing [`ImageIdentificationFailure`](../DiscoScan/Models/Search/ImageIdentificationFailure.swift).
+2. [`SleeveIdentifier`](../DiscoScan/Networking/SleeveIdentification/SleeveIdentifier.swift) (via [`SleeveIdentifierProtocol`](../DiscoScan/Networking/SleeveIdentification/SleeveIdentifierProtocol.swift)) downscales the JPEG, then tries [`FoundationModelsSleeveGenerator`](../DiscoScan/Networking/SleeveIdentification/FoundationModelsSleeveGenerator.swift) when the on-device model is ready. Empty or failed on-device results fall back to [`GeminiGenerateContentEndpoint`](../DiscoScan/Networking/Endpoints/Gemini/GeminiGenerateContentEndpoint.swift) (NetworkKit) without surfacing on-device errors in the UI.
+3. On-device generation returns a typed `SleeveIdentification`; Gemini’s response envelope is parsed and inner JSON `{ artist, title, catalogNumber }` becomes `SleeveIdentification`.
+4. Errors that reach the caller (primarily from Gemini after fallback) map to provider-neutral [`SleeveIdentificationError`](../DiscoScan/Networking/SleeveIdentification/SleeveIdentifierProtocol.swift), then to UI-facing [`ImageIdentificationFailure`](../DiscoScan/Models/Search/ImageIdentificationFailure.swift).
 
 ### Confirm and search
 

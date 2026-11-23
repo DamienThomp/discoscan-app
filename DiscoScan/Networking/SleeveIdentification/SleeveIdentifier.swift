@@ -1,5 +1,5 @@
 //
-//  GeminiSleeveIdentifier.swift
+//  SleeveIdentifier.swift
 //  DiscoScan
 //
 
@@ -7,33 +7,64 @@ import Foundation
 import NetworkKit
 import UIKit
 
-struct GeminiSleeveIdentifier: SleeveIdentifierProtocol {
+struct SleeveIdentifier: SleeveIdentifierProtocol {
     static let prompt = """
     You identify vinyl record sleeves. Extract the artist name, album title, and catalog number \
     if visible. Use null for unknown fields.
     """
 
-    private let config: GeminiConfig
-    private let client: any NetworkManagerProtocol
+    private let geminiConfig: GeminiConfig
+    private let geminiClient: any NetworkManagerProtocol
+    private let onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)?
 
-    init(config: GeminiConfig, client: any NetworkManagerProtocol) {
-        self.config = config
-        self.client = client
+    init(
+        geminiConfig: GeminiConfig,
+        geminiClient: any NetworkManagerProtocol,
+        onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)?
+    ) {
+        self.geminiConfig = geminiConfig
+        self.geminiClient = geminiClient
+        self.onDeviceGenerator = onDeviceGenerator
     }
 
     func identify(jpegData: Data) async throws -> SleeveIdentification {
         let preparedData = Self.downscaledJPEGData(from: jpegData) ?? jpegData
+
+        if let identification = try await identifyOnDevice(jpegData: preparedData) {
+            print("on device model will identify")
+            return identification
+        }
+
+        try Task.checkCancellation()
+        return try await identifyWithGemini(jpegData: preparedData)
+    }
+
+    private func identifyOnDevice(jpegData: Data) async throws -> SleeveIdentification? {
+        guard let onDeviceGenerator, onDeviceGenerator.isReady else {
+            return nil
+        }
+        do {
+            let identification = try await onDeviceGenerator.generate(jpegData: jpegData)
+            return identification.isEmpty ? nil : identification
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
+    }
+
+    private func identifyWithGemini(jpegData: Data) async throws -> SleeveIdentification {
         let endpoint = GeminiGenerateContentEndpoint(
-            config: config,
+            config: geminiConfig,
             requestBody: .sleeveIdentification(
                 prompt: Self.prompt,
-                base64JPEG: preparedData.base64EncodedString()
+                base64JPEG: jpegData.base64EncodedString()
             )
         )
 
         let response: GeminiGenerateContentResponse
         do {
-            response = try await client.request(for: endpoint)
+            response = try await geminiClient.request(for: endpoint)
         } catch NetworkError.taskCancelled {
             throw CancellationError()
         } catch let error as NetworkError {

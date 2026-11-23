@@ -33,7 +33,7 @@ enum CollectionSyncError: LocalizedError, Equatable {
     }
 }
 
-protocol CollectionSyncServiceProtocol: Sendable {
+nonisolated protocol CollectionSyncServiceProtocol: Sendable {
     func progressStream() async -> AsyncStream<CollectionSyncPhase>
     @discardableResult
     func refresh(username: String, intent: CollectionSyncIntent) async -> CollectionSyncPhase
