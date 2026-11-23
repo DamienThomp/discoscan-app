@@ -8,23 +8,24 @@ import MusicKit
 
 nonisolated struct AppleMusicCatalogService: AppleMusicCatalogProtocol {
     func albumURL(for release: ReleaseDetailResponse) async -> URL? {
+        let barcode = ReleaseDetailDisplay.barcode(for: release)
+        let artist = ReleaseDetailDisplay.primaryArtistName(for: release)
+        let title = release.title
+        let year = ReleaseDetailDisplay.displayYear(for: release)
 
         guard await MusicAuthorization.request() == .authorized else {
             return nil
         }
 
-        if let barcode = release.barcode, let url = await lookup(barcode: barcode) {
+        if let barcode, let url = await lookup(barcode: barcode) {
             return url
         }
-
-        let artist = release.primaryArtistName
-        let title = release.title
 
         if let url = await search(term: "\(artist) \(title)") {
             return url
         }
 
-        if let year = release.displayYear {
+        if let year {
             return await search(term: "\(artist) \(title) \(year)")
         }
 
