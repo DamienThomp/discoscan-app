@@ -62,6 +62,32 @@ struct SleeveIdentifierTests {
         #expect(identification.catalogNumber == nil)
     }
 
+    @Test func `Sleeve identification strips placeholder strings from values`() {
+        let identification = SleeveIdentification(
+            artist: "Miles Davis",
+            title: "null",
+            catalogNumber: "UNKNOWN"
+        )
+
+        #expect(identification.artist == "Miles Davis")
+        #expect(identification.title == nil)
+        #expect(identification.catalogNumber == nil)
+        #expect(identification.searchQuery == "Miles Davis")
+    }
+
+    @Test func `Sleeve identification decodes JSON null placeholders as missing fields`() throws {
+        let data = Data(
+            """
+            {"artist":"null","title":"Kind of Blue","catalogNumber":"null"}
+            """.utf8
+        )
+
+        let identification = try JSONDecoder().decode(SleeveIdentification.self, from: data)
+        #expect(identification.artist == nil)
+        #expect(identification.title == "Kind of Blue")
+        #expect(identification.catalogNumber == nil)
+    }
+
     // MARK: - Envelope and request models
 
     @Test func `Response envelope exposes identification JSON`() throws {
@@ -225,6 +251,20 @@ struct SleeveIdentifierTests {
             let stub = StubOnDeviceGenerator(
                 isReady: true,
                 outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
+            )
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            #expect(result.artist == "Miles Davis")
+            #expect(result.title == "Kind of Blue")
+        }
+    }
+
+    @Test func `On-device placeholder-only result falls back to Gemini`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: "null", title: "null", catalogNumber: "null"))
             )
             let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
             #expect(result.artist == "Miles Davis")
