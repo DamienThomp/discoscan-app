@@ -31,6 +31,7 @@ struct SleeveIdentifier: SleeveIdentifierProtocol {
         let preparedData = Self.downscaledJPEGData(from: jpegData) ?? jpegData
 
         if let identification = try await identifyOnDevice(jpegData: preparedData) {
+            print("on device model will identify")
             return identification
         }
 
