@@ -6,30 +6,30 @@
 import Foundation
 
 extension ReleaseDetailResponse {
-    var displayYear: Int? {
+    nonisolated var displayYear: Int? {
         year.displayYear
     }
 
-    var primaryArtistName: String {
+    nonisolated var primaryArtistName: String {
         artists.first?.name ?? "n/a"
     }
 
-    var barcode: String? {
+    nonisolated var barcode: String? {
         identifiers.first(where: { $0.type == "Barcode" })?.value
     }
 
-    var primaryImageURL: URL? {
+    nonisolated var primaryImageURL: URL? {
         images.first(where: { $0.type == "primary" })?.uri ?? thumb
     }
 
-    var formatSummary: String? {
+    nonisolated var formatSummary: String? {
         guard !formats.isEmpty else { return nil }
         return formats.map { format in
             ([format.name] + format.descriptions).joined(separator: ", ")
         }.joined(separator: " / ")
     }
 
-    var labelSummary: String? {
+    nonisolated var labelSummary: String? {
         guard let label = labels.first else { return nil }
         if label.catno.isEmpty {
             return label.name
@@ -37,25 +37,25 @@ extension ReleaseDetailResponse {
         return "\(label.name) — \(label.catno)"
     }
 
-    var genreStyleSummary: String? {
+    nonisolated var genreStyleSummary: String? {
         let tags = genres + styles
         guard !tags.isEmpty else { return nil }
         return tags.joined(separator: ", ")
     }
 
-    var displayReleased: String? {
+    nonisolated var displayReleased: String? {
         releasedFormatted ?? released
     }
 }
 
 extension ReleaseDetailCommunity {
-    var summary: String {
+    nonisolated var summary: String {
         "\(have) have · \(want) want · \(rating.ratingSummary)"
     }
 }
 
 extension ReleaseDetailRating {
-    var ratingSummary: String {
+    nonisolated var ratingSummary: String {
         guard let average else {
             return "\(count) ratings"
         }

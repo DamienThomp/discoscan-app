@@ -1,5 +1,5 @@
 //
-//  GeminiSleeveIdentifierTests.swift
+//  SleeveIdentifierTests.swift
 //  DiscoScanTests
 //
 
@@ -10,7 +10,7 @@ import UIKit
 @testable import DiscoScan
 
 @Suite(.serialized)
-struct GeminiSleeveIdentifierTests {
+struct SleeveIdentifierTests {
     private let config = GeminiConfig(apiKey: "test-api-key", modelName: "gemini-test")
 
     private let successPayload = Data(
@@ -103,7 +103,7 @@ struct GeminiSleeveIdentifierTests {
         #expect(Set(properties.keys) == ["artist", "title", "catalogNumber"])
     }
 
-    // MARK: - End to end
+    // MARK: - Gemini end to end
 
     @Test func `Identify sends generate content request and decodes result`() async throws {
         try await MockURLProtocol.withLockedHandler { request in
@@ -122,7 +122,7 @@ struct GeminiSleeveIdentifierTests {
     }
 
     @Test func `Identify maps 429 to rate limited`() async throws {
-        _ = try await MockURLProtocol.withLockedHandler { request in
+        _ = await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 429, data: Data())
         } performing: {
             await #expect(throws: SleeveIdentificationError.rateLimited) {
@@ -132,7 +132,7 @@ struct GeminiSleeveIdentifierTests {
     }
 
     @Test func `Identify maps 401 to not configured`() async throws {
-        _ = try await MockURLProtocol.withLockedHandler { request in
+        _ = await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 401, data: Data())
         } performing: {
             await #expect(throws: SleeveIdentificationError.notConfigured) {
@@ -142,7 +142,7 @@ struct GeminiSleeveIdentifierTests {
     }
 
     @Test func `Identify maps 503 to service unavailable`() async throws {
-        _ = try await MockURLProtocol.withLockedHandler { request in
+        _ = await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 503, data: Data())
         } performing: {
             await #expect(throws: SleeveIdentificationError.serviceUnavailable) {
@@ -162,7 +162,7 @@ struct GeminiSleeveIdentifierTests {
     }
 
     @Test func `Identify throws unreadable response when candidates are empty`() async throws {
-        _ = try await MockURLProtocol.withLockedHandler { request in
+        _ = await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 200, data: Data(#"{"candidates":[]}"#.utf8))
         } performing: {
             await #expect(throws: SleeveIdentificationError.unreadableResponse) {
@@ -190,7 +190,7 @@ struct GeminiSleeveIdentifierTests {
             """.utf8
         )
 
-        _ = try await MockURLProtocol.withLockedHandler { request in
+        _ = await MockURLProtocol.withLockedHandler { request in
             Self.response(for: request, statusCode: 200, data: malformedPayload)
         } performing: {
             await #expect(throws: SleeveIdentificationError.unreadableResponse) {
@@ -199,14 +199,102 @@ struct GeminiSleeveIdentifierTests {
         }
     }
 
+    // MARK: - On-device fallback
+
+    @Test func `On-device result skips Gemini`() async throws {
+        var geminiCalled = false
+        try await MockURLProtocol.withLockedHandler { request in
+            geminiCalled = true
+            return Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: "Coltrane", title: "A Love Supreme", catalogNumber: nil))
+            )
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            #expect(!geminiCalled)
+            #expect(result.artist == "Coltrane")
+            #expect(result.title == "A Love Supreme")
+        }
+    }
+
+    @Test func `Empty on-device result falls back to Gemini`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
+            )
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            #expect(result.artist == "Miles Davis")
+            #expect(result.title == "Kind of Blue")
+        }
+    }
+
+    @Test func `On-device error falls back to Gemini`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(isReady: true, outcome: .failure(SampleOnDeviceError()))
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            #expect(result.artist == "Miles Davis")
+        }
+    }
+
+    @Test func `Unready on-device generator falls back to Gemini`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: false,
+                outcome: .success(SleeveIdentification(artist: "Ignored", title: nil, catalogNumber: nil))
+            )
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            #expect(result.artist == "Miles Davis")
+        }
+    }
+
+    @Test func `On-device cancellation does not fall back`() async throws {
+        var geminiCalled = false
+        _ = await MockURLProtocol.withLockedHandler { request in
+            geminiCalled = true
+            return Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(isReady: true, outcome: .failure(CancellationError()))
+            await #expect(throws: CancellationError.self) {
+                try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            }
+            #expect(!geminiCalled)
+        }
+    }
+
+    @Test func `Empty on-device result surfaces Gemini error`() async throws {
+        _ = await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 503, data: Data())
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
+            )
+            await #expect(throws: SleeveIdentificationError.serviceUnavailable) {
+                try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            }
+        }
+    }
+
     // MARK: - Helpers
 
-    private func makeIdentifier() -> GeminiSleeveIdentifier {
+    private func makeIdentifier(onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)? = nil) -> SleeveIdentifier {
         let client = NetworkManagerFactory.makeDefaultClient(
             hostResolver: { _ in URL(string: "https://generativelanguage.googleapis.com")! },
             session: MockURLSessionFactory.make()
         )
-        return GeminiSleeveIdentifier(config: config, client: client)
+        return SleeveIdentifier(
+            geminiConfig: config,
+            geminiClient: client,
+            onDeviceGenerator: onDeviceGenerator
+        )
     }
 
     private static func response(for request: URLRequest, statusCode: Int, data: Data) -> (HTTPURLResponse, Data) {
@@ -226,5 +314,26 @@ struct GeminiSleeveIdentifierTests {
             context.fill(CGRect(origin: .zero, size: size))
         }
         return image.jpegData(compressionQuality: 0.85) ?? Data()
+    }
+}
+
+private struct SampleOnDeviceError: Error {}
+
+private struct StubOnDeviceGenerator: OnDeviceSleeveGeneratorProtocol, @unchecked Sendable {
+    enum Outcome: @unchecked Sendable {
+        case success(SleeveIdentification)
+        case failure(any Error)
+    }
+
+    let isReady: Bool
+    let outcome: Outcome
+
+    func generate(jpegData: Data) async throws -> SleeveIdentification {
+        switch outcome {
+        case .success(let identification):
+            return identification
+        case .failure(let error):
+            throw error
+        }
     }
 }

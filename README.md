@@ -10,7 +10,7 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 
 - **Text search** — Search artists, albums, and labels from the system search tab. Recent queries are saved and suggested as you type.
 - **Barcode scanning** — Scan a record's barcode with the device camera. When Discogs returns a single release match, the app opens the release detail automatically.
-- **Sleeve photo identification** — Capture or pick a sleeve photo; Google Gemini extracts artist, title, and catalog number, then runs a Discogs search. Works best with readable text or recognizable artwork.
+- **Sleeve photo identification** — Capture or pick a sleeve photo; on-device Apple Foundation Models extract artist, title, and catalog number when available (iOS 27+ with Apple Intelligence), with Google Gemini as fallback, then a Discogs search. Works best with readable text or recognizable artwork.
 
 ### Library
 
@@ -54,7 +54,8 @@ DiscoScan follows a protocol-oriented MV pattern:
 Key integrations:
 
 - **Discogs API** — OAuth 1.0a, rate-limit handling, collection/wantlist/search/release endpoints
-- **Google Gemini** — Sleeve identification from JPEG photos
+- **Apple Foundation Models** — On-device sleeve identification from JPEG photos (primary on supported devices)
+- **Google Gemini** — Sleeve identification fallback when on-device is unavailable or inconclusive
 - **Apple MusicKit** — Catalog lookup by UPC or artist/title search; deep links to the Music app
 
 ## Documentation
@@ -66,7 +67,7 @@ For business logic and internal data flows, see [docs/README.md](docs/README.md)
 - Xcode with iOS 26.5 SDK
 - iPhone or simulator with camera (for barcode / photo features)
 - Discogs developer account ([register here](https://www.discogs.com/settings/developers))
-- Google Gemini API key (for sleeve photo identification)
+- Google Gemini API key (fallback for sleeve photo identification when on-device identification is unavailable)
 - Apple Developer account with MusicKit enabled for the app’s bundle identifier (for Apple Music catalog lookup)
 
 ## Setup
@@ -127,7 +128,7 @@ DiscoScan/
 │   ├── Search/       # Search, barcode, image identification
 │   └── WantList/     # Want list
 ├── Models/           # Decodable domain types
-├── Networking/       # Endpoints, interceptors, Gemini client, Apple Music catalog
+├── Networking/       # Endpoints, interceptors, sleeve identification, Apple Music catalog
 └── Views/            # Shared UI across features
     ├── AsyncState/   # ResourceContainerView, loading/error/empty states
     ├── Brand/        # BrandDiscIcon
@@ -145,7 +146,7 @@ The project uses [Swift Testing](https://developer.apple.com/documentation/testi
 xcodebuild test -scheme DiscoScan -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
-Test coverage includes stores (collection, want list, release, search, profile), collection sync and local index behavior, OAuth, caching, rate limiting, search endpoints, and Gemini sleeve identification.
+Test coverage includes stores (collection, want list, release, search, profile), collection sync and local index behavior, OAuth, caching, rate limiting, search endpoints, and sleeve identification (on-device fallback and Gemini).
 
 ## Permissions
 

@@ -6,7 +6,7 @@
 import Foundation
 import MusicKit
 
-struct AppleMusicCatalogService: AppleMusicCatalogProtocol {
+nonisolated struct AppleMusicCatalogService: AppleMusicCatalogProtocol {
     func albumURL(for release: ReleaseDetailResponse) async -> URL? {
 
         guard await MusicAuthorization.request() == .authorized else {

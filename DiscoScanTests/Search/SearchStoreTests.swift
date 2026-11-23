@@ -35,7 +35,7 @@ struct SearchStoreTests {
     @Test func searchFailsSetsFailedState() async {
         let fetcher = MockSearchCachedFetcher()
         fetcher.shouldFail = true
-        let (store, _) = makeSearchStore(fetcher: fetcher)
+        let (store, _, _) = makeSearchStore(fetcher: fetcher)
 
         await store.search(.text(query: "test"))
 
@@ -48,7 +48,7 @@ struct SearchStoreTests {
 
     @Test func searchRefreshFailurePreservesStaleResults() async {
         let fetcher = MockSearchCachedFetcher()
-        let (store, _) = makeSearchStore(fetcher: fetcher)
+        let (store, _, _) = makeSearchStore(fetcher: fetcher)
         let context = SearchContext.text(query: "Nirvana")
 
         await store.search(context)
@@ -70,7 +70,7 @@ struct SearchStoreTests {
     }
 
     @Test func `recordRecentQuery prepends and dedupes case insensitively`() {
-        let (store, persistence) = makeSearchStore()
+        let (store, _, persistence) = makeSearchStore()
         store.recordRecentQuery("Kind of Blue")
         store.recordRecentQuery("Bitches Brew")
         store.recordRecentQuery("kind of blue")
@@ -80,13 +80,13 @@ struct SearchStoreTests {
     }
 
     @Test func `recordRecentQuery ignores empty query`() {
-        let (store, _) = makeSearchStore()
+        let (store, _, _) = makeSearchStore()
         store.recordRecentQuery("   ")
         #expect(store.recentQueries.isEmpty)
     }
 
     @Test func `removeRecentQuery deletes case insensitively`() {
-        let (store, persistence) = makeSearchStore()
+        let (store, _, persistence) = makeSearchStore()
         store.recordRecentQuery("Kind of Blue")
         store.recordRecentQuery("Bitches Brew")
         store.removeRecentQuery("kind of blue")
@@ -96,7 +96,7 @@ struct SearchStoreTests {
     }
 
     @Test func `clearRecentQueries removes all`() {
-        let (store, persistence) = makeSearchStore()
+        let (store, _, persistence) = makeSearchStore()
         store.recordRecentQuery("Kind of Blue")
         store.clearRecentQueries()
 
@@ -105,7 +105,7 @@ struct SearchStoreTests {
     }
 
     @Test func `recordRecentQuery truncates at ten`() {
-        let (store, persistence) = makeSearchStore()
+        let (store, _, persistence) = makeSearchStore()
         for index in 0..<12 {
             store.recordRecentQuery("Query \(index)")
         }
@@ -123,7 +123,7 @@ struct SearchStoreTests {
     }
 
     @Test func `removeRecentQueries batch deletes multiple with one save`() {
-        let (store, persistence) = makeSearchStore()
+        let (store, _, persistence) = makeSearchStore()
         store.recordRecentQuery("A")
         store.recordRecentQuery("B")
         store.recordRecentQuery("C")

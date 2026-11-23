@@ -13,6 +13,6 @@ enum SleeveIdentificationError: Error, Equatable {
     case unreadableResponse
 }
 
-protocol SleeveIdentifierProtocol: Sendable {
+nonisolated protocol SleeveIdentifierProtocol: Sendable {
     func identify(jpegData: Data) async throws -> SleeveIdentification
 }

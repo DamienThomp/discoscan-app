@@ -29,7 +29,7 @@ enum TokenStoreError: Error, LocalizedError {
     }
 }
 
-protocol TokenStoreProtocol: Sendable {
+nonisolated protocol TokenStoreProtocol: Sendable {
     func load() async throws -> OAuthTokens
     func save(_ tokens: OAuthTokens) async throws
     func clear() async throws

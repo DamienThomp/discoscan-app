@@ -5,12 +5,12 @@
 
 import Foundation
 
-protocol RecentSearchPersistence: Sendable {
+nonisolated protocol RecentSearchPersistence: Sendable {
     func load() -> [String]
     func save(_ queries: [String])
 }
 
-struct UserDefaultsRecentSearchPersistence: RecentSearchPersistence {
+nonisolated struct UserDefaultsRecentSearchPersistence: RecentSearchPersistence, @unchecked Sendable {
     private static let key = "recentSearchQueries"
 
     private let defaults: UserDefaults

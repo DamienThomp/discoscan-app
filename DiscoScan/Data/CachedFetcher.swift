@@ -6,7 +6,7 @@
 import Foundation
 import NetworkKit
 
-protocol CachedFetcherProtocol: Sendable {
+nonisolated protocol CachedFetcherProtocol: Sendable {
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
         key: String,
