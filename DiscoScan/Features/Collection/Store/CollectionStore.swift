@@ -18,6 +18,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private(set) var folderZeroItems: ResourceState<[CollectionReleaseItem]> = .idle
     private(set) var folderZeroSort: CollectionSortOption = .newestFirst
     private(set) var isMutating = false
+    private var mutationCount = 0
     private(set) var lastMutationError: String?
 
     private var username: String?
@@ -27,6 +28,7 @@ final class CollectionStore: CollectionStoreProtocol {
     private var authTransitionTask: Task<Void, Never>?
     private var folderZeroRefreshesInFlight = 0
     private var folderZeroBackgroundTask: Task<Void, Never>?
+    private var releasesFetchGeneration = 0
 
     private static let logger = Logger(subsystem: "com.discoscan", category: "CollectionStore")
 
@@ -94,8 +96,10 @@ final class CollectionStore: CollectionStoreProtocol {
         folderZeroSync = .idle
         paginationByFolderID = [:]
         isLoadingMoreByFolderID = [:]
+        mutationCount = 0
         isMutating = false
         lastMutationError = nil
+        releasesFetchGeneration = 0
     }
 
     func canLoadMore(folderId: Int) -> Bool {
@@ -116,6 +120,7 @@ final class CollectionStore: CollectionStoreProtocol {
                 scope: .collection,
                 forceRefresh: forceRefresh
             )
+            guard self.username == username else { return }
 
             folders = .loaded(response.folders)
         } catch {
@@ -144,6 +149,7 @@ final class CollectionStore: CollectionStoreProtocol {
 
         do {
             let username = try requireUsername()
+            let generation = page > 1 ? releasesFetchGeneration : 0
 
             if page == 1 {
                 releasesByFolderID[folderId] = (releasesByFolderID[folderId] ?? .idle).beginRefresh()
@@ -155,6 +161,8 @@ final class CollectionStore: CollectionStoreProtocol {
                 scope: .collection,
                 forceRefresh: forceRefresh
             )
+            guard self.username == username else { return }
+            if page > 1, generation != releasesFetchGeneration { return }
 
             paginationByFolderID[folderId] = response.pagination
 
@@ -177,6 +185,7 @@ final class CollectionStore: CollectionStoreProtocol {
             return
         }
 
+        releasesFetchGeneration += 1
         await cachedFetcher.invalidateKeys(matchingPrefix: Self.releasesCachePrefix(folderId: folderId))
         isLoadingMoreByFolderID.removeValue(forKey: folderId)
         await loadReleases(folderId: folderId, page: 1, forceRefresh: true)
@@ -302,6 +311,7 @@ final class CollectionStore: CollectionStoreProtocol {
             }
 
             let localCount = try await localIndex.count(username: username)
+            guard self.username == username else { return }
             if localCount == .zero {
                 switch folderZeroItems {
                 case .idle, .loaded([]):
@@ -341,6 +351,7 @@ final class CollectionStore: CollectionStoreProtocol {
                 intent: intent,
                 showsProgressInUI: forceRefresh
             )
+            guard self.username == username else { return }
             await loadFolders(forceRefresh: forceRefresh)
         } catch {
             folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)
@@ -393,14 +404,16 @@ final class CollectionStore: CollectionStoreProtocol {
             return
         }
 
-        folderZeroBackgroundTask = Task { [weak self] in
-            guard let self else { return }
-            await runFolderZeroSync(
+        folderZeroBackgroundTask = Task {
+            await self.runFolderZeroSync(
                 username: username,
                 intent: .automatic,
                 showsProgressInUI: false
             )
-            await loadFolders(forceRefresh: false)
+            await self.loadFolders(forceRefresh: false)
+            if !Task.isCancelled {
+                self.folderZeroBackgroundTask = nil
+            }
         }
     }
 
@@ -413,11 +426,10 @@ final class CollectionStore: CollectionStoreProtocol {
     }
 
     private func subscribeToSyncProgress() {
-        progressTask = Task { [weak self] in
-            guard let self else { return }
+        progressTask = Task { [weak self, syncService] in
             let stream = await syncService.progressStream()
             for await phase in stream {
-                guard !Task.isCancelled else { return }
+                guard let self, !Task.isCancelled else { return }
                 // Stream delivery lags the awaited result; phases arriving after it would overwrite the final state.
                 guard username != nil, folderZeroRefreshesInFlight > 0 else { continue }
                 folderZeroSync = phase
@@ -467,6 +479,7 @@ final class CollectionStore: CollectionStoreProtocol {
         do {
             let username = try requireUsername()
             let items = try await localIndex.allItems(username: username, sort: folderZeroSort)
+            guard self.username == username else { return }
             folderZeroItems = .loaded(items)
         } catch {
             folderZeroItems = folderZeroItems.recoverFromFetchFailure(error.localizedDescription)
@@ -556,9 +569,13 @@ final class CollectionStore: CollectionStoreProtocol {
     }
 
     private func performMutation(_ operation: () async throws -> Void) async {
+        mutationCount += 1
         isMutating = true
         lastMutationError = nil
-        defer { isMutating = false }
+        defer {
+            mutationCount -= 1
+            isMutating = mutationCount > 0
+        }
 
         do {
             try await operation()

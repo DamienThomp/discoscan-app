@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum ProfileFixtures {
+nonisolated enum ProfileFixtures {
     static let sample = DiscogsUserProfile(
         username: "preview",
         name: "Preview User",

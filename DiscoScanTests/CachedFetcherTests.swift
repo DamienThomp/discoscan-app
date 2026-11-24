@@ -234,6 +234,31 @@ struct CachedFetcherTests {
         #expect(try await storage.entry(for: "collectionFolders") != nil)
     }
 
+    @Test func `Clear all during fetch does not write stale payload`() async throws {
+        let tokenStore = InMemoryTokenStore()
+        try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
+        let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
+
+        try await MockURLProtocol.withLockedHandler { request in
+            Thread.sleep(forTimeInterval: 0.15)
+            return self.identityResponse(for: request)
+        } performing: {
+            let fetcher = try makeCachedFetcher(tokenStore: tokenStore, storage: storage)
+
+            async let pending: DiscogsIdentity = fetcher.fetch(
+                IdentityEndpoint(),
+                key: "identity",
+                scope: .identity,
+                forceRefresh: true
+            )
+            try await Task.sleep(nanoseconds: 10_000_000)
+            await fetcher.clearAll()
+            _ = try? await pending
+
+            #expect(try await storage.entry(for: "identity") == nil)
+        }
+    }
+
     @Test func rateLimit429FallsBackToStaleCache() async throws {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))

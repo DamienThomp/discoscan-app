@@ -15,7 +15,7 @@ nonisolated struct OAuthRequestTokens: Sendable, Equatable {
     let tokenSecret: String
 }
 
-enum TokenStoreError: Error, LocalizedError {
+nonisolated enum TokenStoreError: Error, LocalizedError {
     case notFound
     case keychainError(OSStatus)
 

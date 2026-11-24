@@ -6,7 +6,7 @@
 import Foundation
 import Observation
 
-enum ResourceState<T: Equatable & Sendable>: Equatable, Sendable {
+nonisolated enum ResourceState<T: Equatable & Sendable>: Equatable, Sendable {
     case idle
     case loading
     case refreshing(T)

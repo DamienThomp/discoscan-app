@@ -131,6 +131,20 @@ struct SleeveIdentifierTests {
 
     // MARK: - Gemini end to end
 
+    @MainActor
+    @Test func `Identify succeeds when called from main actor`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
+            )
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            #expect(result.artist == "Miles Davis")
+        }
+    }
+
     @Test func `Identify sends generate content request and decodes result`() async throws {
         try await MockURLProtocol.withLockedHandler { request in
             #expect(request.httpMethod == "POST")

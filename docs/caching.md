@@ -101,7 +101,7 @@ Stores call prefix invalidation on pull-to-refresh for paginated data, then refe
 
 ## Logout and cache clearing
 
-[`AuthSession.logout()`](../DiscoScan/Auth/AuthSession.swift) calls `cacheStorage.clearAll()`, wiping all `CachedRecord` entries. User-scoped stores reset in-memory state via `sync(with:)`. The collection local index is cleared separately by `CollectionStore` on logout or user switch.
+[`AuthSession.logout()`](../DiscoScan/Auth/AuthSession.swift) calls `cachedFetcher.clearAll()`, wiping all `CachedRecord` entries and cancelling in-flight cache writes. User-scoped stores reset in-memory state via `sync(with:)`. The collection local index is cleared separately by `CollectionStore` on logout or user switch.
 
 See [auth.md](auth.md) for the full logout cascade.
 

@@ -7,7 +7,7 @@ import Foundation
 import NetworkKit
 @testable import DiscoScan
 
-enum ProfileTestFixtures {
+nonisolated enum ProfileTestFixtures {
     static let sampleProfile = ProfileFixtures.sample
 }
 
@@ -49,4 +49,6 @@ final class MockProfileCachedFetcher: CachedFetcherProtocol, @unchecked Sendable
     func invalidate(key: String) async {}
 
     func invalidateKeys(matchingPrefix prefix: String) async {}
+
+    func clearAll() async {}
 }

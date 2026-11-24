@@ -343,6 +343,37 @@ struct CollectionSyncServiceTests {
         #expect(phases.contains(.idle))
     }
 
+    @Test func `User initiated refresh after automatic in-flight runs a second sync`() async throws {
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.delayNanoseconds = 200_000_000
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        let (service, index) = try makeService(apiClient: apiClient)
+
+        let automaticTask = Task {
+            await service.refresh(username: username, intent: .automatic)
+        }
+        try await Task.sleep(nanoseconds: 25_000_000)
+        _ = await service.refresh(username: username, intent: .userInitiated)
+        _ = await automaticTask.value
+
+        #expect(apiClient.requestCount >= 2)
+        #expect(try await index.count(username: username) == 1)
+    }
+
+    @Test func `Refresh after previous completes starts a new sync`() async throws {
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        let (service, _) = try makeService(apiClient: apiClient)
+
+        _ = await service.refresh(username: username, intent: .automatic)
+        let requestsAfterFirst = apiClient.requestCount
+        _ = await service.refresh(username: username, intent: .automatic)
+
+        #expect(apiClient.requestCount > requestsAfterFirst)
+    }
+
     @Test func `User initiated matching counts includes progress phases`() async throws {
         let apiClient = MockCollectionNetworkClient()
         apiClient.folderZeroRemoteCount = 1

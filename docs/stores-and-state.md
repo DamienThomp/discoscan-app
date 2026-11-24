@@ -98,7 +98,7 @@ User-scoped stores implement `sync(with: AuthSession.State)`:
 
 **CollectionStore** additionally clears the local SwiftData collection index when the user logs out or switches accounts.
 
-**SearchStore** is intentionally **not** reset on auth change. Search results are keyed by query context; logout clears the API cache globally via `AuthSession.logout()` → `cacheStorage.clearAll()`.
+**SearchStore** is intentionally **not** reset on auth change. Search results are keyed by query context; logout clears the API cache globally via `AuthSession.logout()` → `cachedFetcher.clearAll()`.
 
 ### App wiring
 

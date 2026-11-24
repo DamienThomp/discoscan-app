@@ -39,7 +39,6 @@ func previewAuthSession() -> AuthSession {
     return AuthSession(
         oauthService: oauthService,
         cachedFetcher: cachedFetcher,
-        cacheStorage: storage,
         tokenStore: tokenStore
     )
 }

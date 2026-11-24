@@ -131,16 +131,13 @@ nonisolated enum CollectionSortKey {
 }
 
 nonisolated enum CollectionDateParsing {
-    private static let formatters: [ISO8601DateFormatter] = {
+    static func dateAdded(from string: String) -> Date {
         let withFraction = ISO8601DateFormatter()
         withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let standard = ISO8601DateFormatter()
         standard.formatOptions = [.withInternetDateTime]
-        return [withFraction, standard]
-    }()
 
-    static func dateAdded(from string: String) -> Date {
-        for formatter in formatters {
+        for formatter in [withFraction, standard] {
             if let date = formatter.date(from: string) {
                 return date
             }

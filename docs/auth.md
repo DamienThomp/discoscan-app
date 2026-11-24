@@ -75,7 +75,7 @@ User dismisses the error via `dismissError()` → `.unauthenticated`.
 flowchart TD
     logout[AuthSession.logout]
     keychain[Clear Keychain tokens]
-    cache[cacheStorage.clearAll]
+    cache[cachedFetcher.clearAll]
     state[state = unauthenticated]
     storeSync[Store sync with newState]
     collectionReset[CollectionStore reset + clear local index]
@@ -94,7 +94,7 @@ flowchart TD
 `logout()` steps:
 
 1. Clear Keychain tokens.
-2. `cacheStorage.clearAll()` — wipes all `CachedRecord` API cache entries.
+2. `cachedFetcher.clearAll()` — wipes all `CachedRecord` API cache entries and cancels in-flight cache writes.
 3. Set `.unauthenticated`.
 
 Downstream effects:

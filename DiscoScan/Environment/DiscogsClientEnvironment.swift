@@ -30,6 +30,10 @@ private actor UnimplementedCachedFetcher: CachedFetcherProtocol {
     func invalidateKeys(matchingPrefix prefix: String) async {
         fatalError("cachedFetcher environment value was not injected.")
     }
+
+    func clearAll() async {
+        fatalError("cachedFetcher environment value was not injected.")
+    }
 }
 
 private let unimplementedCachedFetcher = UnimplementedCachedFetcher()

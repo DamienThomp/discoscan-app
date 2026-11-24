@@ -7,7 +7,7 @@ import Foundation
 import os
 import SwiftData
 
-enum ModelContainerFactory {
+nonisolated enum ModelContainerFactory {
     /// Bump when SwiftData models change; mismatched stores are wiped and rebuilt on next launch.
     static let schemaVersion = 2
 
