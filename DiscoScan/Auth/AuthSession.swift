@@ -28,18 +28,15 @@ final class AuthSession {
 
     private let oauthService: DiscogsOAuthService
     private let cachedFetcher: any CachedFetcherProtocol
-    private let cacheStorage: SwiftDataCacheStorage
     private let tokenStore: TokenStoreProtocol
 
     init(
         oauthService: DiscogsOAuthService,
         cachedFetcher: any CachedFetcherProtocol,
-        cacheStorage: SwiftDataCacheStorage,
         tokenStore: TokenStoreProtocol
     ) {
         self.oauthService = oauthService
         self.cachedFetcher = cachedFetcher
-        self.cacheStorage = cacheStorage
         self.tokenStore = tokenStore
     }
 
@@ -47,7 +44,6 @@ final class AuthSession {
         self.init(
             oauthService: dependencies.oauthService,
             cachedFetcher: dependencies.cachedFetcher,
-            cacheStorage: dependencies.cacheStorage,
             tokenStore: dependencies.tokenStore
         )
     }
@@ -103,7 +99,7 @@ final class AuthSession {
 
     func logout() async {
         try? await tokenStore.clear()
-        try? await cacheStorage.clearAll()
+        await cachedFetcher.clearAll()
         state = .unauthenticated
     }
 
@@ -130,7 +126,7 @@ final class AuthSession {
         } catch let error as NetworkError {
             if case .serverError(let statusCode, _, _) = error, statusCode == 401 {
                 try? await tokenStore.clear()
-                try? await cacheStorage.clearAll()
+                await cachedFetcher.clearAll()
                 throw error
             }
             throw error

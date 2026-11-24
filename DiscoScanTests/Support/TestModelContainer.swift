@@ -6,7 +6,7 @@
 import SwiftData
 @testable import DiscoScan
 
-enum TestModelContainer {
+nonisolated enum TestModelContainer {
     static func make() throws -> ModelContainer {
         ModelContainerFactory.makeInMemoryContainer()
     }

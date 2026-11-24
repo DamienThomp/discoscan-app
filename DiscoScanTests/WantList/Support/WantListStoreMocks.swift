@@ -56,6 +56,8 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
     func invalidateKeys(matchingPrefix prefix: String) async {
         lastInvalidatedPrefix = prefix
     }
+
+    func clearAll() async {}
 }
 
 final class MockWantListNetworkClient: NetworkManagerProtocol, @unchecked Sendable {

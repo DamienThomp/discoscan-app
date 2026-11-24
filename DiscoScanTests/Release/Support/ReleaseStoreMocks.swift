@@ -128,4 +128,6 @@ final class MockReleaseCachedFetcher: CachedFetcherProtocol, @unchecked Sendable
     func invalidate(key: String) async {}
 
     func invalidateKeys(matchingPrefix prefix: String) async {}
+
+    func clearAll() async {}
 }

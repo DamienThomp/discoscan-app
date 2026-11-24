@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum SleeveIdentificationError: Error, Equatable {
+nonisolated enum SleeveIdentificationError: Error, Equatable {
     case rateLimited
     case offline
     case serviceUnavailable

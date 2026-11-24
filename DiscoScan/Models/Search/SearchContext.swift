@@ -5,13 +5,13 @@
 
 import Foundation
 
-enum SearchContext: Hashable, Sendable {
+nonisolated enum SearchContext: Hashable, Sendable {
     case text(query: String)
     case barcode(code: String)
     case imageSuggested(query: String)
 }
 
-extension SearchContext {
+nonisolated extension SearchContext {
 
     var endpoint: SearchEndpoint {
         switch self {

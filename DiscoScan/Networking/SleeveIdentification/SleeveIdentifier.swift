@@ -28,14 +28,14 @@ struct SleeveIdentifier: SleeveIdentifierProtocol {
     }
 
     func identify(jpegData: Data) async throws -> SleeveIdentification {
-        let preparedData = Self.downscaledJPEGData(from: jpegData) ?? jpegData
+        let preparedData = await Self.preparedJPEGData(from: jpegData)
 
         if let identification = try await identifyOnDevice(jpegData: preparedData) {
-            print("on device model will identify")
             return identification
         }
 
         try Task.checkCancellation()
+
         return try await identifyWithGemini(jpegData: preparedData)
     }
 
@@ -54,11 +54,12 @@ struct SleeveIdentifier: SleeveIdentifierProtocol {
     }
 
     private func identifyWithGemini(jpegData: Data) async throws -> SleeveIdentification {
+        let base64JPEG = await Self.base64EncodedJPEG(jpegData)
         let endpoint = GeminiGenerateContentEndpoint(
             config: geminiConfig,
             requestBody: .sleeveIdentification(
                 prompt: Self.prompt,
-                base64JPEG: jpegData.base64EncodedString()
+                base64JPEG: base64JPEG
             )
         )
 
@@ -107,6 +108,16 @@ struct SleeveIdentifier: SleeveIdentifierProtocol {
         } catch {
             throw SleeveIdentificationError.unreadableResponse
         }
+    }
+
+    @concurrent
+    private static func preparedJPEGData(from data: Data) async -> Data {
+        downscaledJPEGData(from: data) ?? data
+    }
+
+    @concurrent
+    private static func base64EncodedJPEG(_ data: Data) async -> String {
+        data.base64EncodedString()
     }
 
     private static func downscaledJPEGData(from data: Data, maxDimension: CGFloat = 1024) -> Data? {

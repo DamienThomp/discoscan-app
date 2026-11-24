@@ -68,6 +68,8 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
     func invalidateKeys(matchingPrefix prefix: String) async {
         lastInvalidatedPrefix = prefix
     }
+
+    func clearAll() async {}
 }
 
 final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Sendable {

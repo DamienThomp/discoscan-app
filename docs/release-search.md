@@ -142,7 +142,7 @@ Photo searches do **not** add to recent searches.
 | Loading | `beginRefresh()` → `.loading` or `.refreshing(stale)` |
 | Failure | `recoverFromFetchFailure` — refresh failure preserves stale results |
 
-SearchStore is not auth-scoped. Logout clears cached search results via global `cacheStorage.clearAll()`.
+SearchStore is not auth-scoped. Logout clears cached search results via `cachedFetcher.clearAll()`.
 
 ## Caching
 

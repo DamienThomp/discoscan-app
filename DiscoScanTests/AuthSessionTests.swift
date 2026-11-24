@@ -118,7 +118,6 @@ struct AuthSessionTests {
         return AuthSession(
             oauthService: oauthService,
             cachedFetcher: cachedFetcher,
-            cacheStorage: storage,
             tokenStore: tokenStore
         )
     }

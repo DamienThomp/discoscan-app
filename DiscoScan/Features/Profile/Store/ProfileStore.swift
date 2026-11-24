@@ -48,6 +48,7 @@ final class ProfileStore: ProfileStoreProtocol {
                 scope: .profile,
                 forceRefresh: forceRefresh
             )
+            guard self.username == username else { return }
 
             profile = .loaded(response)
         } catch {

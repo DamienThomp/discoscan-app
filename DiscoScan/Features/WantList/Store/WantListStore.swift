@@ -14,12 +14,14 @@ final class WantListStore: WantListStoreProtocol {
 
     private(set) var wants: ResourceState<[WantListItem]> = .idle
     private(set) var isMutating = false
+    private var mutationCount = 0
     private(set) var lastMutationError: String?
     private(set) var wantsNeedsReconcile = false
 
     private var username: String?
     private var pagination: SearchPagination?
     private var isLoadingMore = false
+    private var wantsFetchGeneration = 0
 
     private let cachedFetcher: any CachedFetcherProtocol
     private let apiClient: NetworkManagerProtocol
@@ -50,9 +52,11 @@ final class WantListStore: WantListStoreProtocol {
         wants = .idle
         pagination = nil
         isLoadingMore = false
+        mutationCount = 0
         isMutating = false
         lastMutationError = nil
         wantsNeedsReconcile = false
+        wantsFetchGeneration = 0
     }
 
     func canLoadMore() -> Bool {
@@ -65,6 +69,7 @@ final class WantListStore: WantListStoreProtocol {
     func loadWants(page: Int = 1, forceRefresh: Bool = false) async {
         do {
             let username = try requireUsername()
+            let generation = page > 1 ? wantsFetchGeneration : 0
 
             if page == 1 {
                 wants = wants.beginRefresh()
@@ -76,6 +81,8 @@ final class WantListStore: WantListStoreProtocol {
                 scope: .wantlist,
                 forceRefresh: forceRefresh
             )
+            guard self.username == username else { return }
+            if page > 1, generation != wantsFetchGeneration { return }
 
             pagination = response.pagination
 
@@ -92,6 +99,7 @@ final class WantListStore: WantListStoreProtocol {
     }
 
     func refreshWants() async {
+        wantsFetchGeneration += 1
         await cachedFetcher.invalidateKeys(matchingPrefix: Self.wantsCachePrefix)
         isLoadingMore = false
         await loadWants(page: 1, forceRefresh: true)
@@ -171,9 +179,13 @@ final class WantListStore: WantListStoreProtocol {
     }
 
     private func performMutation(_ operation: () async throws -> Void) async {
+        mutationCount += 1
         isMutating = true
         lastMutationError = nil
-        defer { isMutating = false }
+        defer {
+            mutationCount -= 1
+            isMutating = mutationCount > 0
+        }
 
         do {
             try await operation()

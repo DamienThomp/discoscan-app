@@ -64,6 +64,21 @@ struct CollectionStoreTests {
         #expect(fetcher.lastFetch?.key == "collectionFolders")
     }
 
+    @Test func `Load folders ignores stale result after logout`() async throws {
+        let fetcher = MockCollectionCachedFetcher()
+        fetcher.delayNanoseconds = 200_000_000
+        let apiClient = MockCollectionNetworkClient()
+        let store = try CollectionStoreTestSupport.makeStore(fetcher: fetcher, apiClient: apiClient)
+
+        store.sync(with: .authenticated(identity))
+        async let loadTask: Void = store.loadFolders()
+        try await Task.sleep(for: .milliseconds(50))
+        store.sync(with: .unauthenticated)
+        await loadTask
+
+        #expect(store.folders == .idle)
+    }
+
     @Test func `Load folders fails when not authenticated`() async throws {
         let fetcher = MockCollectionCachedFetcher()
         let apiClient = MockCollectionNetworkClient()
@@ -857,6 +872,39 @@ struct CollectionStoreTests {
         try await Task.sleep(for: .milliseconds(300))
 
         #expect(store.folderZeroSync == .idle)
+    }
+
+    @Test func `Background folder zero sync can run again after the first finishes`() async throws {
+        let container = try TestModelContainer.make()
+        let realIndex = CollectionLocalIndex(modelContainer: container)
+        let fetcher = MockCollectionCachedFetcher()
+        let apiClient = MockCollectionNetworkClient()
+        apiClient.folderZeroRemoteCount = 1
+        let store = try CollectionStoreTestSupport.makeStore(
+            fetcher: fetcher,
+            apiClient: apiClient,
+            localIndex: realIndex
+        )
+
+        try await realIndex.upsertLive(CollectionFixtures.sampleReleases[0], username: identity.username)
+        let generation = try await realIndex.beginSyncGeneration(username: identity.username)
+        try await realIndex.upsertSynced(
+            [CollectionFixtures.sampleReleases[0]],
+            username: identity.username,
+            generation: generation
+        )
+        _ = try await realIndex.sweep(username: identity.username, keeping: generation)
+
+        store.sync(with: .authenticated(identity))
+        await store.ensureFolderZeroIndexReady()
+        try await Task.sleep(for: .milliseconds(400))
+
+        let requestsAfterFirstBackgroundSync = apiClient.requestCount
+
+        await store.loadReleases(folderId: .zero)
+        try await Task.sleep(for: .milliseconds(400))
+
+        #expect(apiClient.requestCount > requestsAfterFirstBackgroundSync)
     }
 
     @Test func `Local items load when network is unavailable`() async throws {

@@ -22,15 +22,24 @@ nonisolated protocol CachedFetcherProtocol: Sendable {
     func invalidate(key: String) async
 
     func invalidateKeys(matchingPrefix prefix: String) async
+
+    func clearAll() async
 }
 
 actor CachedFetcher: CachedFetcherProtocol {
+    private struct InflightEntry {
+        let id: UUID
+        let task: Task<Data, Error>
+    }
+
     private let apiClient: NetworkManagerProtocol
     private let storage: SwiftDataCacheStorage
     private let rateLimitTracker: RateLimitTracker
     private let decoder: JSONDecoder
     private let now: @Sendable () -> Date
-    private var inflight: [String: Task<Data, Error>] = [:]
+    private var inflight: [String: InflightEntry] = [:]
+    private var cacheGeneration = 0
+    private var keyEpoch: [String: Int] = [:]
 
     init(
         apiClient: NetworkManagerProtocol,
@@ -84,13 +93,33 @@ actor CachedFetcher: CachedFetcherProtocol {
     }
 
     func invalidate(key: String) async {
+        keyEpoch[key, default: 0] += 1
+        if let entry = inflight.removeValue(forKey: key) {
+            entry.task.cancel()
+        }
         try? await storage.removeEntry(for: key)
-        inflight.removeValue(forKey: key)
     }
 
     func invalidateKeys(matchingPrefix prefix: String) async {
+        for key in inflight.keys where key.hasPrefix(prefix) {
+            keyEpoch[key, default: 0] += 1
+        }
+        for key in inflight.keys.filter({ $0.hasPrefix(prefix) }) {
+            if let entry = inflight.removeValue(forKey: key) {
+                entry.task.cancel()
+            }
+        }
         try? await storage.removeEntries(matchingPrefix: prefix)
-        inflight.keys.filter { $0.hasPrefix(prefix) }.forEach { inflight.removeValue(forKey: $0) }
+    }
+
+    func clearAll() async {
+        cacheGeneration += 1
+        for entry in inflight.values {
+            entry.task.cancel()
+        }
+        inflight.removeAll()
+        keyEpoch.removeAll()
+        try? await storage.clearAll()
     }
 
     private func fetchData<E: EndpointProtocol>(
@@ -98,10 +127,12 @@ actor CachedFetcher: CachedFetcherProtocol {
         key: String,
         scope: CacheScope
     ) async throws -> Data {
-        if let existingTask = inflight[key] {
-            return try await existingTask.value
+        if let existing = inflight[key] {
+            return try await existing.task.value
         }
 
+        let requestID = UUID()
+        // Unstructured task: shared in-flight work is not cancelled when a single caller's task is cancelled.
         let task = Task<Data, Error> {
             try await self.performNetworkFetch(
                 endpoint,
@@ -109,10 +140,13 @@ actor CachedFetcher: CachedFetcherProtocol {
                 scope: scope
             )
         }
-        inflight[key] = task
+        let entry = InflightEntry(id: requestID, task: task)
+        inflight[key] = entry
 
         defer {
-            inflight.removeValue(forKey: key)
+            if inflight[key]?.id == requestID {
+                inflight.removeValue(forKey: key)
+            }
         }
 
         return try await task.value
@@ -123,8 +157,14 @@ actor CachedFetcher: CachedFetcherProtocol {
         key: String,
         scope: CacheScope
     ) async throws -> Data {
+        let startedGeneration = cacheGeneration
+        let startedKeyEpoch = keyEpoch[key] ?? 0
+
         do {
             let response = try await apiClient.responseData(for: endpoint)
+            guard cacheGeneration == startedGeneration, (keyEpoch[key] ?? 0) == startedKeyEpoch else {
+                return response.value
+            }
             try await storage.store(
                 response.value,
                 key: key,

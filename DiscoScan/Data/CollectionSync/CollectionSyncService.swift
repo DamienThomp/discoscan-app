@@ -13,7 +13,7 @@ enum CollectionSyncPhase: Equatable, Sendable {
     case failed(String)
 }
 
-enum CollectionSyncError: LocalizedError, Equatable {
+nonisolated enum CollectionSyncError: LocalizedError, Equatable {
     case allFolderNotFound
     case paginationFailed(page: Int, message: String)
     case indexWriteFailed(message: String)
@@ -42,14 +42,19 @@ nonisolated protocol CollectionSyncServiceProtocol: Sendable {
 
 /// Syncs the Discogs folder id `.zero` ("All") into the local SwiftData collection index.
 actor CollectionSyncService: CollectionSyncServiceProtocol {
+    private struct InFlightRefresh {
+        let id: UUID
+        let task: Task<CollectionSyncPhase, Never>
+        let intent: CollectionSyncIntent
+        var progressVisibility: SyncProgressVisibility
+    }
+
     private let index: any CollectionLocalIndexProtocol
     private let apiClient: NetworkManagerProtocol
     private let staleAfter: TimeInterval
     private let now: @Sendable () -> Date
-    private var inFlightRefreshByUsername: [String: Task<CollectionSyncPhase, Never>] = [:]
-    private var inFlightIntentByUsername: [String: CollectionSyncIntent] = [:]
+    private var inFlightRefreshByUsername: [String: InFlightRefresh] = [:]
     private var progressContinuations: [UUID: AsyncStream<CollectionSyncPhase>.Continuation] = [:]
-    private var activeProgressVisibility: SyncProgressVisibility = .showProgress
 
     init(
         index: any CollectionLocalIndexProtocol,
@@ -74,31 +79,53 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
     }
 
     func refresh(username: String, intent: CollectionSyncIntent) async -> CollectionSyncPhase {
-        if let inFlightRefresh = inFlightRefreshByUsername[username] {
-            let coalescedIntent = inFlightIntentByUsername[username]
-            let phase = await inFlightRefresh.value
-            if intent == .userInitiated, coalescedIntent != .userInitiated {
+        if let inFlight = inFlightRefreshByUsername[username] {
+            let phase = await inFlight.task.value
+            if intent == .userInitiated, inFlight.intent != .userInitiated {
                 return await refresh(username: username, intent: intent)
             }
             return phase
         }
 
-        inFlightIntentByUsername[username] = intent
-        let task = Task { await self.performRefresh(username: username, intent: intent) }
-        inFlightRefreshByUsername[username] = task
-        let phase = await task.value
-        inFlightRefreshByUsername.removeValue(forKey: username)
-        inFlightIntentByUsername.removeValue(forKey: username)
-        return phase
+        let refreshID = UUID()
+        // Unstructured task: coalesced callers share this work; not cancelled when a waiter’s outer task is cancelled.
+        let task = Task { await self.runRefresh(username: username, intent: intent, refreshID: refreshID) }
+        inFlightRefreshByUsername[username] = InFlightRefresh(
+            id: refreshID,
+            task: task,
+            intent: intent,
+            progressVisibility: .showProgress
+        )
+        return await task.value
     }
 
     func cancel(username: String) async {
-        guard let task = inFlightRefreshByUsername[username] else { return }
-        task.cancel()
-        _ = await task.value
+        guard let inFlight = inFlightRefreshByUsername[username] else { return }
+        inFlight.task.cancel()
+        _ = await inFlight.task.value
     }
 
-    private func performRefresh(username: String, intent: CollectionSyncIntent) async -> CollectionSyncPhase {
+    private func runRefresh(
+        username: String,
+        intent: CollectionSyncIntent,
+        refreshID: UUID
+    ) async -> CollectionSyncPhase {
+        let phase = await performRefresh(username: username, intent: intent, refreshID: refreshID)
+        finishRefresh(username: username, id: refreshID)
+        return phase
+    }
+
+    private func finishRefresh(username: String, id: UUID) {
+        if inFlightRefreshByUsername[username]?.id == id {
+            inFlightRefreshByUsername.removeValue(forKey: username)
+        }
+    }
+
+    private func performRefresh(
+        username: String,
+        intent: CollectionSyncIntent,
+        refreshID: UUID
+    ) async -> CollectionSyncPhase {
         do {
             let foldersResponse = try await apiClient.request(
                 for: CollectionFoldersEndpoint(userName: username)
@@ -123,12 +150,12 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
 
             switch action {
             case .skip:
-                emit(.idle)
+                emit(.idle, username: username)
                 return .idle
             case .fullSync(let visibility):
-                activeProgressVisibility = visibility
+                setProgressVisibility(visibility, username: username, refreshID: refreshID)
                 if visibility == .showProgress {
-                    emit(.checking)
+                    emit(.checking, username: username)
                 }
 
                 let generation = try await index.beginSyncGeneration(username: username)
@@ -143,21 +170,31 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
                 }
 
                 _ = try await index.sweep(username: username, keeping: generation)
-                emit(.idle)
+                emit(.idle, username: username)
                 return .idle
             }
         } catch is CancellationError {
-            emit(.idle)
+            emit(.idle, username: username)
             return .idle
         } catch {
             if Task.isCancelled {
-                emit(.idle)
+                emit(.idle, username: username)
                 return .idle
             }
             let phase = CollectionSyncPhase.failed(error.localizedDescription)
-            emit(phase)
+            emit(phase, username: username)
             return phase
         }
+    }
+
+    private func setProgressVisibility(
+        _ visibility: SyncProgressVisibility,
+        username: String,
+        refreshID: UUID
+    ) {
+        guard var inFlight = inFlightRefreshByUsername[username], inFlight.id == refreshID else { return }
+        inFlight.progressVisibility = visibility
+        inFlightRefreshByUsername[username] = inFlight
     }
 
     private func isIndexStale(lastSyncedAt: Date?) -> Bool {
@@ -198,7 +235,7 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
                 }
 
                 synced += response.releases.count
-                emit(.syncing(synced: min(synced, remoteTotal), total: remoteTotal))
+                emit(.syncing(synced: min(synced, remoteTotal), total: remoteTotal), username: username)
 
                 guard page < response.pagination.pages else { break }
                 page += 1
@@ -218,10 +255,10 @@ actor CollectionSyncService: CollectionSyncServiceProtocol {
         return (synced, expectedItems ?? remoteTotal)
     }
 
-    private func emit(_ phase: CollectionSyncPhase) {
+    private func emit(_ phase: CollectionSyncPhase, username: String) {
         switch phase {
         case .checking, .syncing:
-            guard activeProgressVisibility == .showProgress else { return }
+            guard inFlightRefreshByUsername[username]?.progressVisibility == .showProgress else { return }
         case .idle, .failed:
             break
         }
