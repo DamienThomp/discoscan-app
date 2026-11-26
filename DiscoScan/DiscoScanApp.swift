@@ -20,6 +20,7 @@ struct DiscoScanApp: App {
     private let cachedFetcher: any CachedFetcherProtocol
     private let sleeveIdentifier: any SleeveIdentifierProtocol
     private let geminiCredentialsStore: any GeminiCredentialsStoreProtocol
+    private let geminiCredentialsVerifier: any GeminiCredentialsVerifying
     private let appleMusicCatalog: any AppleMusicCatalogProtocol
 
     init() {
@@ -27,6 +28,7 @@ struct DiscoScanApp: App {
         cachedFetcher = dependencies.cachedFetcher
         sleeveIdentifier = dependencies.sleeveIdentifier
         geminiCredentialsStore = dependencies.geminiCredentialsStore
+        geminiCredentialsVerifier = dependencies.geminiCredentialsVerifier
         appleMusicCatalog = dependencies.appleMusicCatalog
         _authSession = State(initialValue: AuthSession(dependencies: dependencies))
         _collectionStore = State(initialValue: CollectionStore(dependencies: dependencies))
@@ -50,6 +52,7 @@ struct DiscoScanApp: App {
                 .environment(\.cachedFetcher, cachedFetcher)
                 .environment(\.sleeveIdentifier, sleeveIdentifier)
                 .environment(\.geminiCredentialsStore, geminiCredentialsStore)
+                .environment(\.geminiCredentialsVerifier, geminiCredentialsVerifier)
                 .environment(\.appleMusicCatalog, appleMusicCatalog)
                 .task {
                     await authSession.bootstrap()

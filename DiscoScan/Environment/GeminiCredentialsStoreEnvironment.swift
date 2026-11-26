@@ -23,8 +23,24 @@ private struct UnimplementedGeminiCredentialsStore: GeminiCredentialsStoreProtoc
     }
 }
 
+private struct UnimplementedGeminiCredentialsVerifier: GeminiCredentialsVerifying {
+    func verify(_ config: GeminiConfig) async throws -> GeminiCredentialsVerification {
+        fatalError("geminiCredentialsVerifier environment value was not injected.")
+    }
+}
+
 private let unimplementedGeminiCredentialsStore = UnimplementedGeminiCredentialsStore()
+private let unimplementedGeminiCredentialsVerifier = UnimplementedGeminiCredentialsVerifier()
 
 extension EnvironmentValues {
     @Entry var geminiCredentialsStore: any GeminiCredentialsStoreProtocol = unimplementedGeminiCredentialsStore
+    @Entry var geminiCredentialsVerifier: any GeminiCredentialsVerifying = unimplementedGeminiCredentialsVerifier
 }
+
+#if DEBUG
+struct PreviewGeminiCredentialsVerifier: GeminiCredentialsVerifying {
+    func verify(_ config: GeminiConfig) async throws -> GeminiCredentialsVerification {
+        .valid
+    }
+}
+#endif

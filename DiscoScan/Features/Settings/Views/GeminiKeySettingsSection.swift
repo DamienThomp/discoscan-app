@@ -9,6 +9,7 @@ struct GeminiKeySettingsSection: View {
     @Binding var apiKey: String
     @Binding var modelName: String
     let modelPlaceholder: String
+    let isVerifying: Bool
     let onSave: () -> Void
     let onClear: () -> Void
 
@@ -22,7 +23,9 @@ struct GeminiKeySettingsSection: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Save", action: onSave)
+                .disabled(isVerifying)
             Button("Clear", role: .destructive, action: onClear)
+                .disabled(isVerifying)
         } header: {
             Text("Gemini key")
         } footer: {

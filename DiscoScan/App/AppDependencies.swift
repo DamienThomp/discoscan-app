@@ -20,6 +20,7 @@ struct AppDependencies {
     let collectionSyncService: CollectionSyncService
     let cachedFetcher: CachedFetcher
     let sleeveIdentifier: any SleeveIdentifierProtocol
+    let geminiCredentialsVerifier: any GeminiCredentialsVerifying
     let appleMusicCatalog: AppleMusicCatalogService
     let recentSearchPersistence: any RecentSearchPersistence
 
@@ -93,6 +94,7 @@ struct AppDependencies {
             geminiClient: geminiClient,
             onDeviceGenerator: FoundationModelsSleeveGenerator()
         )
+        let geminiCredentialsVerifier = GeminiCredentialsVerifier(client: geminiClient)
         let appleMusicCatalog = AppleMusicCatalogService()
         let recentSearchPersistence = UserDefaultsRecentSearchPersistence()
 
@@ -109,6 +111,7 @@ struct AppDependencies {
             collectionSyncService: collectionSyncService,
             cachedFetcher: cachedFetcher,
             sleeveIdentifier: sleeveIdentifier,
+            geminiCredentialsVerifier: geminiCredentialsVerifier,
             appleMusicCatalog: appleMusicCatalog,
             recentSearchPersistence: recentSearchPersistence
         )
