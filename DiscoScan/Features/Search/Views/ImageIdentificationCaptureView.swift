@@ -13,6 +13,7 @@ struct ImageIdentificationCaptureView: View {
 
     let phase: ImageIdentificationPhase
     let imageData: Data?
+    let identificationEngine: SleeveIdentificationEngine
     let onRetry: () -> Void
     let onSearchManually: () -> Void
     let onScanBarcode: () -> Void
@@ -147,6 +148,8 @@ struct ImageIdentificationCaptureView: View {
     @ViewBuilder
     private func imagePickerControls(libraryLabel: String, libraryIsPrimary: Bool) -> some View {
         VStack(spacing: AppSpacing.section) {
+            SecondaryFootnoteText(text: identificationEngine.captureCaption)
+
             if libraryIsPrimary {
                 PhotosPicker(
                     selection: $selectedPhotoItem,
@@ -186,6 +189,7 @@ struct ImageIdentificationCaptureView: View {
         isShowingCamera: .constant(false),
         phase: .capturing,
         imageData: nil,
+        identificationEngine: .onDevice,
         onRetry: {},
         onSearchManually: {},
         onScanBarcode: {}
@@ -198,6 +202,7 @@ struct ImageIdentificationCaptureView: View {
         isShowingCamera: .constant(false),
         phase: .analyzing,
         imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        identificationEngine: .onDevice,
         onRetry: {},
         onSearchManually: {},
         onScanBarcode: {}
@@ -210,6 +215,7 @@ struct ImageIdentificationCaptureView: View {
         isShowingCamera: .constant(false),
         phase: .captureFailed(.identification(.offline)),
         imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        identificationEngine: .cloud,
         onRetry: {},
         onSearchManually: {},
         onScanBarcode: {}
@@ -222,6 +228,7 @@ struct ImageIdentificationCaptureView: View {
         isShowingCamera: .constant(false),
         phase: .captureFailed(.identification(.rateLimited)),
         imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        identificationEngine: .cloud,
         onRetry: {},
         onSearchManually: {},
         onScanBarcode: {}
@@ -234,6 +241,7 @@ struct ImageIdentificationCaptureView: View {
         isShowingCamera: .constant(false),
         phase: .captureFailed(.photoUnavailable),
         imageData: nil,
+        identificationEngine: .onDevice,
         onRetry: {},
         onSearchManually: {},
         onScanBarcode: {}
@@ -246,6 +254,7 @@ struct ImageIdentificationCaptureView: View {
         isShowingCamera: .constant(false),
         phase: .captureFailed(.identification(.notConfigured)),
         imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
+        identificationEngine: .onDevice,
         onRetry: {},
         onSearchManually: {},
         onScanBarcode: {}

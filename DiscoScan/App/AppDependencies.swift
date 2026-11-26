@@ -9,7 +9,7 @@ import SwiftData
 
 struct AppDependencies {
     let config: DiscogsConfig
-    let geminiConfig: GeminiConfig
+    let geminiCredentialsStore: any GeminiCredentialsStoreProtocol
     let baseURLs: APIBaseURLs
     let tokenStore: TokenStoreProtocol
     let handshakeClient: NetworkManagerProtocol
@@ -20,13 +20,14 @@ struct AppDependencies {
     let collectionSyncService: CollectionSyncService
     let cachedFetcher: CachedFetcher
     let sleeveIdentifier: any SleeveIdentifierProtocol
+    let geminiCredentialsVerifier: any GeminiCredentialsVerifying
     let appleMusicCatalog: AppleMusicCatalogService
     let recentSearchPersistence: any RecentSearchPersistence
 
     @MainActor
     static func make() -> AppDependencies {
         let config = DiscogsConfig.fromBundle()
-        let geminiConfig = GeminiConfig.fromBundle()
+        let geminiCredentialsStore = KeychainGeminiCredentialsStore()
         let baseURLs = APIBaseURLs.fromBundle()
         let tokenStore = KeychainTokenStore()
 
@@ -89,16 +90,17 @@ struct AppDependencies {
             hostResolver: { _ in baseURLs.gemini }
         )
         let sleeveIdentifier = SleeveIdentifier(
-            geminiConfig: geminiConfig,
+            credentialsStore: geminiCredentialsStore,
             geminiClient: geminiClient,
             onDeviceGenerator: FoundationModelsSleeveGenerator()
         )
+        let geminiCredentialsVerifier = GeminiCredentialsVerifier(client: geminiClient)
         let appleMusicCatalog = AppleMusicCatalogService()
         let recentSearchPersistence = UserDefaultsRecentSearchPersistence()
 
         return AppDependencies(
             config: config,
-            geminiConfig: geminiConfig,
+            geminiCredentialsStore: geminiCredentialsStore,
             baseURLs: baseURLs,
             tokenStore: tokenStore,
             handshakeClient: handshakeClient,
@@ -109,6 +111,7 @@ struct AppDependencies {
             collectionSyncService: collectionSyncService,
             cachedFetcher: cachedFetcher,
             sleeveIdentifier: sleeveIdentifier,
+            geminiCredentialsVerifier: geminiCredentialsVerifier,
             appleMusicCatalog: appleMusicCatalog,
             recentSearchPersistence: recentSearchPersistence
         )

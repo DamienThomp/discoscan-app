@@ -29,22 +29,29 @@ final class AuthSession {
     private let oauthService: DiscogsOAuthService
     private let cachedFetcher: any CachedFetcherProtocol
     private let tokenStore: TokenStoreProtocol
+    private let geminiCredentialsStore: any GeminiCredentialsStoreProtocol
+    private let settingsDefaults: UserDefaults
 
     init(
         oauthService: DiscogsOAuthService,
         cachedFetcher: any CachedFetcherProtocol,
-        tokenStore: TokenStoreProtocol
+        tokenStore: TokenStoreProtocol,
+        geminiCredentialsStore: any GeminiCredentialsStoreProtocol,
+        settingsDefaults: UserDefaults = .standard
     ) {
         self.oauthService = oauthService
         self.cachedFetcher = cachedFetcher
         self.tokenStore = tokenStore
+        self.geminiCredentialsStore = geminiCredentialsStore
+        self.settingsDefaults = settingsDefaults
     }
 
     convenience init(dependencies: AppDependencies) {
         self.init(
             oauthService: dependencies.oauthService,
             cachedFetcher: dependencies.cachedFetcher,
-            tokenStore: dependencies.tokenStore
+            tokenStore: dependencies.tokenStore,
+            geminiCredentialsStore: dependencies.geminiCredentialsStore
         )
     }
 
@@ -99,6 +106,8 @@ final class AuthSession {
 
     func logout() async {
         try? await tokenStore.clear()
+        try? await geminiCredentialsStore.clear()
+        SleeveIdentificationEngine.clearStoredPreference(in: settingsDefaults)
         await cachedFetcher.clearAll()
         state = .unauthenticated
     }

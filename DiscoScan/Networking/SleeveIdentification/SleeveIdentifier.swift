@@ -13,30 +13,37 @@ struct SleeveIdentifier: SleeveIdentifierProtocol {
     if visible. Use null for unknown fields.
     """
 
-    private let geminiConfig: GeminiConfig
+    private let credentialsStore: any GeminiCredentialsStoreProtocol
     private let geminiClient: any NetworkManagerProtocol
     private let onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)?
 
     init(
-        geminiConfig: GeminiConfig,
+        credentialsStore: any GeminiCredentialsStoreProtocol,
         geminiClient: any NetworkManagerProtocol,
         onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)?
     ) {
-        self.geminiConfig = geminiConfig
+        self.credentialsStore = credentialsStore
         self.geminiClient = geminiClient
         self.onDeviceGenerator = onDeviceGenerator
     }
 
-    func identify(jpegData: Data) async throws -> SleeveIdentification {
+    var isOnDeviceAvailable: Bool {
+        onDeviceGenerator?.isReady ?? false
+    }
+
+    func identify(jpegData: Data, engine: SleeveIdentificationEngine) async throws -> SleeveIdentification {
         let preparedData = await Self.preparedJPEGData(from: jpegData)
 
-        if let identification = try await identifyOnDevice(jpegData: preparedData) {
-            return identification
+        switch engine {
+        case .onDevice:
+            if let identification = try await identifyOnDevice(jpegData: preparedData) {
+                return identification
+            }
+            try Task.checkCancellation()
+            return try await identifyWithGemini(jpegData: preparedData)
+        case .cloud:
+            return try await identifyWithGemini(jpegData: preparedData)
         }
-
-        try Task.checkCancellation()
-
-        return try await identifyWithGemini(jpegData: preparedData)
     }
 
     private func identifyOnDevice(jpegData: Data) async throws -> SleeveIdentification? {
@@ -54,6 +61,10 @@ struct SleeveIdentifier: SleeveIdentifierProtocol {
     }
 
     private func identifyWithGemini(jpegData: Data) async throws -> SleeveIdentification {
+        guard let geminiConfig = await credentialsStore.resolvedConfig() else {
+            throw SleeveIdentificationError.notConfigured
+        }
+
         let base64JPEG = await Self.base64EncodedJPEG(jpegData)
         let endpoint = GeminiGenerateContentEndpoint(
             config: geminiConfig,

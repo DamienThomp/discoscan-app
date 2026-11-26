@@ -9,6 +9,7 @@ import SwiftUI
 struct ImageIdentificationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.sleeveIdentifier) private var sleeveIdentifier
+    @Environment(\.geminiCredentialsStore) private var credentialsStore
 
     @Binding var searchText: String
 
@@ -20,6 +21,8 @@ struct ImageIdentificationSheet: View {
     @State private var imageData: Data?
     @State private var isShowingCamera = false
     @State private var analysisAttempt = 0
+    @State private var hasCloudConfig = false
+    @AppStorage(SleeveIdentificationEngine.storageKey) private var preferredEngine: SleeveIdentificationEngine = .onDevice
 
     var body: some View {
         NavigationStack {
@@ -31,6 +34,7 @@ struct ImageIdentificationSheet: View {
                         isShowingCamera: $isShowingCamera,
                         phase: phase,
                         imageData: imageData,
+                        identificationEngine: effectiveEngine,
                         onRetry: retryAnalysis,
                         onSearchManually: {
                             searchText = draft.searchQuery
@@ -65,6 +69,9 @@ struct ImageIdentificationSheet: View {
             .task(id: analysisAttempt) {
                 await runAnalysis()
             }
+            .task {
+                hasCloudConfig = await credentialsStore.resolvedConfig() != nil
+            }
             .fullScreenCover(isPresented: $isShowingCamera) {
                 ImagePickerCameraView { data in
                     isShowingCamera = false
@@ -88,6 +95,13 @@ struct ImageIdentificationSheet: View {
 
     private var feedbackPhase: ImageIdentificationFeedbackPhase {
         phase.feedbackPhase
+    }
+
+    private var effectiveEngine: SleeveIdentificationEngine {
+        preferredEngine.effectiveEngine(
+            isOnDeviceAvailable: sleeveIdentifier.isOnDeviceAvailable,
+            hasCloudConfig: hasCloudConfig
+        )
     }
 
     private func beginAnalysis(with data: Data) {
@@ -151,8 +165,15 @@ struct ImageIdentificationSheet: View {
     private func runAnalysis() async {
         guard analysisAttempt > 0, let imageData else { return }
 
+        let cloudIsConfigured = await credentialsStore.resolvedConfig() != nil
+        hasCloudConfig = cloudIsConfigured
+        let engine = preferredEngine.effectiveEngine(
+            isOnDeviceAvailable: sleeveIdentifier.isOnDeviceAvailable,
+            hasCloudConfig: cloudIsConfigured
+        )
+
         do {
-            let result = try await sleeveIdentifier.identify(jpegData: imageData)
+            let result = try await sleeveIdentifier.identify(jpegData: imageData, engine: engine)
             guard !Task.isCancelled else { return }
             completeAnalysis(with: result)
         } catch is CancellationError {
@@ -168,6 +189,7 @@ struct ImageIdentificationSheet: View {
 #Preview("Capturing") {
     ImageIdentificationSheet(searchText: .constant("")) { _ in }
         .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
+        .environment(\.geminiCredentialsStore, InMemoryGeminiCredentialsStore())
 }
 
 #Preview("Confirming") {

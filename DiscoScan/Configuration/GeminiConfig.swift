@@ -5,25 +5,34 @@
 
 import Foundation
 
-nonisolated struct GeminiConfig: Sendable {
+nonisolated struct GeminiConfig: Sendable, Equatable {
     let apiKey: String
     let modelName: String
 
-    static func fromBundle() -> GeminiConfig {
+    static func fromBundleIfPresent(bundle: Bundle = .main) -> GeminiConfig? {
         guard
-            let apiKey = Bundle.main.object(forInfoDictionaryKey: "GEMINIApiKey") as? String,
-            !apiKey.isEmpty,
-            let modelName = Bundle.main.object(forInfoDictionaryKey: "GEMINIModel") as? String,
-            !modelName.isEmpty
+            let apiKey = trimmed(bundle.object(forInfoDictionaryKey: "GEMINIApiKey") as? String),
+            let modelName = trimmed(bundle.object(forInfoDictionaryKey: "GEMINIModel") as? String)
         else {
-            fatalError(
-                """
-                Missing Gemini configuration. Copy Configuration/Secrets.xcconfig.example to \
-                Configuration/Secrets.xcconfig and set GEMINI_API_KEY and GEMINI_MODEL.
-                """
-            )
+            return nil
         }
 
         return GeminiConfig(apiKey: apiKey, modelName: modelName)
+    }
+
+    static func resolve(saved: GeminiCredentials?, bundle: GeminiConfig?) -> GeminiConfig? {
+        if let apiKey = trimmed(saved?.apiKey) {
+            let modelName = trimmed(saved?.modelName) ?? bundle?.modelName ?? SleeveIdentificationEngine.defaultModelName
+            return GeminiConfig(apiKey: apiKey, modelName: modelName)
+        }
+
+        return bundle
+    }
+
+    private static func trimmed(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return trimmed
     }
 }

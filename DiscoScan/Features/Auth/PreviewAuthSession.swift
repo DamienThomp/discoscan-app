@@ -39,7 +39,8 @@ func previewAuthSession() -> AuthSession {
     return AuthSession(
         oauthService: oauthService,
         cachedFetcher: cachedFetcher,
-        tokenStore: tokenStore
+        tokenStore: tokenStore,
+        geminiCredentialsStore: InMemoryGeminiCredentialsStore()
     )
 }
 
