@@ -18,12 +18,17 @@ struct MyProfileView: View {
         }
         .navigationTitle("Profile")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 Button("Log Out", role: .destructive) {
                     Task {
                         await authSession.logout()
                     }
                 }
+
+                NavigationLink(value: AppRoute.settings) {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Settings")
             }
         }
         .task {
@@ -39,11 +44,13 @@ struct MyProfileView: View {
 
 #if DEBUG
 #Preview("Loaded") {
-    NavigationStack {
+    AppRouteNavigationStack(path: .constant(NavigationPath())) {
         MyProfileView()
     }
     .environment(\.profileStore, previewProfileStore(.loaded))
     .environment(previewAuthenticatedAuthSession())
+    .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
+    .environment(\.geminiCredentialsStore, InMemoryGeminiCredentialsStore())
 }
 
 #Preview("Failed") {
@@ -52,6 +59,8 @@ struct MyProfileView: View {
     }
     .environment(\.profileStore, previewProfileStore(.failed("Could not load profile.")))
     .environment(previewAuthenticatedAuthSession())
+    .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
+    .environment(\.geminiCredentialsStore, InMemoryGeminiCredentialsStore())
 }
 
 #Preview("Loading") {
@@ -60,5 +69,7 @@ struct MyProfileView: View {
     }
     .environment(\.profileStore, previewProfileStore(.loading))
     .environment(previewAuthenticatedAuthSession())
+    .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
+    .environment(\.geminiCredentialsStore, InMemoryGeminiCredentialsStore())
 }
 #endif

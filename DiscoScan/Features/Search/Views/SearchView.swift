@@ -95,6 +95,7 @@ struct SearchView: View {
             .environment(AppRouter())
             .environment(\.searchStore, previewSearchStore(.loaded(context: .text(query: "Kind of Blue"))))
             .environment(\.sleeveIdentifier, PreviewSleeveIdentifier())
+            .environment(\.geminiCredentialsStore, InMemoryGeminiCredentialsStore())
     }
 }
 #endif

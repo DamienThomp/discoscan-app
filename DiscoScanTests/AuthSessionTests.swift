@@ -78,7 +78,34 @@ struct AuthSessionTests {
         }
     }
 
-    private func makeAuthSession(tokenStore: InMemoryTokenStore) -> AuthSession {
+    @Test func logoutClearsIdentificationSettings() async throws {
+        let tokenStore = InMemoryTokenStore()
+        try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
+        let credentialsStore = InMemoryGeminiCredentialsStore(
+            saved: GeminiCredentials(apiKey: "user-key", modelName: "gemini-test")
+        )
+        let suiteName = "DiscoScanAuthLogout-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.set(SleeveIdentificationEngine.cloud.rawValue, forKey: SleeveIdentificationEngine.storageKey)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let session = makeAuthSession(
+            tokenStore: tokenStore,
+            credentialsStore: credentialsStore,
+            settingsDefaults: defaults
+        )
+        await session.logout()
+
+        let saved = await credentialsStore.load()
+        #expect(saved == nil)
+        #expect(defaults.string(forKey: SleeveIdentificationEngine.storageKey) == nil)
+    }
+
+    private func makeAuthSession(
+        tokenStore: InMemoryTokenStore,
+        credentialsStore: InMemoryGeminiCredentialsStore = InMemoryGeminiCredentialsStore(),
+        settingsDefaults: UserDefaults = .standard
+    ) -> AuthSession {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
@@ -118,7 +145,9 @@ struct AuthSessionTests {
         return AuthSession(
             oauthService: oauthService,
             cachedFetcher: cachedFetcher,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            geminiCredentialsStore: credentialsStore,
+            settingsDefaults: settingsDefaults
         )
     }
 }

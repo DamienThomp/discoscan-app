@@ -6,7 +6,9 @@
 import SwiftUI
 
 private struct UnimplementedSleeveIdentifier: SleeveIdentifierProtocol {
-    func identify(jpegData: Data) async throws -> SleeveIdentification {
+    var isOnDeviceAvailable: Bool { false }
+
+    func identify(jpegData: Data, engine: SleeveIdentificationEngine) async throws -> SleeveIdentification {
         fatalError("sleeveIdentifier environment value was not injected.")
     }
 }
@@ -19,7 +21,9 @@ extension EnvironmentValues {
 
 #if DEBUG
 struct PreviewSleeveIdentifier: SleeveIdentifierProtocol {
-    func identify(jpegData: Data) async throws -> SleeveIdentification {
+    var isOnDeviceAvailable = true
+
+    func identify(jpegData: Data, engine: SleeveIdentificationEngine) async throws -> SleeveIdentification {
         SleeveIdentification(
             artist: "Miles Davis",
             title: "Kind of Blue",

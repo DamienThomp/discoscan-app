@@ -21,7 +21,7 @@ struct ImageIdentificationFailureTests {
         let failure = ImageIdentificationFailure.identification(.notConfigured)
 
         #expect(failure.title == "Couldn't analyze this photo")
-        #expect(failure.message == "Photo identification isn't available right now.")
+        #expect(failure.message == "Add a Gemini API key in Settings to identify this photo.")
         #expect(failure.isRetryable == false)
         #expect(failure.isNotConfigured == true)
     }

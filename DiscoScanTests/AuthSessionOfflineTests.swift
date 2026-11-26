@@ -72,7 +72,20 @@ struct AuthSessionOfflineTests {
             )!
             return (response, Data())
         } performing: {
-            let session = makeAuthSession(tokenStore: tokenStore, storage: storage)
+            let credentialsStore = InMemoryGeminiCredentialsStore(
+                saved: GeminiCredentials(apiKey: "user-key", modelName: "gemini-test")
+            )
+            let suiteName = "DiscoScanAuthUnauthorized-\(UUID().uuidString)"
+            let defaults = try #require(UserDefaults(suiteName: suiteName))
+            defaults.set(SleeveIdentificationEngine.cloud.rawValue, forKey: SleeveIdentificationEngine.storageKey)
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+
+            let session = makeAuthSession(
+                tokenStore: tokenStore,
+                storage: storage,
+                credentialsStore: credentialsStore,
+                settingsDefaults: defaults
+            )
             await session.bootstrap()
 
             #expect(session.state == .unauthenticated)
@@ -86,6 +99,10 @@ struct AuthSessionOfflineTests {
 
             let cachedEntry = try await storage.entry(for: AuthSession.identityCacheKey)
             #expect(cachedEntry == nil)
+
+            let savedCredentials = await credentialsStore.load()
+            #expect(savedCredentials?.apiKey == "user-key")
+            #expect(defaults.string(forKey: SleeveIdentificationEngine.storageKey) == SleeveIdentificationEngine.cloud.rawValue)
         }
     }
 
@@ -110,7 +127,9 @@ struct AuthSessionOfflineTests {
 
     private func makeAuthSession(
         tokenStore: InMemoryTokenStore,
-        storage: SwiftDataCacheStorage
+        storage: SwiftDataCacheStorage,
+        credentialsStore: InMemoryGeminiCredentialsStore = InMemoryGeminiCredentialsStore(),
+        settingsDefaults: UserDefaults = .standard
     ) -> AuthSession {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -150,7 +169,9 @@ struct AuthSessionOfflineTests {
         return AuthSession(
             oauthService: oauthService,
             cachedFetcher: cachedFetcher,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            geminiCredentialsStore: credentialsStore,
+            settingsDefaults: settingsDefaults
         )
     }
 }

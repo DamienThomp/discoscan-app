@@ -14,5 +14,6 @@ nonisolated enum SleeveIdentificationError: Error, Equatable {
 }
 
 nonisolated protocol SleeveIdentifierProtocol: Sendable {
-    func identify(jpegData: Data) async throws -> SleeveIdentification
+    var isOnDeviceAvailable: Bool { get }
+    func identify(jpegData: Data, engine: SleeveIdentificationEngine) async throws -> SleeveIdentification
 }

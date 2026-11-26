@@ -40,7 +40,7 @@ nonisolated enum ImageIdentificationFailure: Equatable {
         case .identification(.unreadableResponse):
             "Couldn't read the result."
         case .identification(.notConfigured):
-            "Photo identification isn't available right now."
+            "Add a Gemini API key in Settings to identify this photo."
         case .unknown:
             "Something went wrong. Try again or choose another photo."
         }

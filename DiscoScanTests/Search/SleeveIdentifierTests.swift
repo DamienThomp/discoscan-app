@@ -140,7 +140,7 @@ struct SleeveIdentifierTests: Sendable {
                 isReady: true,
                 outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
             )
-            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             #expect(result.artist == "Miles Davis")
         }
     }
@@ -153,7 +153,7 @@ struct SleeveIdentifierTests: Sendable {
             #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
             return Self.response(for: request, statusCode: 200, data: self.successPayload)
         } performing: {
-            let result = try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
 
             #expect(result.artist == "Miles Davis")
             #expect(result.title == "Kind of Blue")
@@ -166,7 +166,7 @@ struct SleeveIdentifierTests: Sendable {
             Self.response(for: request, statusCode: 429, data: Data())
         } performing: {
             await #expect(throws: SleeveIdentificationError.rateLimited) {
-                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
@@ -176,7 +176,7 @@ struct SleeveIdentifierTests: Sendable {
             Self.response(for: request, statusCode: 401, data: Data())
         } performing: {
             await #expect(throws: SleeveIdentificationError.notConfigured) {
-                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
@@ -186,7 +186,7 @@ struct SleeveIdentifierTests: Sendable {
             Self.response(for: request, statusCode: 503, data: Data())
         } performing: {
             await #expect(throws: SleeveIdentificationError.serviceUnavailable) {
-                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
@@ -196,7 +196,7 @@ struct SleeveIdentifierTests: Sendable {
             throw URLError(.notConnectedToInternet)
         } performing: {
             await #expect(throws: SleeveIdentificationError.offline) {
-                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
@@ -206,7 +206,7 @@ struct SleeveIdentifierTests: Sendable {
             Self.response(for: request, statusCode: 200, data: Data(#"{"candidates":[]}"#.utf8))
         } performing: {
             await #expect(throws: SleeveIdentificationError.unreadableResponse) {
-                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
@@ -234,7 +234,7 @@ struct SleeveIdentifierTests: Sendable {
             Self.response(for: request, statusCode: 200, data: malformedPayload)
         } performing: {
             await #expect(throws: SleeveIdentificationError.unreadableResponse) {
-                try await makeIdentifier().identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier().identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
@@ -251,7 +251,7 @@ struct SleeveIdentifierTests: Sendable {
                 isReady: true,
                 outcome: .success(SleeveIdentification(artist: "Coltrane", title: "A Love Supreme", catalogNumber: nil))
             )
-            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             #expect(geminiCalled.withLock { !$0 })
             #expect(result.artist == "Coltrane")
             #expect(result.title == "A Love Supreme")
@@ -266,7 +266,7 @@ struct SleeveIdentifierTests: Sendable {
                 isReady: true,
                 outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
             )
-            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             #expect(result.artist == "Miles Davis")
             #expect(result.title == "Kind of Blue")
         }
@@ -280,7 +280,7 @@ struct SleeveIdentifierTests: Sendable {
                 isReady: true,
                 outcome: .success(SleeveIdentification(artist: "null", title: "null", catalogNumber: "null"))
             )
-            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             #expect(result.artist == "Miles Davis")
             #expect(result.title == "Kind of Blue")
         }
@@ -291,7 +291,7 @@ struct SleeveIdentifierTests: Sendable {
             Self.response(for: request, statusCode: 200, data: successPayload)
         } performing: {
             let stub = StubOnDeviceGenerator(isReady: true, outcome: .failure(SampleOnDeviceError()))
-            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             #expect(result.artist == "Miles Davis")
         }
     }
@@ -304,7 +304,7 @@ struct SleeveIdentifierTests: Sendable {
                 isReady: false,
                 outcome: .success(SleeveIdentification(artist: "Ignored", title: nil, catalogNumber: nil))
             )
-            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             #expect(result.artist == "Miles Davis")
         }
     }
@@ -317,7 +317,64 @@ struct SleeveIdentifierTests: Sendable {
         } performing: {
             let stub = StubOnDeviceGenerator(isReady: true, outcome: .failure(CancellationError()))
             await #expect(throws: CancellationError.self) {
-                try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
+            }
+            #expect(geminiCalled.withLock { !$0 })
+        }
+    }
+
+    @Test func `On-device fallback without cloud config does not call Gemini`() async throws {
+        let geminiCalled = Locked(false)
+        _ = await MockURLProtocol.withLockedHandler { request in
+            geminiCalled.withLock { $0 = true }
+            return Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
+            )
+            await #expect(throws: SleeveIdentificationError.notConfigured) {
+                try await makeIdentifier(
+                    onDeviceGenerator: stub,
+                    credentialsStore: FixedGeminiCredentialsStore(config: nil)
+                ).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
+            }
+            #expect(geminiCalled.withLock { !$0 })
+        }
+    }
+
+    @Test func `Cloud engine uses Gemini and skips on-device success`() async throws {
+        try await MockURLProtocol.withLockedHandler { request in
+            Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: "Coltrane", title: "A Love Supreme", catalogNumber: nil))
+            )
+            let result = try await makeIdentifier(onDeviceGenerator: stub).identify(
+                jpegData: Self.sampleJPEG(),
+                engine: .cloud
+            )
+            #expect(result.artist == "Miles Davis")
+            #expect(result.title == "Kind of Blue")
+        }
+    }
+
+    @Test func `Cloud engine without config does not call Gemini`() async throws {
+        let geminiCalled = Locked(false)
+        _ = await MockURLProtocol.withLockedHandler { request in
+            geminiCalled.withLock { $0 = true }
+            return Self.response(for: request, statusCode: 200, data: successPayload)
+        } performing: {
+            let stub = StubOnDeviceGenerator(
+                isReady: true,
+                outcome: .success(SleeveIdentification(artist: "Coltrane", title: "A Love Supreme", catalogNumber: nil))
+            )
+            await #expect(throws: SleeveIdentificationError.notConfigured) {
+                try await makeIdentifier(
+                    onDeviceGenerator: stub,
+                    credentialsStore: FixedGeminiCredentialsStore(config: nil)
+                ).identify(jpegData: Self.sampleJPEG(), engine: .cloud)
             }
             #expect(geminiCalled.withLock { !$0 })
         }
@@ -332,20 +389,23 @@ struct SleeveIdentifierTests: Sendable {
                 outcome: .success(SleeveIdentification(artist: nil, title: nil, catalogNumber: nil))
             )
             await #expect(throws: SleeveIdentificationError.serviceUnavailable) {
-                try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
+                try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG(), engine: .onDevice)
             }
         }
     }
 
     // MARK: - Helpers
 
-    private func makeIdentifier(onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)? = nil) -> SleeveIdentifier {
+    private func makeIdentifier(
+        onDeviceGenerator: (any OnDeviceSleeveGeneratorProtocol)? = nil,
+        credentialsStore: (any GeminiCredentialsStoreProtocol)? = nil
+    ) -> SleeveIdentifier {
         let client = NetworkManagerFactory.makeDefaultClient(
             hostResolver: { _ in URL(string: "https://generativelanguage.googleapis.com")! },
             session: MockURLSessionFactory.make()
         )
         return SleeveIdentifier(
-            geminiConfig: config,
+            credentialsStore: credentialsStore ?? FixedGeminiCredentialsStore(config: config),
             geminiClient: client,
             onDeviceGenerator: onDeviceGenerator
         )
@@ -369,6 +429,18 @@ struct SleeveIdentifierTests: Sendable {
         }
         return image.jpegData(compressionQuality: 0.85) ?? Data()
     }
+}
+
+private struct FixedGeminiCredentialsStore: GeminiCredentialsStoreProtocol, Sendable {
+    let config: GeminiConfig?
+
+    func load() async -> GeminiCredentials? { nil }
+
+    func save(_ credentials: GeminiCredentials) async throws {}
+
+    func clear() async throws {}
+
+    func resolvedConfig() async -> GeminiConfig? { config }
 }
 
 private struct SampleOnDeviceError: Error, Sendable {}
