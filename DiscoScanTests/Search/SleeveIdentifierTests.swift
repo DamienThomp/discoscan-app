@@ -10,7 +10,7 @@ import UIKit
 @testable import DiscoScan
 
 @Suite(.serialized)
-struct SleeveIdentifierTests {
+struct SleeveIdentifierTests: Sendable {
     private let config = GeminiConfig(apiKey: "test-api-key", modelName: "gemini-test")
 
     private let successPayload = Data(
@@ -242,9 +242,9 @@ struct SleeveIdentifierTests {
     // MARK: - On-device fallback
 
     @Test func `On-device result skips Gemini`() async throws {
-        var geminiCalled = false
+        let geminiCalled = Locked(false)
         try await MockURLProtocol.withLockedHandler { request in
-            geminiCalled = true
+            geminiCalled.withLock { $0 = true }
             return Self.response(for: request, statusCode: 200, data: successPayload)
         } performing: {
             let stub = StubOnDeviceGenerator(
@@ -252,7 +252,7 @@ struct SleeveIdentifierTests {
                 outcome: .success(SleeveIdentification(artist: "Coltrane", title: "A Love Supreme", catalogNumber: nil))
             )
             let result = try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
-            #expect(!geminiCalled)
+            #expect(geminiCalled.withLock { !$0 })
             #expect(result.artist == "Coltrane")
             #expect(result.title == "A Love Supreme")
         }
@@ -310,16 +310,16 @@ struct SleeveIdentifierTests {
     }
 
     @Test func `On-device cancellation does not fall back`() async throws {
-        var geminiCalled = false
+        let geminiCalled = Locked(false)
         _ = await MockURLProtocol.withLockedHandler { request in
-            geminiCalled = true
+            geminiCalled.withLock { $0 = true }
             return Self.response(for: request, statusCode: 200, data: successPayload)
         } performing: {
             let stub = StubOnDeviceGenerator(isReady: true, outcome: .failure(CancellationError()))
             await #expect(throws: CancellationError.self) {
                 try await makeIdentifier(onDeviceGenerator: stub).identify(jpegData: Self.sampleJPEG())
             }
-            #expect(!geminiCalled)
+            #expect(geminiCalled.withLock { !$0 })
         }
     }
 
@@ -371,12 +371,12 @@ struct SleeveIdentifierTests {
     }
 }
 
-private struct SampleOnDeviceError: Error {}
+private struct SampleOnDeviceError: Error, Sendable {}
 
-private struct StubOnDeviceGenerator: OnDeviceSleeveGeneratorProtocol, @unchecked Sendable {
-    enum Outcome: @unchecked Sendable {
+private struct StubOnDeviceGenerator: OnDeviceSleeveGeneratorProtocol, Sendable {
+    enum Outcome: Sendable {
         case success(SleeveIdentification)
-        case failure(any Error)
+        case failure(any Error & Sendable)
     }
 
     let isReady: Bool

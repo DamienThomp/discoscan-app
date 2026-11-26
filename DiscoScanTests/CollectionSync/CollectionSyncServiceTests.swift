@@ -62,8 +62,8 @@ struct CollectionSyncServiceTests {
 
     @Test func `Count match skips pagination`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let currentTime = Date()
         let (service, index) = try makeService(
             apiClient: apiClient,
@@ -85,64 +85,60 @@ struct CollectionSyncServiceTests {
             if case .syncing = $0 { return true }
             return false
         }))
-        #expect(apiClient.requestCount == 1)
+        #expect(await apiClient.requestCount == 1)
     }
 
     @Test func `Count mismatch runs mark and sweep`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let (service, index) = try makeService(apiClient: apiClient)
 
         _ = await service.refresh(username: username, intent: .automatic)
 
         #expect(try await index.count(username: username) == 1)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
-        #expect(apiClient.requestCount >= 2)
+        #expect(await apiClient.requestCount >= 2)
     }
 
     @Test func `Force sync runs when counts match`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let (service, index) = try makeService(apiClient: apiClient)
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
 
         _ = await service.refresh(username: username, intent: .userInitiated)
 
-        #expect(apiClient.requestCount >= 2)
+        #expect(await apiClient.requestCount >= 2)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
     }
 
     @Test func `Stale last synced triggers sync`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
-        final class MutableDate: @unchecked Sendable {
-            var value: Date
-            init(_ value: Date) { self.value = value }
-        }
-        let clock = MutableDate(Date())
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
+        let clock = Locked(Date())
         let (service, index) = try makeService(
             apiClient: apiClient,
             staleAfter: 60,
-            now: { clock.value }
+            now: { clock.withLock { $0 } }
         )
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
         let generation = try await index.beginSyncGeneration(username: username)
         try await index.upsertSynced([CollectionFixtures.sampleReleases[0]], username: username, generation: generation)
         _ = try await index.sweep(username: username, keeping: generation)
 
-        clock.value = clock.value.addingTimeInterval(120)
-        let requestsBeforeStaleRefresh = apiClient.requestCount
+        clock.withLock { $0 = $0.addingTimeInterval(120) }
+        let requestsBeforeStaleRefresh = await apiClient.requestCount
         _ = await service.refresh(username: username, intent: .automatic)
-        #expect(apiClient.requestCount - requestsBeforeStaleRefresh >= 2)
+        #expect(await apiClient.requestCount - requestsBeforeStaleRefresh >= 2)
     }
 
     @Test func `Fresh last synced skips sync when counts match`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let currentTime = Date()
         let (service, index) = try makeService(
             apiClient: apiClient,
@@ -154,15 +150,15 @@ struct CollectionSyncServiceTests {
         try await index.upsertSynced([CollectionFixtures.sampleReleases[0]], username: username, generation: generation)
         _ = try await index.sweep(username: username, keeping: generation)
 
-        let requestsBeforeFreshCheck = apiClient.requestCount
+        let requestsBeforeFreshCheck = await apiClient.requestCount
         _ = await service.refresh(username: username, intent: .automatic)
-        #expect(apiClient.requestCount - requestsBeforeFreshCheck == 1)
+        #expect(await apiClient.requestCount - requestsBeforeFreshCheck == 1)
     }
 
     @Test func `Remote removal is swept on sync`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 0
-        apiClient.folderZeroPages = [[]]
+        await apiClient.setFolderZeroRemoteCount(0)
+        await apiClient.setFolderZeroPages([[]])
         let (service, index) = try makeService(apiClient: apiClient)
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
         #expect(try await index.count(username: username) == 1)
@@ -174,8 +170,8 @@ struct CollectionSyncServiceTests {
 
     @Test func `Unsealed generation retries even when counts match`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let (service, index) = try makeService(apiClient: apiClient)
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
         _ = try await index.beginSyncGeneration(username: username)
@@ -183,20 +179,20 @@ struct CollectionSyncServiceTests {
         _ = await service.refresh(username: username, intent: .automatic)
 
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
-        #expect(apiClient.requestCount >= 2)
+        #expect(await apiClient.requestCount >= 2)
     }
 
     @Test func `Failure leaves generation unsealed for retry`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
-        apiClient.failOnFolderZeroPage = 1
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
+        await apiClient.setFailOnFolderZeroPage(1)
         let (service, index) = try makeService(apiClient: apiClient)
 
         _ = await service.refresh(username: username, intent: .automatic)
         #expect(try await index.hasUnsealedGeneration(username: username) == true)
 
-        apiClient.failOnFolderZeroPage = nil
+        await apiClient.setFailOnFolderZeroPage(nil)
         _ = await service.refresh(username: username, intent: .automatic)
         #expect(try await index.hasUnsealedGeneration(username: username) == false)
     }
@@ -206,9 +202,9 @@ struct CollectionSyncServiceTests {
         let firstPage = makeItem(instanceId: 3001)
         let secondPage = makeItem(instanceId: 3002)
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 2
-        apiClient.folderZeroPages = [[firstPage], [secondPage]]
-        apiClient.failOnFolderZeroPage = 2
+        await apiClient.setFolderZeroRemoteCount(2)
+        await apiClient.setFolderZeroPages([[firstPage], [secondPage]])
+        await apiClient.setFailOnFolderZeroPage(2)
         let (service, index) = try makeService(apiClient: apiClient)
         let generation = try await index.beginSyncGeneration(username: username)
         try await index.upsertSynced([existing], username: username, generation: generation)
@@ -228,10 +224,10 @@ struct CollectionSyncServiceTests {
 
     @Test func `Cancelled network request is reported as idle, not failed`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
-        apiClient.delayNanoseconds = 500_000_000
-        apiClient.reportsCancellationAsURLError = true
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
+        await apiClient.setDelayNanoseconds(500_000_000)
+        await apiClient.setReportsCancellationAsURLError(true)
         let (service, _) = try makeService(apiClient: apiClient)
 
         let syncTask = Task {
@@ -245,7 +241,7 @@ struct CollectionSyncServiceTests {
 
     @Test func `Missing all folder emits failed`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.foldersMissingAllFolder = true
+        await apiClient.setFoldersMissingAllFolder(true)
         let (service, _) = try makeService(apiClient: apiClient)
 
         let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
@@ -261,9 +257,9 @@ struct CollectionSyncServiceTests {
 
     @Test func `Incomplete pagination leaves generation unsealed`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 5
-        apiClient.shortPaginationItems = 5
-        apiClient.folderZeroPages = [Array(CollectionFixtures.sampleReleases.prefix(1))]
+        await apiClient.setFolderZeroRemoteCount(5)
+        await apiClient.setShortPaginationItems(5)
+        await apiClient.setFolderZeroPages([Array(CollectionFixtures.sampleReleases.prefix(1))])
         let (service, index) = try makeService(apiClient: apiClient)
 
         let phase = await service.refresh(username: username, intent: .userInitiated)
@@ -277,59 +273,56 @@ struct CollectionSyncServiceTests {
 
     @Test func `Different usernames do not join the same sync`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.delayNanoseconds = 200_000_000
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setDelayNanoseconds(200_000_000)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let (service, _) = try makeService(apiClient: apiClient)
 
         async let first = service.refresh(username: "user-a", intent: .userInitiated)
         async let second = service.refresh(username: "user-b", intent: .userInitiated)
         _ = await (first, second)
 
-        #expect(apiClient.requestCount >= 4)
+        #expect(await apiClient.requestCount >= 4)
     }
 
     @Test func `Cancel stops pagination and leaves generation unsealed`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 2
-        apiClient.delayNanoseconds = 500_000_000
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases, CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(2)
+        await apiClient.setDelayNanoseconds(500_000_000)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases, CollectionFixtures.sampleReleases])
         let (service, index) = try makeService(apiClient: apiClient)
 
         let syncTask = Task {
             await service.refresh(username: username, intent: .userInitiated)
         }
-        for _ in 0..<200 where apiClient.requestCount < 2 {
+        for _ in 0..<200 {
+            if await apiClient.requestCount >= 2 { break }
             try await Task.sleep(nanoseconds: 5_000_000)
         }
         await service.cancel(username: username)
         _ = await syncTask.value
 
-        #expect(apiClient.requestCount == 2)
+        #expect(await apiClient.requestCount == 2)
         let isUnsealed = try await index.hasUnsealedGeneration(username: username)
         #expect(isUnsealed)
     }
 
     @Test func `Sealed stale automatic sync omits progress phases`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
-        final class MutableDate: @unchecked Sendable {
-            var value: Date
-            init(_ value: Date) { self.value = value }
-        }
-        let clock = MutableDate(Date())
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
+        let clock = Locked(Date())
         let (service, index) = try makeService(
             apiClient: apiClient,
             staleAfter: 60,
-            now: { clock.value }
+            now: { clock.withLock { $0 } }
         )
         try await index.upsertLive(CollectionFixtures.sampleReleases[0], username: username)
         let generation = try await index.beginSyncGeneration(username: username)
         try await index.upsertSynced([CollectionFixtures.sampleReleases[0]], username: username, generation: generation)
         _ = try await index.sweep(username: username, keeping: generation)
 
-        clock.value = clock.value.addingTimeInterval(120)
+        clock.withLock { $0 = $0.addingTimeInterval(120) }
 
         let progressTask = collectPhasesUntilTerminal(from: await service.progressStream())
         _ = await service.refresh(username: username, intent: .automatic)
@@ -345,9 +338,9 @@ struct CollectionSyncServiceTests {
 
     @Test func `User initiated refresh after automatic in-flight runs a second sync`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.delayNanoseconds = 200_000_000
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setDelayNanoseconds(200_000_000)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let (service, index) = try makeService(apiClient: apiClient)
 
         let automaticTask = Task {
@@ -357,27 +350,27 @@ struct CollectionSyncServiceTests {
         _ = await service.refresh(username: username, intent: .userInitiated)
         _ = await automaticTask.value
 
-        #expect(apiClient.requestCount >= 2)
+        #expect(await apiClient.requestCount >= 2)
         #expect(try await index.count(username: username) == 1)
     }
 
     @Test func `Refresh after previous completes starts a new sync`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let (service, _) = try makeService(apiClient: apiClient)
 
         _ = await service.refresh(username: username, intent: .automatic)
-        let requestsAfterFirst = apiClient.requestCount
+        let requestsAfterFirst = await apiClient.requestCount
         _ = await service.refresh(username: username, intent: .automatic)
 
-        #expect(apiClient.requestCount > requestsAfterFirst)
+        #expect(await apiClient.requestCount > requestsAfterFirst)
     }
 
     @Test func `User initiated matching counts includes progress phases`() async throws {
         let apiClient = MockCollectionNetworkClient()
-        apiClient.folderZeroRemoteCount = 1
-        apiClient.folderZeroPages = [CollectionFixtures.sampleReleases]
+        await apiClient.setFolderZeroRemoteCount(1)
+        await apiClient.setFolderZeroPages([CollectionFixtures.sampleReleases])
         let currentTime = Date()
         let (service, index) = try makeService(
             apiClient: apiClient,

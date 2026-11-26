@@ -6,7 +6,7 @@
 import Foundation
 import NetworkKit
 
-enum CollectionSyncPhase: Equatable, Sendable {
+nonisolated enum CollectionSyncPhase: Equatable, Sendable {
     case idle
     case checking
     case syncing(synced: Int, total: Int)

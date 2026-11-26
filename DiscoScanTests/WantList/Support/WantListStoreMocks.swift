@@ -7,13 +7,17 @@ import Foundation
 import NetworkKit
 @testable import DiscoScan
 
-final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
+actor MockWantListCachedFetcher: CachedFetcherProtocol {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
     private(set) var lastInvalidatedKey: String?
     private(set) var lastInvalidatedPrefix: String?
     var shouldFail = false
     var delayNanoseconds: UInt64 = 0
+
+    func setShouldFail(_ shouldFail: Bool) {
+        self.shouldFail = shouldFail
+    }
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -60,7 +64,7 @@ final class MockWantListCachedFetcher: CachedFetcherProtocol, @unchecked Sendabl
     func clearAll() async {}
 }
 
-final class MockWantListNetworkClient: NetworkManagerProtocol, @unchecked Sendable {
+actor MockWantListNetworkClient: NetworkManagerProtocol {
     private(set) var lastRequestPath: String?
     private(set) var requestCount = 0
 

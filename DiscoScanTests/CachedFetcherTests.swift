@@ -9,7 +9,7 @@ import Testing
 @testable import DiscoScan
 
 @Suite(.serialized)
-struct CachedFetcherTests {
+struct CachedFetcherTests: Sendable {
     private let config = DiscogsConfig(
         consumerKey: "consumer-key",
         consumerSecret: "consumer-secret",
@@ -28,9 +28,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        var requestCount = 0
+        let requestCount = Locked(0)
         try await MockURLProtocol.withLockedHandler { request in
-            requestCount += 1
+            requestCount.withLock { $0 += 1 }
             #expect(request.url?.path == "/oauth/identity")
             return self.identityResponse(for: request)
         } performing: {
@@ -42,7 +42,7 @@ struct CachedFetcherTests {
                 forceRefresh: false
             )
 
-            requestCount = 0
+            requestCount.withLock { $0 = 0 }
             let cached = try await fetcher.fetch(
                 IdentityEndpoint(),
                 key: "identity",
@@ -51,7 +51,7 @@ struct CachedFetcherTests {
             )
 
             #expect(cached.username == "tester")
-            #expect(requestCount == 0)
+            #expect(requestCount.withLock { $0 } == 0)
         }
     }
 
@@ -59,9 +59,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        var requestCount = 0
+        let requestCount = Locked(0)
         try await MockURLProtocol.withLockedHandler { request in
-            requestCount += 1
+            requestCount.withLock { $0 += 1 }
             return self.identityResponse(for: request)
         } performing: {
             let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
@@ -74,9 +74,9 @@ struct CachedFetcherTests {
                 scope: .identity,
                 forceRefresh: false
             )
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
 
-            requestCount = 0
+            requestCount.withLock { $0 = 0 }
             let expiredFetcher = try makeCachedFetcher(
                 tokenStore: tokenStore,
                 storage: storage,
@@ -88,7 +88,7 @@ struct CachedFetcherTests {
                 scope: .identity,
                 forceRefresh: false
             )
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
         }
     }
 
@@ -96,9 +96,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        var requestCount = 0
+        let requestCount = Locked(0)
         try await MockURLProtocol.withLockedHandler { request in
-            requestCount += 1
+            requestCount.withLock { $0 += 1 }
             return self.identityResponse(for: request)
         } performing: {
             let fetcher = try makeCachedFetcher(tokenStore: tokenStore, now: { Date(timeIntervalSince1970: 1_000) })
@@ -108,16 +108,16 @@ struct CachedFetcherTests {
                 scope: .identity,
                 forceRefresh: false
             )
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
 
-            requestCount = 0
+            requestCount.withLock { $0 = 0 }
             _ = try await fetcher.fetch(
                 IdentityEndpoint(),
                 key: "identity",
                 scope: .identity,
                 forceRefresh: true
             )
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
         }
     }
 
@@ -125,9 +125,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        var requestCount = 0
+        let requestCount = Locked(0)
         try await MockURLProtocol.withLockedHandler { request in
-            requestCount += 1
+            requestCount.withLock { $0 += 1 }
             Thread.sleep(forTimeInterval: 0.05)
             return self.identityResponse(for: request)
         } performing: {
@@ -147,7 +147,7 @@ struct CachedFetcherTests {
             )
 
             _ = try await (first, second)
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
         }
     }
 
@@ -155,9 +155,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        let phase = MockRequestPhase()
+        let isOffline = Locked(false)
         try await MockURLProtocol.withLockedHandler { request in
-            if phase.isOffline {
+            if isOffline.withLock({ $0 }) {
                 throw URLError(.notConnectedToInternet)
             }
             return self.identityResponse(for: request)
@@ -170,7 +170,7 @@ struct CachedFetcherTests {
                 forceRefresh: false
             )
 
-            phase.isOffline = true
+            isOffline.withLock { $0 = true }
             let identity = try await fetcher.fetch(
                 IdentityEndpoint(),
                 key: "identity",
@@ -185,9 +185,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        var requestCount = 0
+        let requestCount = Locked(0)
         try await MockURLProtocol.withLockedHandler { request in
-            requestCount += 1
+            requestCount.withLock { $0 += 1 }
             return self.identityResponse(for: request)
         } performing: {
             let storage = SwiftDataCacheStorage(modelContainer: try TestModelContainer.make())
@@ -199,19 +199,19 @@ struct CachedFetcherTests {
                 scope: .identity,
                 forceRefresh: false
             )
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
 
             await fetcher.invalidate(key: "identity")
             #expect(try await storage.entry(for: "identity") == nil)
 
-            requestCount = 0
+            requestCount.withLock { $0 = 0 }
             _ = try await fetcher.fetch(
                 IdentityEndpoint(),
                 key: "identity",
                 scope: .identity,
                 forceRefresh: false
             )
-            #expect(requestCount == 1)
+            #expect(requestCount.withLock { $0 } == 1)
         }
     }
 
@@ -263,9 +263,9 @@ struct CachedFetcherTests {
         let tokenStore = InMemoryTokenStore()
         try await tokenStore.save(OAuthTokens(token: "access-token", tokenSecret: "access-secret"))
 
-        let phase = MockRequestPhase()
+        let isOffline = Locked(false)
         try await MockURLProtocol.withLockedHandler { request in
-            if phase.isOffline {
+            if isOffline.withLock({ $0 }) {
                 let response = HTTPURLResponse(
                     url: request.url!,
                     statusCode: 429,
@@ -284,7 +284,7 @@ struct CachedFetcherTests {
                 forceRefresh: false
             )
 
-            phase.isOffline = true
+            isOffline.withLock { $0 = true }
             let identity = try await fetcher.fetch(
                 IdentityEndpoint(),
                 key: "identity",
@@ -344,8 +344,4 @@ struct CachedFetcherTests {
             now: now
         )
     }
-}
-
-private final class MockRequestPhase: @unchecked Sendable {
-    var isOffline = false
 }

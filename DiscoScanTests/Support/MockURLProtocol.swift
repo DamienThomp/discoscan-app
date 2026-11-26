@@ -4,9 +4,12 @@
 //
 
 import Foundation
+import Synchronization
 
 final class MockURLProtocol: URLProtocol {
-    nonisolated(unsafe) private static var _requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    private typealias RequestHandler = @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+
+    private static let requestHandler = Mutex<RequestHandler?>(nil)
     private static let gate = HandlerGate()
 
     /// Runs a test body with an exclusive mock handler so parallel suites do not clobber each other.
@@ -14,18 +17,18 @@ final class MockURLProtocol: URLProtocol {
     /// Waiting suites suspend rather than block a thread; a blocking lock held across `await`
     /// starves the main actor and cooperative pool and deadlocks parallel runs.
     static func withLockedHandler<R>(
-        _ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data),
+        _ handler: @escaping @Sendable (URLRequest) throws -> (HTTPURLResponse, Data),
         performing body: () async throws -> R
     ) async rethrows -> R {
         await gate.acquire()
-        _requestHandler = handler
+        requestHandler.withLock { $0 = handler }
         do {
             let result = try await body()
-            _requestHandler = nil
+            requestHandler.withLock { $0 = nil }
             await gate.release()
             return result
         } catch {
-            _requestHandler = nil
+            requestHandler.withLock { $0 = nil }
             await gate.release()
             throw error
         }
@@ -40,7 +43,8 @@ final class MockURLProtocol: URLProtocol {
     }
 
     override func startLoading() {
-        guard let handler = Self._requestHandler else {
+        let handler = Self.requestHandler.withLock { $0 }
+        guard let handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
         }

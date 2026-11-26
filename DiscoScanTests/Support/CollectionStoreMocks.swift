@@ -12,13 +12,21 @@ struct MockFetchRecord: Sendable {
     let forceRefresh: Bool
 }
 
-final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
+actor MockCollectionCachedFetcher: CachedFetcherProtocol {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
     private(set) var lastInvalidatedKey: String?
     private(set) var lastInvalidatedPrefix: String?
     var shouldFail = false
     var delayNanoseconds: UInt64 = 0
+
+    func setShouldFail(_ shouldFail: Bool) {
+        self.shouldFail = shouldFail
+    }
+
+    func setDelayNanoseconds(_ delayNanoseconds: UInt64) {
+        self.delayNanoseconds = delayNanoseconds
+    }
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,
@@ -72,7 +80,7 @@ final class MockCollectionCachedFetcher: CachedFetcherProtocol, @unchecked Senda
     func clearAll() async {}
 }
 
-final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Sendable {
+actor MockCollectionNetworkClient: NetworkManagerProtocol {
     private(set) var lastRequestPath: String?
     private(set) var requestCount = 0
     var shouldFail = false
@@ -83,6 +91,38 @@ final class MockCollectionNetworkClient: NetworkManagerProtocol, @unchecked Send
     var foldersMissingAllFolder = false
     var shortPaginationItems: Int?
     var reportsCancellationAsURLError = false
+
+    func setShouldFail(_ shouldFail: Bool) {
+        self.shouldFail = shouldFail
+    }
+
+    func setDelayNanoseconds(_ delayNanoseconds: UInt64) {
+        self.delayNanoseconds = delayNanoseconds
+    }
+
+    func setFolderZeroRemoteCount(_ folderZeroRemoteCount: Int) {
+        self.folderZeroRemoteCount = folderZeroRemoteCount
+    }
+
+    func setFolderZeroPages(_ folderZeroPages: [[CollectionReleaseItem]]) {
+        self.folderZeroPages = folderZeroPages
+    }
+
+    func setFailOnFolderZeroPage(_ failOnFolderZeroPage: Int?) {
+        self.failOnFolderZeroPage = failOnFolderZeroPage
+    }
+
+    func setFoldersMissingAllFolder(_ foldersMissingAllFolder: Bool) {
+        self.foldersMissingAllFolder = foldersMissingAllFolder
+    }
+
+    func setShortPaginationItems(_ shortPaginationItems: Int?) {
+        self.shortPaginationItems = shortPaginationItems
+    }
+
+    func setReportsCancellationAsURLError(_ reportsCancellationAsURLError: Bool) {
+        self.reportsCancellationAsURLError = reportsCancellationAsURLError
+    }
 
     func request<E>(for endpoint: E) async throws -> E.Response where E: EndpointProtocol {
         requestCount += 1

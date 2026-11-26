@@ -90,10 +90,14 @@ enum ReleaseTestFixtures {
     )
 }
 
-final class MockReleaseCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
+actor MockReleaseCachedFetcher: CachedFetcherProtocol {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
     var shouldFail = false
+
+    func setShouldFail(_ shouldFail: Bool) {
+        self.shouldFail = shouldFail
+    }
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,

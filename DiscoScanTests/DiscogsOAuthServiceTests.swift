@@ -20,9 +20,10 @@ struct DiscogsOAuthServiceTests {
     )
 
     @Test func fetchRequestTokenParsesResponse() async throws {
+        let userAgent = config.userAgent
         try await MockURLProtocol.withLockedHandler { request in
             #expect(request.url?.path == "/oauth/request_token")
-            #expect(request.value(forHTTPHeaderField: "User-Agent") == self.config.userAgent)
+            #expect(request.value(forHTTPHeaderField: "User-Agent") == userAgent)
             #expect(request.value(forHTTPHeaderField: "Authorization")?.contains("oauth_callback") == true)
 
             let response = HTTPURLResponse(
