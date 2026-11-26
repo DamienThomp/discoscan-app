@@ -18,7 +18,7 @@ struct SearchStoreTests {
         await store.search(context)
 
         #expect(store.results(for: context) == .loaded(SearchTestFixtures.sampleResponse))
-        #expect(fetcher.fetchCount == 1)
+        #expect(await fetcher.fetchCount == 1)
     }
 
     @Test func searchUsesCorrectCacheKeyAndScope() async {
@@ -27,14 +27,14 @@ struct SearchStoreTests {
 
         await store.search(context)
 
-        #expect(fetcher.lastFetch?.key == context.cacheKey)
-        #expect(fetcher.lastFetch?.scope == .search)
-        #expect(fetcher.lastFetch?.forceRefresh == false)
+        #expect(await fetcher.lastFetch?.key == context.cacheKey)
+        #expect(await fetcher.lastFetch?.scope == .search)
+        #expect(await fetcher.lastFetch?.forceRefresh == false)
     }
 
     @Test func searchFailsSetsFailedState() async {
         let fetcher = MockSearchCachedFetcher()
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         let (store, _, _) = makeSearchStore(fetcher: fetcher)
 
         await store.search(.text(query: "test"))
@@ -52,7 +52,7 @@ struct SearchStoreTests {
         let context = SearchContext.text(query: "Nirvana")
 
         await store.search(context)
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         await store.search(context, forceRefresh: true)
 
         #expect(store.results(for: context) == .loaded(SearchTestFixtures.sampleResponse))
@@ -65,8 +65,8 @@ struct SearchStoreTests {
         await store.search(context)
         await store.search(context, forceRefresh: true)
 
-        #expect(fetcher.fetchCount == 2)
-        #expect(fetcher.lastFetch?.forceRefresh == true)
+        #expect(await fetcher.fetchCount == 2)
+        #expect(await fetcher.lastFetch?.forceRefresh == true)
     }
 
     @Test func `recordRecentQuery prepends and dedupes case insensitively`() {
@@ -144,75 +144,32 @@ private func makeSearchStore(
     return (store, fetcher, persistence)
 }
 
-final class InMemoryRecentSearchPersistence: RecentSearchPersistence, @unchecked Sendable {
-    private(set) var savedQueries: [String] = []
-    private(set) var saveCallCount = 0
+struct InMemoryRecentSearchPersistence: RecentSearchPersistence, Sendable {
+    private struct State: Sendable {
+        var savedQueries: [String] = []
+        var saveCallCount = 0
+    }
+
+    private let state = Locked(State())
+
+    var savedQueries: [String] {
+        state.withLock { $0.savedQueries }
+    }
+
+    var saveCallCount: Int {
+        state.withLock { $0.saveCallCount }
+    }
 
     func load() -> [String] { savedQueries }
 
     func save(_ queries: [String]) {
-        savedQueries = queries
-        saveCallCount += 1
+        state.withLock {
+            $0.savedQueries = queries
+            $0.saveCallCount += 1
+        }
     }
 
     func seedForLoad(_ queries: [String]) {
-        savedQueries = queries
+        state.withLock { $0.savedQueries = queries }
     }
-}
-
-enum SearchTestFixtures {
-    static let sampleResponse = SearchResponse(
-        pagination: SearchPagination(page: 1, pages: 1, perPage: 25, items: 1),
-        results: [
-            SearchResult(id: 1, type: "release", title: "Test Release")
-        ]
-    )
-}
-
-final class MockSearchCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
-    private(set) var lastFetch: MockSearchFetchRecord?
-    private(set) var fetchCount = 0
-    var shouldFail = false
-
-    func fetch<E: EndpointProtocol>(
-        _ endpoint: E,
-        key: String,
-        scope: CacheScope,
-        forceRefresh: Bool
-    ) async throws -> E.Response {
-        fetchCount += 1
-        lastFetch = MockSearchFetchRecord(key: key, scope: scope, forceRefresh: forceRefresh)
-
-        if shouldFail {
-            throw URLError(.notConnectedToInternet)
-        }
-
-        if endpoint is SearchEndpoint {
-            guard let response = SearchTestFixtures.sampleResponse as? E.Response else {
-                throw URLError(.badURL)
-            }
-            return response
-        }
-
-        throw URLError(.unsupportedURL)
-    }
-
-    func cachedValue<E: EndpointProtocol>(
-        _ endpoint: E,
-        key: String
-    ) async throws -> E.Response? {
-        nil
-    }
-
-    func invalidate(key: String) async {}
-
-    func invalidateKeys(matchingPrefix prefix: String) async {}
-
-    func clearAll() async {}
-}
-
-struct MockSearchFetchRecord: Sendable {
-    let key: String
-    let scope: CacheScope
-    let forceRefresh: Bool
 }

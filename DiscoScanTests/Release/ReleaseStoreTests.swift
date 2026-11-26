@@ -17,7 +17,7 @@ struct ReleaseStoreTests {
         await store.loadRelease(id: 249_504)
 
         #expect(store.detail(for: 249_504) == .loaded(ReleaseTestFixtures.sampleRelease))
-        #expect(fetcher.fetchCount == 1)
+        #expect(await fetcher.fetchCount == 1)
     }
 
     @Test func loadReleaseUsesCorrectCacheKeyAndScope() async {
@@ -26,13 +26,13 @@ struct ReleaseStoreTests {
 
         await store.loadRelease(id: 249_504)
 
-        #expect(fetcher.lastFetch?.key == "release-249504")
-        #expect(fetcher.lastFetch?.forceRefresh == false)
+        #expect(await fetcher.lastFetch?.key == "release-249504")
+        #expect(await fetcher.lastFetch?.forceRefresh == false)
     }
 
     @Test func loadReleaseFailsSetsFailedState() async {
         let fetcher = MockReleaseCachedFetcher()
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         let store = ReleaseStore(cachedFetcher: fetcher)
 
         await store.loadRelease(id: 249_504)
@@ -51,7 +51,7 @@ struct ReleaseStoreTests {
         await store.loadRelease(id: 249_504)
         await store.loadRelease(id: 249_504)
 
-        #expect(fetcher.fetchCount == 1)
+        #expect(await fetcher.fetchCount == 1)
     }
 
     @Test func loadReleaseRefreshFailurePreservesStaleDetail() async {
@@ -59,7 +59,7 @@ struct ReleaseStoreTests {
         let store = ReleaseStore(cachedFetcher: fetcher)
 
         await store.loadRelease(id: 249_504)
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         await store.loadRelease(id: 249_504, forceRefresh: true)
 
         #expect(store.detail(for: 249_504) == .loaded(ReleaseTestFixtures.sampleRelease))
@@ -72,7 +72,7 @@ struct ReleaseStoreTests {
         await store.loadRelease(id: 249_504)
         await store.loadRelease(id: 249_504, forceRefresh: true)
 
-        #expect(fetcher.fetchCount == 2)
-        #expect(fetcher.lastFetch?.forceRefresh == true)
+        #expect(await fetcher.fetchCount == 2)
+        #expect(await fetcher.lastFetch?.forceRefresh == true)
     }
 }

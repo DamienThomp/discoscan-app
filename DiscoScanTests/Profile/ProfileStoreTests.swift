@@ -54,7 +54,7 @@ struct ProfileStoreTests {
         await store.loadProfile()
 
         #expect(store.profile == .loaded(ProfileTestFixtures.sampleProfile))
-        #expect(fetcher.fetchCount == 1)
+        #expect(await fetcher.fetchCount == 1)
     }
 
     @Test func loadProfileUsesCorrectCacheKeyAndScope() async {
@@ -64,8 +64,8 @@ struct ProfileStoreTests {
         store.sync(with: .authenticated(identity))
         await store.loadProfile()
 
-        #expect(fetcher.lastFetch?.key == "userProfile")
-        #expect(fetcher.lastFetch?.forceRefresh == false)
+        #expect(await fetcher.lastFetch?.key == "userProfile")
+        #expect(await fetcher.lastFetch?.forceRefresh == false)
     }
 
     @Test func loadProfileFailsWhenUnauthenticated() async {
@@ -79,12 +79,12 @@ struct ProfileStoreTests {
         } else {
             Issue.record("Expected profile to fail when unauthenticated")
         }
-        #expect(fetcher.fetchCount == 0)
+        #expect(await fetcher.fetchCount == 0)
     }
 
     @Test func loadProfileFailsSetsFailedState() async {
         let fetcher = MockProfileCachedFetcher()
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         let store = ProfileStore(cachedFetcher: fetcher)
 
         store.sync(with: .authenticated(identity))

@@ -11,10 +11,14 @@ nonisolated enum ProfileTestFixtures {
     static let sampleProfile = ProfileFixtures.sample
 }
 
-final class MockProfileCachedFetcher: CachedFetcherProtocol, @unchecked Sendable {
+actor MockProfileCachedFetcher: CachedFetcherProtocol {
     private(set) var lastFetch: MockFetchRecord?
     private(set) var fetchCount = 0
     var shouldFail = false
+
+    func setShouldFail(_ shouldFail: Bool) {
+        self.shouldFail = shouldFail
+    }
 
     func fetch<E: EndpointProtocol>(
         _ endpoint: E,

@@ -10,6 +10,7 @@ nonisolated protocol RecentSearchPersistence: Sendable {
     func save(_ queries: [String])
 }
 
+// UserDefaults is thread-safe, and the SDK does not mark the class Sendable.
 nonisolated struct UserDefaultsRecentSearchPersistence: RecentSearchPersistence, @unchecked Sendable {
     private static let key = "recentSearchQueries"
 

@@ -58,8 +58,8 @@ struct WantListStoreTests {
         await store.loadWants()
 
         #expect(store.wants == .loaded(WantListFixtures.sampleWants))
-        #expect(fetcher.lastFetch?.forceRefresh == false)
-        #expect(fetcher.lastFetch?.key == "wants-page-1")
+        #expect(await fetcher.lastFetch?.forceRefresh == false)
+        #expect(await fetcher.lastFetch?.key == "wants-page-1")
         #expect(store.canLoadMore())
     }
 
@@ -85,9 +85,9 @@ struct WantListStoreTests {
         store.sync(with: .authenticated(identity))
         await store.refreshWants()
 
-        #expect(fetcher.lastInvalidatedPrefix == "wants-page-")
-        #expect(fetcher.lastFetch?.key == "wants-page-1")
-        #expect(fetcher.lastFetch?.forceRefresh == true)
+        #expect(await fetcher.lastInvalidatedPrefix == "wants-page-")
+        #expect(await fetcher.lastFetch?.key == "wants-page-1")
+        #expect(await fetcher.lastFetch?.forceRefresh == true)
     }
 
     @Test func loadWantsRefreshFailurePreservesStaleData() async {
@@ -97,7 +97,7 @@ struct WantListStoreTests {
 
         store.sync(with: .authenticated(identity))
         await store.loadWants()
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         await store.loadWants(forceRefresh: true)
 
         #expect(store.wants == .loaded(WantListFixtures.sampleWants))
@@ -114,10 +114,10 @@ struct WantListStoreTests {
 
         await store.deleteRelease(releaseId: 1_867_708)
 
-        #expect(apiClient.lastRequestPath?.contains("/wants/1867708") == true)
+        #expect(await apiClient.lastRequestPath?.contains("/wants/1867708") == true)
         #expect(store.wants == .loaded(Array(WantListFixtures.sampleWants.dropFirst())))
         #expect(store.canLoadMore())
-        #expect(fetcher.fetchCount == 1)
+        #expect(await fetcher.fetchCount == 1)
         #expect(store.lastMutationError == nil)
     }
 
@@ -129,8 +129,8 @@ struct WantListStoreTests {
         store.sync(with: .authenticated(identity))
         await store.addRelease(releaseId: 249_504, notes: "Want this", rating: 5)
 
-        #expect(apiClient.lastRequestPath?.contains("/wants/249504") == true)
-        #expect(fetcher.lastFetch?.forceRefresh == true)
+        #expect(await apiClient.lastRequestPath?.contains("/wants/249504") == true)
+        #expect(await fetcher.lastFetch?.forceRefresh == true)
         #expect(store.lastMutationError == nil)
     }
 
@@ -163,7 +163,7 @@ struct WantListStoreTests {
         await store.ensureWantsLoaded()
 
         #expect(store.wants == .loaded(WantListFixtures.sampleWants))
-        #expect(fetcher.fetchCount == 1)
+        #expect(await fetcher.fetchCount == 1)
     }
 
     @Test func editReleaseCallsEndpointAndRefreshes() async {
@@ -174,14 +174,14 @@ struct WantListStoreTests {
         store.sync(with: .authenticated(identity))
         await store.editRelease(releaseId: 1_867_708, notes: "Updated", rating: 4)
 
-        #expect(apiClient.lastRequestPath?.contains("/wants/1867708") == true)
-        #expect(fetcher.lastFetch?.forceRefresh == true)
+        #expect(await apiClient.lastRequestPath?.contains("/wants/1867708") == true)
+        #expect(await fetcher.lastFetch?.forceRefresh == true)
         #expect(store.lastMutationError == nil)
     }
 
     @Test func `Add release inserts returned item when refresh fails`() async {
         let fetcher = MockWantListCachedFetcher()
-        fetcher.shouldFail = true
+        await fetcher.setShouldFail(true)
         let apiClient = MockWantListNetworkClient()
         let store = WantListStore(cachedFetcher: fetcher, apiClient: apiClient)
 
