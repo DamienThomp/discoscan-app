@@ -10,7 +10,7 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 
 - **Text search** — Search artists, albums, and labels from the system search tab. Recent queries are saved and suggested as you type.
 - **Barcode scanning** — Scan a record's barcode with the device camera. When Discogs returns a single release match, the app opens the release detail automatically.
-- **Sleeve photo identification** — Capture or pick a sleeve photo; on-device Apple Foundation Models extract artist, title, and catalog number when available (iOS 27+ with Apple Intelligence), with Google Gemini as fallback, then a Discogs search. Works best with readable text or recognizable artwork.
+- **Sleeve photo identification** — Capture or pick a sleeve photo, then choose on-device Apple Foundation Models (iOS 27+ with Apple Intelligence) or Google Gemini in Settings. On-device identification falls back to Gemini when a key is configured and the on-device result is empty or fails. Cloud uses Gemini only. A saved Gemini API key and model are checked with Gemini before they are stored. A Debug build can use a bundled key from `Secrets.xcconfig`; a Release build does not include that key. The result becomes a Discogs search. Works best with readable text or recognizable artwork.
 
 ### Library
 
@@ -34,7 +34,7 @@ Built with SwiftUI, targeting iOS 26.5+. The app uses a dark-only color scheme w
 ### Account
 
 - **Discogs OAuth** — Sign in with your Discogs account. Tokens are stored in the Keychain.
-- **Profile tab** — Avatar, display name, location, collection size, member since, and bio from your Discogs profile. Pull to refresh; sign out from the toolbar.
+- **Profile tab** — Avatar, display name, location, collection size, member since, and bio from your Discogs profile. Pull to refresh. Settings and sign out are in the toolbar.
 
 ## Architecture
 
@@ -54,8 +54,8 @@ DiscoScan follows a protocol-oriented MV pattern:
 Key integrations:
 
 - **Discogs API** — OAuth 1.0a, rate-limit handling, collection/wantlist/search/release endpoints
-- **Apple Foundation Models** — On-device sleeve identification from JPEG photos (primary on supported devices)
-- **Google Gemini** — Sleeve identification fallback when on-device is unavailable or inconclusive
+- **Apple Foundation Models** — On-device sleeve identification from JPEG photos when On Device is selected (iOS 27+ with Apple Intelligence)
+- **Google Gemini** — Cloud sleeve identification with a saved API key and model, or a Debug-only bundled key. On-device identification falls back to Gemini when a key is configured.
 - **Apple MusicKit** — Catalog lookup by UPC or artist/title search; deep links to the Music app
 
 ## Documentation
@@ -67,7 +67,7 @@ For business logic and internal data flows, see [docs/README.md](docs/README.md)
 - Xcode with iOS 26.5 SDK
 - iPhone or simulator with camera (for barcode / photo features)
 - Discogs developer account ([register here](https://www.discogs.com/settings/developers))
-- Google Gemini API key (fallback for sleeve photo identification when on-device identification is unavailable)
+- Google Gemini API key for Debug builds only. Release builds do not include a bundled key; users add their own key and model in Settings.
 - Apple Developer account with MusicKit enabled for the app’s bundle identifier (for Apple Music catalog lookup)
 
 ## Setup
@@ -95,8 +95,8 @@ For business logic and internal data flows, see [docs/README.md](docs/README.md)
    | `DISCOGS_CONSUMER_SECRET` | Discogs app consumer secret                                |
    | `DISCOGS_CALLBACK_URL`    | OAuth callback — use `discoscan:/oauth/callback`           |
    | `DISCOGS_USER_AGENT`      | User-Agent string (include contact URL per Discogs policy) |
-   | `GEMINI_API_KEY`          | Google Gemini API key                                      |
-   | `GEMINI_MODEL`            | Model name (default: `gemini-3.5-flash-lite`)              |
+   | `GEMINI_API_KEY`          | Optional. Set `GEMINI_API_KEY[config=Debug]` so the key is included only in Debug builds. Leave it unset for Release. |
+   | `GEMINI_MODEL`            | Model name used with a bundled Debug key (default: `gemini-3.5-flash-lite`). Can be set for both configurations. |
 
    In your Discogs developer settings, set the callback URL to `discoscan:/oauth/callback`.
 
@@ -126,6 +126,7 @@ DiscoScan/
 │   ├── Release/      # Release detail, folder picker
 │   ├── Root/         # RootView, MainTabView
 │   ├── Search/       # Search, barcode, image identification
+│   ├── Settings/     # Identification engine and Gemini key
 │   └── WantList/     # Want list
 ├── Models/           # Decodable domain types
 ├── Networking/       # Endpoints, interceptors, sleeve identification, Apple Music catalog
