@@ -49,9 +49,16 @@ struct ImageIdentificationConfirmView: View {
                 }.transition(.opacity)
             } else {
                 Section("Best guess") {
-                    TextField("Artist", text: $identification.artist)
-                    TextField("Album title", text: $identification.title)
-                    TextField("Catalog number", text: $identification.catalogNumber)
+                    Group {
+                        TextField("Artist", text: $identification.artist)
+                            .clearable(text: $identification.artist)
+                        TextField("Album title", text: $identification.title)
+                            .clearable(text: $identification.title)
+                        TextField("Catalog number", text: $identification.catalogNumber)
+                            .clearable(text: $identification.catalogNumber)
+                    }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                 }.transition(.opacity)
 
                 Section {
