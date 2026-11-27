@@ -14,7 +14,7 @@ struct ReleaseRowLayout<Metadata: View>: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.row) {
-            ReleaseArtworkView(url: artworkURL, size: .medium)
+            ReleaseArtworkView(url: artworkURL, size: .medium, hidesFromAccessibility: true)
 
             VStack(alignment: .leading, spacing: AppSpacing.metadata) {
                 Text(title)

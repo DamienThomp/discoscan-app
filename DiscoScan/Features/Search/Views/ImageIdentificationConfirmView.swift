@@ -20,7 +20,7 @@ struct ImageIdentificationConfirmView: View {
         Form {
             if let imageData {
                 Section {
-                    IdentificationImagePreview(imageData: imageData)
+                    IdentificationImagePreview(imageData: imageData, accessibilityLabel: "Sleeve photo")
                         .scaledToFill()
                         .frame(maxHeight: maxHeight)
                         .clipped()
@@ -33,15 +33,15 @@ struct ImageIdentificationConfirmView: View {
                     TextField("Artist", text: $identification.artist)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
-                        .clearable(text: $identification.artist)
+                        .clearable(text: $identification.artist, label: "artist")
                     TextField("Album title", text: $identification.title)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
-                        .clearable(text: $identification.title)
+                        .clearable(text: $identification.title, label: "album title")
                     TextField("Catalog number", text: $identification.catalogNumber)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .clearable(text: $identification.catalogNumber)
+                        .clearable(text: $identification.catalogNumber, label: "catalog number")
 
                 }.transition(.opacity)
 

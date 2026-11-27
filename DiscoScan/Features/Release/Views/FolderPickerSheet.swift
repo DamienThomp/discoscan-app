@@ -77,6 +77,7 @@ struct FolderPickerSheet: View {
                     ProgressView()
                         .padding(AppSpacing.row)
                         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: AppCornerRadius.compact))
+                        .accessibilityHidden(true)
                 }
             }
         }

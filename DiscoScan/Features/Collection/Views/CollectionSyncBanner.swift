@@ -37,6 +37,7 @@ struct CollectionSyncBanner: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("Collection sync failed, \(message)")
                 Button("Retry") {
                     Task {  await store.syncFolderZeroIndex(forceRefresh: true) }
                 }
@@ -45,8 +46,6 @@ struct CollectionSyncBanner: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, AppSpacing.row)
             .padding(.vertical, AppSpacing.compact)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Collection sync failed, \(message)")
         }
     }
 }

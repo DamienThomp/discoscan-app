@@ -84,17 +84,18 @@ struct CollectionListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Picker("Sort by", selection: $folderZeroSortSelection) {
-                            Text("Newest first").tag(CollectionSortOption.newestFirst)
-                            Text("Oldest first").tag(CollectionSortOption.oldestFirst)
-                            Text("Artist A–Z").tag(CollectionSortOption.artistAZ)
-                            Text("Artist Z–A").tag(CollectionSortOption.artistZA)
-                            Text("Title A–Z").tag(CollectionSortOption.titleAZ)
-                            Text("Title Z–A").tag(CollectionSortOption.titleZA)
+                            Text(CollectionSortOption.newestFirst.title).tag(CollectionSortOption.newestFirst)
+                            Text(CollectionSortOption.oldestFirst.title).tag(CollectionSortOption.oldestFirst)
+                            Text(CollectionSortOption.artistAZ.title).tag(CollectionSortOption.artistAZ)
+                            Text(CollectionSortOption.artistZA.title).tag(CollectionSortOption.artistZA)
+                            Text(CollectionSortOption.titleAZ.title).tag(CollectionSortOption.titleAZ)
+                            Text(CollectionSortOption.titleZA.title).tag(CollectionSortOption.titleZA)
                         }
                         .pickerStyle(.inline)
                     } label: {
                         Text("Sort")
                     }
+                    .accessibilityValue(folderZeroSortSelection.title)
                 }
             }
             .onAppear {

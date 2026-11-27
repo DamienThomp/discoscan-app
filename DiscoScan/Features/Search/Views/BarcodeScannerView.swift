@@ -3,6 +3,7 @@
 //  DiscoScan
 //
 
+import Accessibility
 import SwiftUI
 import UIKit
 import Vision
@@ -19,7 +20,8 @@ struct BarcodeScannerView: View {
             Group {
                 if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
                     BarcodeScannerRepresentable(onScan: onScan, reduceMotion: reduceMotion)
-                        .accessibilityHint("Tap a highlighted barcode to search.")
+                        .accessibilityLabel("Barcode scanner")
+                        .accessibilityHint("Point the camera at a barcode. A recognized code is searched automatically.")
                 } else {
                     ContentUnavailableView(
                         "Scanner Unavailable",
@@ -35,7 +37,7 @@ struct BarcodeScannerView: View {
                     Button("Cancel", action: onCancel)
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    Text("Tap a highlighted barcode to search.")
+                    Text("Point the camera at a barcode. A recognized code is searched automatically.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .padding()
@@ -153,6 +155,7 @@ private struct BarcodeScannerRepresentable: UIViewControllerRepresentable {
             if !reduceMotion {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             }
+            AccessibilityNotification.Announcement("Barcode found").post()
             onScan(payload)
             dataScanner.stopScanning()
         }
