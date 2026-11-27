@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ImageIdentificationConfirmView: View {
     @Binding var identification: SleeveIdentificationDraft
+    let hasGuess: Bool
 
     let maxHeight: CGFloat = 200
     let imageData: Data?
@@ -27,27 +28,7 @@ struct ImageIdentificationConfirmView: View {
                         .transition(.opacity)
                 }
             }
-            if identification.isEmpty {
-                Section {
-                    ContentUnavailableView(
-                        "Couldn't identify this sleeve",
-                        systemImage: "questionmark.circle",
-                        description: Text("Try the barcode on the back cover or search manually.")
-                    )
-                }.transition(.opacity)
-
-                Section {
-                    Button("Try Another Photo", action: onTryAnotherPhoto)
-
-                    Button("Scan barcode instead") {
-                        onScanBarcode()
-                    }
-
-                    Button("Search manually") {
-                        onSearchManually()
-                    }
-                }.transition(.opacity)
-            } else {
+            if hasGuess {
                 Section("Best guess") {
                     TextField("Artist", text: $identification.artist)
                         .textInputAutocapitalization(.words)
@@ -76,6 +57,26 @@ struct ImageIdentificationConfirmView: View {
 
                     Button("Scan barcode instead") {
                         onScanBarcode()
+                    }
+                }.transition(.opacity)
+            } else {
+                Section {
+                    ContentUnavailableView(
+                        "Couldn't identify this sleeve",
+                        systemImage: "questionmark.circle",
+                        description: Text("Try the barcode on the back cover or search manually.")
+                    )
+                }.transition(.opacity)
+
+                Section {
+                    Button("Try Another Photo", action: onTryAnotherPhoto)
+
+                    Button("Scan barcode instead") {
+                        onScanBarcode()
+                    }
+
+                    Button("Search manually") {
+                        onSearchManually()
                     }
                 }.transition(.opacity)
             }

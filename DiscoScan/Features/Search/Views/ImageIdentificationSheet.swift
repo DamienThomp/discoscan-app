@@ -18,6 +18,7 @@ struct ImageIdentificationSheet: View {
     @State private var phase: ImageIdentificationPhase = .capturing
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var draft = SleeveIdentificationDraft()
+    @State private var hasGuess = false
     @State private var imageData: Data?
     @State private var isShowingCamera = false
     @State private var analysisAttempt = 0
@@ -45,6 +46,7 @@ struct ImageIdentificationSheet: View {
                 case .confirming:
                     ImageIdentificationConfirmView(
                         identification: $draft,
+                        hasGuess: hasGuess,
                         imageData: imageData,
                         onSearch: onSearch,
                         onScanBarcode: { dismiss() },
@@ -122,6 +124,7 @@ struct ImageIdentificationSheet: View {
     private func completeAnalysis(with result: SleeveIdentification) {
         withAnimation {
             draft = SleeveIdentificationDraft(from: result)
+            hasGuess = !result.isEmpty
             phase = .confirming
         }
     }
@@ -136,6 +139,7 @@ struct ImageIdentificationSheet: View {
         withAnimation {
             imageData = nil
             draft = SleeveIdentificationDraft()
+            hasGuess = false
             phase = .capturing
         }
     }
@@ -196,6 +200,7 @@ struct ImageIdentificationSheet: View {
     NavigationStack {
         ImageIdentificationConfirmView(
             identification: .constant(previewSleeveIdentificationDraft()),
+            hasGuess: true,
             imageData: UIImage(named: "PreviewSleeve")?.jpegData(compressionQuality: 0.85),
             onSearch: { _ in },
             onScanBarcode: {},
@@ -211,6 +216,7 @@ struct ImageIdentificationSheet: View {
     NavigationStack {
         ImageIdentificationConfirmView(
             identification: .constant(SleeveIdentificationDraft()),
+            hasGuess: false,
             imageData: nil,
             onSearch: { _ in },
             onScanBarcode: {},
