@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ImageIdentificationConfirmView: View {
     @Binding var identification: SleeveIdentificationDraft
+    let hasGuess: Bool
 
     let maxHeight: CGFloat = 200
     let imageData: Data?
@@ -27,7 +28,38 @@ struct ImageIdentificationConfirmView: View {
                         .transition(.opacity)
                 }
             }
-            if identification.isEmpty {
+            if hasGuess {
+                Section("Best guess") {
+                    TextField("Artist", text: $identification.artist)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .clearable(text: $identification.artist)
+                    TextField("Album title", text: $identification.title)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .clearable(text: $identification.title)
+                    TextField("Catalog number", text: $identification.catalogNumber)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .clearable(text: $identification.catalogNumber)
+
+                }.transition(.opacity)
+
+                Section {
+                    Button("Search Discogs") {
+                        onSearch(identification.searchQuery)
+                    }
+                    .disabled(identification.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Button("Edit in search field") {
+                        onSearchManually()
+                    }
+
+                    Button("Scan barcode instead") {
+                        onScanBarcode()
+                    }
+                }.transition(.opacity)
+            } else {
                 Section {
                     ContentUnavailableView(
                         "Couldn't identify this sleeve",
@@ -45,27 +77,6 @@ struct ImageIdentificationConfirmView: View {
 
                     Button("Search manually") {
                         onSearchManually()
-                    }
-                }.transition(.opacity)
-            } else {
-                Section("Best guess") {
-                    TextField("Artist", text: $identification.artist)
-                    TextField("Album title", text: $identification.title)
-                    TextField("Catalog number", text: $identification.catalogNumber)
-                }.transition(.opacity)
-
-                Section {
-                    Button("Search Discogs") {
-                        onSearch(identification.searchQuery)
-                    }
-                    .disabled(identification.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                    Button("Edit in search field") {
-                        onSearchManually()
-                    }
-
-                    Button("Scan barcode instead") {
-                        onScanBarcode()
                     }
                 }.transition(.opacity)
             }
