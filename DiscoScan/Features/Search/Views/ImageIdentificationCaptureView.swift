@@ -60,7 +60,7 @@ struct ImageIdentificationCaptureView: View {
     private var idleContent: some View {
         Group {
             if let imageData {
-                IdentificationImagePreview(imageData: imageData)
+                IdentificationImagePreview(imageData: imageData, accessibilityLabel: "Sleeve photo")
             }
 
             imagePickerControls(libraryLabel: "Choose from Library", libraryIsPrimary: false)
@@ -82,7 +82,7 @@ struct ImageIdentificationCaptureView: View {
     private func failedContent(failure: ImageIdentificationFailure) -> some View {
         VStack {
             if let imageData {
-                IdentificationImagePreview(imageData: imageData)
+                IdentificationImagePreview(imageData: imageData, accessibilityLabel: "Sleeve photo")
             }
 
             ContentUnavailableView {
@@ -92,7 +92,6 @@ struct ImageIdentificationCaptureView: View {
             } actions: {
                 failedActions(for: failure)
             }
-            .accessibilityElement(children: .combine)
         }.frame(maxWidth: .infinity)
     }
 

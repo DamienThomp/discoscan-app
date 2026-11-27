@@ -71,6 +71,9 @@ struct WantListToolbarButton: View {
     }
 
     private var accessibilityHint: String {
+        if isInWantList || wantListStore.isMutating || isLoadingWants {
+            return ""
+        }
         if case .failed = wantListStore.wants {
             return "Tap to retry loading your want list"
         }

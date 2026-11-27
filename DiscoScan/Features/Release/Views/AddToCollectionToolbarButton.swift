@@ -19,8 +19,8 @@ struct AddToCollectionToolbarButton: View {
             Image(systemName: "plus.square.on.square")
         }
         .disabled(collectionStore.isMutating || !isEnabled)
-        .accessibilityLabel("Add to Collection")
-        .accessibilityHint("Opens folder picker")
+        .accessibilityLabel(collectionStore.isMutating ? "Adding release" : "Add to Collection")
+        .accessibilityHint(collectionStore.isMutating || !isEnabled ? "" : "Opens folder picker")
     }
 }
 

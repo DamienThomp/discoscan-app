@@ -9,11 +9,12 @@ struct LoadingView: View {
 
     var text: String = "Loading…"
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isAnimating: Bool = true
 
     var body: some View {
         VStack(spacing: AppSpacing.compact) {
-            BrandDiscIcon(isAnimating: isAnimating)
+            BrandDiscIcon(isAnimating: isAnimating && !reduceMotion)
             Text(text)
                 .font(.title2)
 

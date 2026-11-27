@@ -12,6 +12,7 @@ struct ResourceContainerView<T: Equatable & Sendable, Content: View>: View {
 
     @ViewBuilder let content: (T) -> Content
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showLoader = false
 
     private var isWaitingForContent: Bool {
@@ -34,7 +35,7 @@ struct ResourceContainerView<T: Equatable & Sendable, Content: View>: View {
                 ErrorView(message: message) { Task { await retry() } }.transition(.opacity)
             }
         }
-        .animation(.default, value: state)
+        .animation(reduceMotion ? nil : .default, value: state)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: isWaitingForContent) {
             showLoader = false

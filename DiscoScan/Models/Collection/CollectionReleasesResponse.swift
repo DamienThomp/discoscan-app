@@ -64,4 +64,15 @@ nonisolated struct CollectionSortOption: Hashable, Sendable {
     static let artistZA = CollectionSortOption(field: .artist, direction: .desc)
     static let titleAZ = CollectionSortOption(field: .title, direction: .asc)
     static let titleZA = CollectionSortOption(field: .title, direction: .desc)
+
+    var title: String {
+        switch (field, direction) {
+        case (.dateAdded, .desc): "Newest first"
+        case (.dateAdded, .asc): "Oldest first"
+        case (.artist, .asc): "Artist A–Z"
+        case (.artist, .desc): "Artist Z–A"
+        case (.title, .asc): "Title A–Z"
+        case (.title, .desc): "Title Z–A"
+        }
+    }
 }

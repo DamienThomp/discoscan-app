@@ -8,6 +8,7 @@ import UIKit
 
 struct IdentificationImagePreview: View {
     let imageData: Data
+    var accessibilityLabel: String? = nil
 
     var body: some View {
         if let uiImage = UIImage(data: imageData) {
@@ -15,7 +16,8 @@ struct IdentificationImagePreview: View {
                 .resizable()
                 .scaledToFit()
                 .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.standard))
-                .accessibilityHidden(true)
+                .accessibilityHidden(accessibilityLabel == nil)
+                .accessibilityLabel(accessibilityLabel ?? "")
         }
     }
 }

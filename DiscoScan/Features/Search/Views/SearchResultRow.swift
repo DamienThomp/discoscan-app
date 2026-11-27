@@ -12,7 +12,7 @@ struct SearchResultRow: View {
         ReleaseRowLayout(
             artworkURL: result.thumb,
             title: result.title,
-            accessibilityLabel: "\(result.title), \(result.type)"
+            accessibilityLabel: accessibilityLabel
         ) {
 
             Group {
@@ -35,6 +35,20 @@ struct SearchResultRow: View {
                 }
             }
         }
+    }
+
+    private var accessibilityLabel: String {
+        var components = [result.title, result.type.capitalized]
+        if let country = result.country, !country.isEmpty {
+            components.append(country)
+        }
+        if let year = result.year, !year.isEmpty {
+            components.append(year)
+        }
+        if let formats = result.format?.prefix(2), !formats.isEmpty {
+            components.append(formats.joined(separator: ", "))
+        }
+        return components.joined(separator: ", ")
     }
 }
 

@@ -66,6 +66,11 @@ struct ReleaseDetailHeader: View {
         if let released = release.displayReleased {
             components.append(released)
         }
+        if let lowestPrice = release.lowestPrice {
+            components.append(
+                lowestPrice.formatted(.currency(code: CurrencyAbbreviations.cad.rawValue))
+            )
+        }
         return components.joined(separator: ", ")
     }
 }

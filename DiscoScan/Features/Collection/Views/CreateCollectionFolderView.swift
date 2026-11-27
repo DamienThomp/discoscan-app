@@ -26,6 +26,7 @@ struct CreateCollectionFolderView: View {
                     Task { await submitForm() }
                 }
                 .disabled(!canSubmit || isSubmitting)
+                .accessibilityLabel(isSubmitting ? "Creating folder" : "Create")
             }
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }

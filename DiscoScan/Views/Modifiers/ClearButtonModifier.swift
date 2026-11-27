@@ -15,6 +15,7 @@ private struct ClearButtonWidthKey: PreferenceKey {
 
 struct ClearButtonModifier: ViewModifier {
     @Binding var text: String
+    let label: String
 
     @State private var buttonWidth: CGFloat = 22
 
@@ -53,13 +54,13 @@ struct ClearButtonModifier: ViewModifier {
         }
         .buttonStyle(.plain)
         .onPreferenceChange(ClearButtonWidthKey.self) { buttonWidth = $0 }
-        .accessibilityLabel("Clear text")
+        .accessibilityLabel("Clear \(label)")
     }
 }
 
 extension View {
-    func clearable(text: Binding<String>) -> some View {
-        modifier(ClearButtonModifier(text: text))
+    func clearable(text: Binding<String>, label: String) -> some View {
+        modifier(ClearButtonModifier(text: text, label: label))
     }
 }
 
