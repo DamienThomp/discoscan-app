@@ -28,7 +28,6 @@ struct ClearButtonModifier: ViewModifier {
             .overlay(alignment: .trailing) {
                 if !text.isEmpty {
                     clearButton
-                        .padding(.trailing, gap)
                 }
             }
     }
